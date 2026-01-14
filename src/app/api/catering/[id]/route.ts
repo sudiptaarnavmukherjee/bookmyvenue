@@ -3,9 +3,11 @@ import prisma from "@/lib/db";
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  segmentData: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await segmentData.params;
+
     const caterer = await prisma.caterer.findUnique({
       where: {
         id: params.id,
@@ -58,9 +60,10 @@ export async function GET(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  segmentData: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await segmentData.params;
     const body = await request.json();
     
     const caterer = await prisma.caterer.update({
@@ -82,9 +85,11 @@ export async function PATCH(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  segmentData: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await segmentData.params;
+
     await prisma.caterer.update({
       where: {
         id: params.id,

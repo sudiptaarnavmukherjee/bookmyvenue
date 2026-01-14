@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  segmentData: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser();
@@ -18,6 +18,8 @@ export async function PATCH(
 
     const body = await request.json();
     const { reason } = body;
+
+    const params = await segmentData.params;
 
     const booking = await prisma.booking.findUnique({
       where: { id: params.id },

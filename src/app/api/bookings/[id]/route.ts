@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  segmentData: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser();
@@ -15,6 +15,8 @@ export async function GET(
         { status: 401 }
       );
     }
+
+    const params = await segmentData.params;
 
     const booking = await prisma.booking.findUnique({
       where: {
@@ -70,7 +72,7 @@ export async function GET(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  segmentData: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser();
@@ -82,6 +84,7 @@ export async function PATCH(
       );
     }
 
+    const params = await segmentData.params;
     const body = await request.json();
 
     const booking = await prisma.booking.update({
