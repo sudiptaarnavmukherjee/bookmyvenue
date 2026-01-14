@@ -68,8 +68,8 @@ export default function AvailabilityCalendar({
         endDate: endDate.toISOString().split("T")[0],
       });
 
-      if (!error && data?.blockedDates) {
-        setBlockedDates(data.blockedDates);
+      if (!error && data && (data as any).blockedDates) {
+        setBlockedDates((data as any).blockedDates);
       }
     } catch (error) {
       console.error("Error fetching blocked dates:", error);
