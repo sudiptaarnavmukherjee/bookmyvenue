@@ -271,25 +271,6 @@ export default function VenueOwnerDashboard() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="glass-card rounded-3xl p-8"
-        >
-          <div className="flex items-center gap-3 mb-6">
-            <CalendarCheck className="h-6 w-6 text-purple-600" />
-            <h2 className="text-2xl font-bold text-gradient">Recent Bookings</h2>
-          </div
-              <p className="text-sm text-gray-600">Revenue</p>
-            </div>
-            <p className="text-3xl font-bold text-gradient">
-              ₹{(totalRevenue / 100000).toFixed(2)}L
-            </p>
-          </motion.div>
-        </div>
-
-        {/* Bookings List */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
           className="glass-card rounded-3xl p-8"
         >
