@@ -1,0 +1,401 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  USER
+  VENUE_OWNER
+  CATERING_OWNER
+  ADMIN
+}
+
+enum PriceMode {
+  EXACT
+  ESTIMATED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum BookingType {
+  VENUE
+  CATERING
+}
+
+enum PackageTier {
+  SILVER
+  GOLD
+  DIAMOND
+  PLATINUM
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  name          String?
+  phone         String?
+  phoneVerified DateTime?
+  role          UserRole  @default(USER)
+  password      String
+  image         String?
+
+  // Status
+  isActive Boolean @default(true)
+
+  // KYC (for owners)
+  aadhaarNumber String? @unique
+  panNumber     String? @unique
+  gstNumber     String?
+  kycVerified   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  bookings     Booking[]
+  reviews      Review[]
+  venues       Venue[]
+  caterings    Caterer[]
+  wishlists    Wishlist[]
+  blockedDates BlockedDate[] @relation("BlockedDates")
+  accounts     Account[]
+  sessions     Session[]
+
+  @@index([email])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Venue {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String  @db.Text
+  city        String
+  area        String?
+  address     String  @db.Text
+  pincode     String
+  latitude    Float?
+  longitude   Float?
+
+  // Pricing
+  priceMode         PriceMode
+  exactPrice        Float?
+  estimatedMinPrice Float?
+  estimatedMaxPrice Float?
+
+  // Verification & Status
+  isVerified        Boolean   @default(false)
+  isActive          Boolean   @default(true)
+  verificationNotes String?
+  verifiedAt        DateTime?
+
+  // Capacity
+  minGuests Int
+  maxGuests Int
+
+  // Media
+  images     String // Comma-separated URLs
+  coverImage String
+  videos     String // Comma-separated URLs
+
+  // Amenities
+  amenities String // Comma-separated list
+  venueType String?
+
+  // Offline bookings (for Calendar OS)
+  offlineBookings String // Comma-separated ISO dates
+
+  // Analytics
+  viewCount    Int @default(0)
+  inquiryCount Int @default(0)
+
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  // Relations
+  ownerId      String
+  owner        User          @relation(fields: [ownerId], references: [id])
+  bookings     Booking[]
+  reviews      Review[]
+  wishlist     Wishlist[]
+  blockedDates BlockedDate[]
+
+  @@index([city])
+  @@index([slug])
+  @@index([isVerified])
+}
+
+model Caterer {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String
+  city        String
+  area        String?
+  address     String
+  phone       String
+
+  // Pricing
+  minPlatePrice Float
+  rating        Float @default(0)
+  totalReviews  Int   @default(0)
+
+  // Features
+  isPureVeg      Boolean  @default(false)
+  isMultiCuisine Boolean  @default(true)
+  cuisines       String // Comma-separated cuisines
+  minGuests      Int?
+
+  // Media
+  images     String // Comma-separated URLs
+  coverImage String
+
+  // Status
+  isActive   Boolean @default(true)
+  isVerified Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  // Relations
+  ownerId      String
+  owner        User          @relation(fields: [ownerId], references: [id])
+  packages     MenuPackage[]
+  bookings     Booking[]
+  reviews      Review[]
+  wishlist     Wishlist[]
+  blockedDates BlockedDate[]
+
+  @@index([city])
+  @@index([slug])
+}
+
+model MenuPackage {
+  id            String      @id @default(cuid())
+  tier          PackageTier
+  name          String
+  description   String?
+  pricePerPlate Float
+  itemCount     Int
+  items         Json // Array of {category: string, items: string[]}
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  // Relations
+  catererId String
+  caterer   Caterer @relation(fields: [catererId], references: [id])
+
+  @@index([catererId])
+}
+
+model Booking {
+  id            String        @id @default(cuid())
+  bookingNumber String        @unique
+  type          BookingType
+  status        BookingStatus @default(PENDING)
+
+  // Event Details
+  eventDate  DateTime
+  eventType  String?
+  guestCount Int?
+
+  // Venue Booking
+  venueId String?
+  venue   Venue?  @relation(fields: [venueId], references: [id])
+
+  // Catering Booking
+  catererId       String?
+  caterer         Caterer?     @relation(fields: [catererId], references: [id])
+  selectedPackage PackageTier?
+
+  // Pricing
+  baseAmount    Float?
+  taxAmount     Float?
+  totalAmount   Float?
+  advanceAmount Float?
+  balanceAmount Float?
+
+  // Payment
+  isPaid        Boolean @default(false)
+  paymentMethod String?
+  paymentId     String?
+
+  // Contact
+  customerName    String
+  customerEmail   String
+  customerPhone   String
+  specialRequests String?
+
+  // Timeline
+  confirmedAt        DateTime?
+  cancelledAt        DateTime?
+  completedAt        DateTime?
+  cancellationReason String?
+
+  // Notes
+  ownerNotes String?
+  adminNotes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  // Relations
+  userId   String
+  user     User      @relation(fields: [userId], references: [id])
+  payments Payment[]
+
+  @@index([eventDate])
+  @@index([status])
+  @@index([userId])
+  @@index([bookingNumber])
+}
+
+model Payment {
+  id       String @id @default(cuid())
+  amount   Float
+  currency String @default("INR")
+  status   String @default("PENDING")
+
+  // Gateway details (Razorpay)
+  orderId   String? @unique
+  paymentId String? @unique
+  signature String?
+
+  // Metadata
+  method        String?
+  paidAt        DateTime?
+  failedAt      DateTime?
+  failureReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  // Relations
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id])
+
+  @@index([bookingId])
+  @@index([orderId])
+}
+
+model Review {
+  id      String  @id @default(cuid())
+  rating  Int
+  comment String?
+
+  // Venue Review
+  venueId String?
+  venue   Venue?  @relation(fields: [venueId], references: [id])
+
+  // Caterer Review
+  catererId String?
+  caterer   Caterer? @relation(fields: [catererId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([venueId])
+  @@index([catererId])
+}
+
+model Wishlist {
+  id String @id @default(cuid())
+
+  // Venue Wishlist
+  venueId String?
+  venue   Venue?  @relation(fields: [venueId], references: [id])
+
+  // Caterer Wishlist
+  catererId String?
+  caterer   Caterer? @relation(fields: [catererId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([userId, venueId])
+  @@unique([userId, catererId])
+}
+
+model BlockedDate {
+  id              String   @id @default(cuid())
+  date            DateTime
+  reason          String?
+  isOnlineBooking Boolean  @default(false) // true = booked through platform, false = owner blocked
+  bookingId       String? // Reference to booking if online
+
+  // Venue or Caterer (one must be set)
+  venueId String?
+  venue   Venue?  @relation(fields: [venueId], references: [id])
+
+  catererId String?
+  caterer   Caterer? @relation(fields: [catererId], references: [id])
+
+  // Owner who blocked (for manual blocks)
+  blockedBy String?
+  owner     User?   @relation("BlockedDates", fields: [blockedBy], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@unique([venueId, date])
+  @@unique([catererId, date])
+  @@index([venueId, date])
+  @@index([catererId, date])
+}

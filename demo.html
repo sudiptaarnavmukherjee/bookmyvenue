@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShubhSpace - Wedding Marketplace Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        rose: {
+                            50: '#FFF1F2',
+                            600: '#E11D48',
+                            700: '#BE123C',
+                        },
+                        gold: {
+                            600: '#D4AF37',
+                            700: '#B8922E',
+                        },
+                        cream: {
+                            50: '#FFFBF5',
+                            100: '#FFF8EE',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .wedding-gradient {
+            background: linear-gradient(to bottom right, #F43F5E, #E11D48, #D4AF37);
+        }
+        .card-shadow {
+            box-shadow: 0 4px 6px -1px rgba(225, 29, 72, 0.1), 0 2px 4px -1px rgba(212, 175, 55, 0.06);
+        }
+        .mode-toggle-active {
+            background: white;
+            color: #E11D48;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .mode-toggle-inactive {
+            color: white;
+        }
+        .nav-active {
+            color: #E11D48;
+        }
+        .card-hover {
+            transition: transform 0.2s;
+        }
+        .card-hover:hover {
+            transform: translateY(-4px);
+        }
+    </style>
+</head>
+<body class="bg-cream-50">
+    <!-- Hero Header -->
+    <div class="wedding-gradient px-4 py-8 text-white">
+        <div class="container mx-auto max-w-6xl">
+            <h1 class="mb-2 text-3xl font-bold">ShubhSpace</h1>
+            <p class="mb-6 text-cream-100">Your Dream Wedding, Simplified</p>
+
+            <!-- Mode Toggle -->
+            <div class="inline-flex rounded-full bg-white/20 p-1 backdrop-blur-sm">
+                <button id="venuesBtn" onclick="switchMode('venues')" class="mode-toggle-active flex items-center gap-2 rounded-full px-6 py-3 font-semibold transition-all">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                    </svg>
+                    <span>Venues</span>
+                </button>
+                <button id="cateringBtn" onclick="switchMode('catering')" class="mode-toggle-inactive flex items-center gap-2 rounded-full px-6 py-3 font-semibold transition-all">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                    <span>Catering</span>
+                </button>
+            </div>
+
+            <!-- Search Bars -->
+            <div class="mt-6 space-y-3">
+                <div class="flex items-center gap-3 rounded-xl bg-white p-4 text-gray-700 shadow-lg">
+                    <svg class="h-5 w-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    <input type="text" placeholder="Enter city (e.g., Mumbai, Delhi)" class="flex-1 bg-transparent outline-none" />
+                </div>
+
+                <div id="dateSearch" class="flex items-center gap-3 rounded-xl bg-white p-4 text-gray-700 shadow-lg">
+                    <svg class="h-5 w-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    <input type="date" class="flex-1 bg-transparent outline-none" />
+                </div>
+
+                <button class="flex w-full items-center justify-center gap-2 rounded-xl bg-gold-600 py-4 font-semibold text-white shadow-lg transition hover:bg-gold-700">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    <span id="searchBtnText">Search Venues</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Content Section -->
+    <div class="container mx-auto max-w-6xl px-4 py-8 pb-24">
+        <h2 id="sectionTitle" class="mb-6 text-2xl font-bold text-gray-800">Featured Venues</h2>
+
+        <!-- Venues Grid -->
+        <div id="venuesGrid" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <!-- Venue Card 1 -->
+            <div class="card-hover overflow-hidden rounded-2xl bg-white card-shadow">
+                <div class="relative aspect-[4/3] overflow-hidden">
+                    <img src="https://images.unsplash.com/photo-1519167758481-83f29da8c6d2?w=800" alt="Royal Gardens Banquet" class="h-full w-full object-cover" />
+                    <div class="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-green-500 px-3 py-1 text-xs font-semibold text-white">
+                        <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Verified
+                    </div>
+                </div>
+                <div class="p-4">
+                    <h3 class="mb-2 text-lg font-bold text-gray-800">Royal Gardens Banquet</h3>
+                    <div class="mb-3 flex items-center gap-2 text-sm text-gray-600">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                        </svg>
+                        <span>Mumbai</span>
+                    </div>
+                    <div class="mb-3 flex items-center gap-2 text-sm text-gray-600">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                        </svg>
+                        <span>100 - 500 guests</span>
+                    </div>
+                    <div class="mb-4">
+                        <p class="text-xs text-gray-500">Starting from</p>
+                        <p class="text-2xl font-bold text-rose-600">₹75,000</p>
+                    </div>
+                    <button class="w-full rounded-xl bg-rose-600 py-3 font-semibold text-white transition hover:bg-rose-700">
+                        Book Now
+                    </button>
+                </div>
+            </div>
+
+            <!-- Venue Card 2 -->
+            <div class="card-hover overflow-hidden rounded-2xl bg-white card-shadow">
+                <div class="relative aspect-[4/3] overflow-hidden">
+                    <img src="https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800" alt="Sunset Palace" class="h-full w-full object-cover" />
+                </div>
+                <div class="p-4">
+                    <h3 class="mb-2 text-lg font-bold text-gray-800">Sunset Palace</h3>
+                    <div class="mb-3 flex items-center gap-2 text-sm text-gray-600">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                        </svg>
+                        <span>Jaipur</span>
+                    </div>
+                    <div class="mb-3 flex items-center gap-2 text-sm text-gray-600">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                        </svg>
+                        <span>150 - 300 guests</span>
+                    </div>
+                    <div class="mb-4">
+                        <p class="text-xs text-gray-500">Estimated Range</p>
+                        <p class="text-lg font-bold text-gray-700">₹40,000 - ₹60,000</p>
+                    </div>
+                    <button class="w-full rounded-xl border-2 border-rose-600 py-3 font-semibold text-rose-600 transition hover:bg-rose-50">
+                        Get Quote
+                    </button>
+                </div>
+            </div>
+
+            <!-- Venue Card 3 -->
+            <div class="card-hover overflow-hidden rounded-2xl bg-white card-shadow">
+                <div class="relative aspect-[4/3] overflow-hidden">
+                    <img src="https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=800" alt="Grand Heritage Hotel" class="h-full w-full object-cover" />
+                    <div class="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-green-500 px-3 py-1 text-xs font-semibold text-white">
+                        <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Verified
+                    </div>
+                </div>
+                <div class="p-4">
+                    <h3 class="mb-2 text-lg font-bold text-gray-800">Grand Heritage Hotel</h3>
+                    <div class="mb-3 flex items-center gap-2 text-sm text-gray-600">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                        </svg>
+                        <span>Delhi</span>
+                    </div>
+                    <div class="mb-3 flex items-center gap-2 text-sm text-gray-600">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                        </svg>
+                        <span>200 - 800 guests</span>
+                    </div>
+                    <div class="mb-4">
+                        <p class="text-xs text-gray-500">Starting from</p>
+                        <p class="text-2xl font-bold text-rose-600">₹1,20,000</p>
+                    </div>
+                    <button class="w-full rounded-xl bg-rose-600 py-3 font-semibold text-white transition hover:bg-rose-700">
+                        Book Now
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Catering Grid (Hidden by default) -->
+        <div id="cateringGrid" class="hidden grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <!-- Caterer Card 1 -->
+            <div class="card-hover overflow-hidden rounded-2xl bg-white card-shadow">
+                <div class="relative aspect-[4/3] overflow-hidden">
+                    <img src="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800" alt="Maharaja Caterers" class="h-full w-full object-cover" />
+                </div>
+                <div class="p-4">
+                    <h3 class="mb-2 text-lg font-bold text-gray-800">Maharaja Caterers</h3>
+                    <div class="mb-3 flex items-center gap-2 text-sm text-gray-600">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                        </svg>
+                        <span>Mumbai</span>
+                    </div>
+                    <div class="mb-3 flex items-center gap-2">
+                        <div class="flex items-center gap-1 rounded-lg bg-green-50 px-2 py-1">
+                            <svg class="h-4 w-4 fill-green-600 text-green-600" viewBox="0 0 24 24">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                            </svg>
+                            <span class="text-sm font-bold text-green-700">4.8</span>
+                        </div>
+                        <span class="text-sm text-gray-500">(234 reviews)</span>
+                    </div>
+                    <div class="mb-4">
+                        <p class="text-xs text-gray-500">Starting from</p>
+                        <p class="text-2xl font-bold text-rose-600">₹450<span class="text-sm font-normal text-gray-600">/plate</span></p>
+                    </div>
+                    <button class="w-full rounded-xl bg-gold-600 py-3 font-semibold text-white transition hover:bg-gold-700">
+                        View Packages
+                    </button>
+                </div>
+            </div>
+
+            <!-- Caterer Card 2 -->
+            <div class="card-hover overflow-hidden rounded-2xl bg-white card-shadow">
+                <div class="relative aspect-[4/3] overflow-hidden">
+                    <img src="https://images.unsplash.com/photo-1506368249639-73a05d6f6488?w=800" alt="Veggie Delight Catering" class="h-full w-full object-cover" />
+                    <div class="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-green-600 px-3 py-1 text-xs font-semibold text-white">
+                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+                        </svg>
+                        Pure Veg
+                    </div>
+                </div>
+                <div class="p-4">
+                    <h3 class="mb-2 text-lg font-bold text-gray-800">Veggie Delight Catering</h3>
+                    <div class="mb-3 flex items-center gap-2 text-sm text-gray-600">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                        </svg>
+                        <span>Ahmedabad</span>
+                    </div>
+                    <div class="mb-3 flex items-center gap-2">
+                        <div class="flex items-center gap-1 rounded-lg bg-green-50 px-2 py-1">
+                            <svg class="h-4 w-4 fill-green-600 text-green-600" viewBox="0 0 24 24">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                            </svg>
+                            <span class="text-sm font-bold text-green-700">4.9</span>
+                        </div>
+                        <span class="text-sm text-gray-500">(189 reviews)</span>
+                    </div>
+                    <div class="mb-4">
+                        <p class="text-xs text-gray-500">Starting from</p>
+                        <p class="text-2xl font-bold text-rose-600">₹350<span class="text-sm font-normal text-gray-600">/plate</span></p>
+                    </div>
+                    <button class="w-full rounded-xl bg-gold-600 py-3 font-semibold text-white transition hover:bg-gold-700">
+                        View Packages
+                    </button>
+                </div>
+            </div>
+
+            <!-- Caterer Card 3 -->
+            <div class="card-hover overflow-hidden rounded-2xl bg-white card-shadow">
+                <div class="relative aspect-[4/3] overflow-hidden">
+                    <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800" alt="Royal Feast Services" class="h-full w-full object-cover" />
+                </div>
+                <div class="p-4">
+                    <h3 class="mb-2 text-lg font-bold text-gray-800">Royal Feast Services</h3>
+                    <div class="mb-3 flex items-center gap-2 text-sm text-gray-600">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                        </svg>
+                        <span>Delhi</span>
+                    </div>
+                    <div class="mb-3 flex items-center gap-2">
+                        <div class="flex items-center gap-1 rounded-lg bg-green-50 px-2 py-1">
+                            <svg class="h-4 w-4 fill-green-600 text-green-600" viewBox="0 0 24 24">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                            </svg>
+                            <span class="text-sm font-bold text-green-700">4.7</span>
+                        </div>
+                        <span class="text-sm text-gray-500">(312 reviews)</span>
+                    </div>
+                    <div class="mb-4">
+                        <p class="text-xs text-gray-500">Starting from</p>
+                        <p class="text-2xl font-bold text-rose-600">₹550<span class="text-sm font-normal text-gray-600">/plate</span></p>
+                    </div>
+                    <button class="w-full rounded-xl bg-gold-600 py-3 font-semibold text-white transition hover:bg-gold-700">
+                        View Packages
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white md:hidden">
+        <div class="flex items-center justify-around">
+            <a href="#" onclick="setActiveNav(0)" class="nav-item nav-active flex flex-1 flex-col items-center gap-1 py-3 text-xs transition-colors" id="nav-0">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                </svg>
+                <span class="font-medium">Home</span>
+            </a>
+            <a href="#" onclick="setActiveNav(1)" class="nav-item flex flex-1 flex-col items-center gap-1 py-3 text-xs text-gray-500 transition-colors hover:text-gray-700" id="nav-1">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                </svg>
+                <span class="font-medium">Wishlist</span>
+            </a>
+            <a href="#" onclick="setActiveNav(2)" class="nav-item flex flex-1 flex-col items-center gap-1 py-3 text-xs text-gray-500 transition-colors hover:text-gray-700" id="nav-2">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                <span class="font-medium">Trips</span>
+            </a>
+            <a href="#" onclick="setActiveNav(3)" class="nav-item flex flex-1 flex-col items-center gap-1 py-3 text-xs text-gray-500 transition-colors hover:text-gray-700" id="nav-3">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                </svg>
+                <span class="font-medium">Profile</span>
+            </a>
+        </div>
+    </nav>
+
+    <script>
+        function switchMode(mode) {
+            const venuesBtn = document.getElementById('venuesBtn');
+            const cateringBtn = document.getElementById('cateringBtn');
+            const venuesGrid = document.getElementById('venuesGrid');
+            const cateringGrid = document.getElementById('cateringGrid');
+            const sectionTitle = document.getElementById('sectionTitle');
+            const searchBtnText = document.getElementById('searchBtnText');
+            const dateSearch = document.getElementById('dateSearch');
+
+            if (mode === 'venues') {
+                venuesBtn.className = 'mode-toggle-active flex items-center gap-2 rounded-full px-6 py-3 font-semibold transition-all';
+                cateringBtn.className = 'mode-toggle-inactive flex items-center gap-2 rounded-full px-6 py-3 font-semibold transition-all';
+                venuesGrid.classList.remove('hidden');
+                venuesGrid.classList.add('grid');
+                cateringGrid.classList.remove('grid');
+                cateringGrid.classList.add('hidden');
+                sectionTitle.textContent = 'Featured Venues';
+                searchBtnText.textContent = 'Search Venues';
+                dateSearch.classList.remove('hidden');
+            } else {
+                cateringBtn.className = 'mode-toggle-active flex items-center gap-2 rounded-full px-6 py-3 font-semibold transition-all';
+                venuesBtn.className = 'mode-toggle-inactive flex items-center gap-2 rounded-full px-6 py-3 font-semibold transition-all';
+                cateringGrid.classList.remove('hidden');
+                cateringGrid.classList.add('grid');
+                venuesGrid.classList.remove('grid');
+                venuesGrid.classList.add('hidden');
+                sectionTitle.textContent = 'Top Caterers';
+                searchBtnText.textContent = 'Search Caterers';
+                dateSearch.classList.add('hidden');
+            }
+        }
+
+        function setActiveNav(index) {
+            document.querySelectorAll('.nav-item').forEach((item, i) => {
+                if (i === index) {
+                    item.classList.add('nav-active');
+                    item.classList.remove('text-gray-500');
+                } else {
+                    item.classList.remove('nav-active');
+                    item.classList.add('text-gray-500');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
