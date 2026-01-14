@@ -62,10 +62,10 @@ export async function POST(request: Request) {
       },
       { status: 201 }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error creating user:", error);
     return NextResponse.json(
-      { error: "Failed to create user" },
+      { error: "Failed to create user", details: error?.message || "Database error" },
       { status: 500 }
     );
   }
