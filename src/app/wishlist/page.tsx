@@ -172,9 +172,10 @@ export default function WishlistPage() {
             {wishlist.map((item, index) => {
               const isVenue = !!item.venue;
               const data = item.venue || item.caterer;
-              const images = typeof data?.images === 'string' 
-                ? (data?.images ? data.images.split(',').filter(Boolean) : [])
-                : (data?.images || []);
+              const rawImages = data?.images as string | string[] | null | undefined;
+              const images = typeof rawImages === 'string' 
+                ? (rawImages ? rawImages.split(',').filter(Boolean) : [])
+                : (Array.isArray(rawImages) ? rawImages : []);
               const image = data?.coverImage || (images.length > 0 ? images[0] : "") || "https://images.unsplash.com/photo-1519167758481-83f29da8c456?w=800";
               const name = data?.name || "";
               const location = `${data?.area || ""}, ${data?.city || ""}`.replace(/^, /, "");
