@@ -231,15 +231,8 @@ async function main() {
     ];
 
     for (const pkg of packages) {
-      await prisma.menuPackage.upsert({
-        where: {
-          catererId_tier: {
-            catererId: createdCaterer.id,
-            tier: pkg.tier,
-          },
-        },
-        update: {},
-        create: pkg,
+      await prisma.menuPackage.create({
+        data: pkg,
       });
     }
   }
