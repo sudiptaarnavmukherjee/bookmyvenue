@@ -39,9 +39,10 @@ export default function VenueOwnerDashboard() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await api.getVenues();
+      const res = await api.getMyVenues();
       if (!res.error && res.data) {
-        setVenues(Array.isArray(res.data) ? res.data : []);
+        const data = res.data as any;
+        setVenues(Array.isArray(data.venues) ? data.venues : Array.isArray(data) ? data : []);
       }
     } catch (err) {
       console.error(err);

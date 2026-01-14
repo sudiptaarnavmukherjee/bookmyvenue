@@ -82,6 +82,10 @@ class APIClient {
     return this.request('/venues', { method: 'POST', body: data });
   }
 
+  async getMyVenues() {
+    return this.request('/venues/my-venues');
+  }
+
   async updateVenue(id: string, data: any) {
     return this.request(`/venues/${id}`, { method: 'PATCH', body: data });
   }

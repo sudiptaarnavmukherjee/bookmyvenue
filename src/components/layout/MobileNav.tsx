@@ -44,7 +44,7 @@ export function MobileNav() {
     // For admin - no bookings link
     if (user.role === "ADMIN") {
       return [
-        { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+        { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
         { href: "/profile", icon: User, label: "Profile" },
       ];
     }

@@ -123,7 +123,7 @@ export default function DesktopNav() {
 
                         {user.role === "ADMIN" && (
                           <Link
-                            href="/dashboard"
+                            href="/admin"
                             onClick={() => setShowProfileMenu(false)}
                             className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-700 hover:bg-purple-50 transition-colors"
                           >
