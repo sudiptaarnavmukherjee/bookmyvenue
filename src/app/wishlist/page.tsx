@@ -172,12 +172,15 @@ export default function WishlistPage() {
             {wishlist.map((item, index) => {
               const isVenue = !!item.venue;
               const data = item.venue || item.caterer;
-              const image = data?.coverImage || data?.images[0] || "";
+              const images = typeof data?.images === 'string' 
+                ? (data?.images ? data.images.split(',').filter(Boolean) : [])
+                : (data?.images || []);
+              const image = data?.coverImage || (images.length > 0 ? images[0] : "") || "https://images.unsplash.com/photo-1519167758481-83f29da8c456?w=800";
               const name = data?.name || "";
               const location = `${data?.area || ""}, ${data?.city || ""}`.replace(/^, /, "");
               const price = isVenue 
                 ? (data as any)?.exactPrice || (data as any)?.estimatedMinPrice || 0
-                : (data as any)?.pricePerPlate || 0;
+                : (data as any)?.minPlatePrice || (data as any)?.pricePerPlate || 0;
               
               return (
                 <motion.div

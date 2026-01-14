@@ -67,7 +67,16 @@ export default function CateringPage() {
         if (err) {
           setError(err);
         } else {
-          setCaterers((data as any)?.caterers || []);
+          // Transform API data to handle comma-separated images
+          const rawCaterers = (data as any)?.caterers || [];
+          const transformedCaterers = rawCaterers.map((c: any) => ({
+            ...c,
+            pricePerPlate: c.minPlatePrice || c.pricePerPlate || 0,
+            images: typeof c.images === 'string'
+              ? (c.images ? c.images.split(',').filter(Boolean) : [])
+              : (c.images || []),
+          }));
+          setCaterers(transformedCaterers);
         }
       } catch (err: any) {
         setError(err.message || "Failed to load caterers");
@@ -492,7 +501,7 @@ export default function CateringPage() {
             >
               <div className="relative h-48">
                 <img
-                  src={caterer.images[0] || "https://images.unsplash.com/photo-1555244162-803834f70033?w=800"}
+                  src={(Array.isArray(caterer.images) && caterer.images[0]) || "https://images.unsplash.com/photo-1555244162-803834f70033?w=800"}
                   alt={caterer.name}
                   className="h-full w-full object-cover"
                 />
@@ -523,7 +532,7 @@ export default function CateringPage() {
                 <div className="flex items-end justify-between border-t border-gray-200 pt-4">
                   <div>
                     <span className="text-xs text-gray-600">Starting from</span>
-                    <p className="text-xl font-bold text-gradient">₹{caterer.pricePerPlate}/plate</p>
+                    <p className="text-xl font-bold text-gradient">₹{(caterer.pricePerPlate || 0).toLocaleString('en-IN')}/plate</p>
                   </div>
                   <button className="rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2 text-sm font-semibold text-white shadow-lg hover:shadow-xl transition-all">
                     View Menu

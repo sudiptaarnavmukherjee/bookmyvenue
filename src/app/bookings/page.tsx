@@ -58,7 +58,25 @@ export default function MyBookingsPage() {
       if (err) {
         setError(err);
       } else {
-        setBookings((data as any)?.bookings || []);
+        // Transform bookings data to handle comma-separated images
+        const rawBookings = (data as any)?.bookings || [];
+        const transformedBookings = rawBookings.map((b: any) => ({
+          ...b,
+          guests: b.guestCount || b.guests || 0,
+          venue: b.venue ? {
+            ...b.venue,
+            images: typeof b.venue.images === 'string' 
+              ? (b.venue.images ? b.venue.images.split(',').filter(Boolean) : [])
+              : (b.venue.images || [])
+          } : null,
+          caterer: b.caterer ? {
+            ...b.caterer,
+            images: typeof b.caterer.images === 'string'
+              ? (b.caterer.images ? b.caterer.images.split(',').filter(Boolean) : [])
+              : (b.caterer.images || [])
+          } : null,
+        }));
+        setBookings(transformedBookings);
       }
     } catch (err: any) {
       setError(err.message || "Failed to load bookings");
@@ -217,7 +235,11 @@ export default function MyBookingsPage() {
             filteredBookings.map((booking, index) => {
               const name = booking.venue?.name || booking.caterer?.name || "Unknown";
               const location = booking.venue?.city || booking.caterer?.city || "Unknown";
-              const image = booking.venue?.images[0] || booking.caterer?.images[0] || "https://images.unsplash.com/photo-1519167758481-83f29da8c456?w=800";
+              const venueImages = booking.venue?.images || [];
+              const catererImages = booking.caterer?.images || [];
+              const image = (Array.isArray(venueImages) ? venueImages[0] : null) 
+                || (Array.isArray(catererImages) ? catererImages[0] : null)
+                || "https://images.unsplash.com/photo-1519167758481-83f29da8c456?w=800";
               const slug = booking.venue?.slug || booking.caterer?.slug;
               const isOwner = userRole === "VENUE_OWNER" || userRole === "CATERING_OWNER";
               
@@ -269,14 +291,14 @@ export default function MyBookingsPage() {
                       </div>
                       <div className="flex items-center gap-2 text-gray-600">
                         <Users className="h-4 w-4 text-purple-600" />
-                        <span className="text-sm">{booking.guests} Guests</span>
+                        <span className="text-sm">{booking.guests || 0} Guests</span>
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between border-t border-gray-200 pt-4">
                       <div>
                         <span className="text-sm text-gray-600">Total Amount</span>
-                        <p className="text-2xl font-bold text-gradient">₹{booking.totalAmount.toLocaleString('en-IN')}</p>
+                        <p className="text-2xl font-bold text-gradient">₹{(booking.totalAmount || 0).toLocaleString('en-IN')}</p>
                       </div>
                       <div className="flex gap-2">
                         {slug && (

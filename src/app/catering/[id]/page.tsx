@@ -74,10 +74,23 @@ export default function CatererDetailPage({ params }: { params: Promise<{ id: st
       if (err) {
         setError(err);
       } else {
-        const catererData = (data as any)?.caterer || null;
-        setCaterer(catererData);
-        if (catererData?.menuPackages && catererData.menuPackages.length > 0) {
-          setSelectedPackage(catererData.menuPackages[0]);
+        const rawCaterer = (data as any)?.caterer || null;
+        if (rawCaterer) {
+          // Transform API data
+          const transformedCaterer = {
+            ...rawCaterer,
+            pricePerPlate: rawCaterer.minPlatePrice || rawCaterer.pricePerPlate || 0,
+            images: typeof rawCaterer.images === 'string'
+              ? (rawCaterer.images ? rawCaterer.images.split(',').filter(Boolean) : [])
+              : (rawCaterer.images || []),
+            menuPackages: rawCaterer.packages || rawCaterer.menuPackages || [],
+          };
+          setCaterer(transformedCaterer);
+          if (transformedCaterer.menuPackages && transformedCaterer.menuPackages.length > 0) {
+            setSelectedPackage(transformedCaterer.menuPackages[0]);
+          }
+        } else {
+          setCaterer(null);
         }
       }
     } catch (err) {

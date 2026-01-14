@@ -7,10 +7,12 @@ export async function GET(
 ) {
   try {
     const params = await segmentData.params;
+    const idOrSlug = params.id;
 
-    const caterer = await prisma.caterer.findUnique({
+    // Try to find by ID first, then by slug
+    let caterer = await prisma.caterer.findUnique({
       where: {
-        id: params.id,
+        id: idOrSlug,
       },
       include: {
         owner: {
@@ -40,6 +42,42 @@ export async function GET(
         },
       },
     });
+
+    // If not found by ID, try by slug
+    if (!caterer) {
+      caterer = await prisma.caterer.findUnique({
+        where: {
+          slug: idOrSlug,
+        },
+        include: {
+          owner: {
+            select: {
+              name: true,
+              email: true,
+              phone: true,
+            },
+          },
+          packages: {
+            orderBy: {
+              pricePerPlate: "asc",
+            },
+          },
+          reviews: {
+            include: {
+              user: {
+                select: {
+                  name: true,
+                  email: true,
+                },
+              },
+            },
+            orderBy: {
+              createdAt: "desc",
+            },
+          },
+        },
+      });
+    }
 
     if (!caterer) {
       return NextResponse.json(
