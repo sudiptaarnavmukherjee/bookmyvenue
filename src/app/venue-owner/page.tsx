@@ -227,7 +227,23 @@ export default function VenueOwnerDashboard() {
             <p className="text-3xl font-bold text-gradient">{upcomingBookings.length}</p>
           </motion.div>
 
-          {/* Calendar Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="glass-card rounded-2xl p-6"
+          >
+            <div className="flex items-center gap-3 mb-2">
+              <DollarSign className="h-6 w-6 text-green-600" />
+              <p className="text-sm text-gray-600">Revenue</p>
+            </div>
+            <p className="text-3xl font-bold text-gradient">
+              ₹{(totalRevenue / 100000).toFixed(2)}L
+            </p>
+          </motion.div>
+        </div>
+
+        {/* Calendar Section */}
         {ownerVenueId && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
