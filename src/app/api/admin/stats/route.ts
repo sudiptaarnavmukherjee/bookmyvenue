@@ -22,9 +22,9 @@ export async function GET() {
     ] = await Promise.all([
       prisma.user.count(),
       prisma.venue.count({ where: { deletedAt: null } }),
-      prisma.caterer.count({ where: { deletedAt: null } }),
+      prisma.caterer.count({ where: { isActive: true } }),
       prisma.venue.count({ where: { isVerified: false, deletedAt: null } }),
-      prisma.caterer.count({ where: { isVerified: false, deletedAt: null } }),
+      prisma.caterer.count({ where: { isVerified: false, isActive: true } }),
       prisma.booking.count(),
     ]);
 

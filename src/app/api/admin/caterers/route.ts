@@ -14,7 +14,7 @@ export async function GET() {
 
     const caterers = await prisma.caterer.findMany({
       where: {
-        deletedAt: null,
+        isActive: true,
       },
       include: {
         owner: {
