@@ -226,7 +226,7 @@ export default function VenueOwnerDashboard() {
             <p className="text-3xl font-bold text-gradient">{upcomingBookings.length}</p>
           </motion.div>
 
-          <mCalendar Section */}
+          {/* Calendar Section */}
         {ownerVenueId && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
