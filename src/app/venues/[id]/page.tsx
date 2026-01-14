@@ -70,7 +70,25 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
       if (err) {
         setError(err);
       } else {
-        setVenue((data as any)?.venue || null);
+        const rawVenue = (data as any)?.venue;
+        if (rawVenue) {
+          // Transform API data to match component expectations
+          const transformedVenue = {
+            ...rawVenue,
+            location: rawVenue.area || rawVenue.city || '',
+            capacity: rawVenue.maxGuests || 0,
+            price: rawVenue.exactPrice || rawVenue.estimatedMinPrice || 0,
+            images: typeof rawVenue.images === 'string' 
+              ? (rawVenue.images ? rawVenue.images.split(',').filter(Boolean) : []) 
+              : (rawVenue.images || []),
+            amenities: typeof rawVenue.amenities === 'string' 
+              ? (rawVenue.amenities ? rawVenue.amenities.split(',').map((a: string) => a.trim()).filter(Boolean) : []) 
+              : (rawVenue.amenities || []),
+          };
+          setVenue(transformedVenue);
+        } else {
+          setVenue(null);
+        }
         setSelectedImage(0);
       }
     } catch (err: any) {
@@ -188,7 +206,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
             >
               <div className="relative h-96">
                 <img
-                  src={venue.images[selectedImage]}
+                  src={venue.images[selectedImage] || "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800"}
                   alt={venue.name}
                   className="h-full w-full object-cover"
                 />
@@ -294,7 +312,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
             >
               <div className="mb-6">
                 <span className="text-sm text-gray-600">Starting from</span>
-                <p className="text-4xl font-bold text-gradient">₹{venue.price.toLocaleString('en-IN')}</p>
+                <p className="text-4xl font-bold text-gradient">₹{(venue.price || 0).toLocaleString('en-IN')}</p>
                 <span className="text-sm text-gray-600">per event</span>
               </div>
 
@@ -365,12 +383,12 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
 
               <div className="mt-6 pt-6 border-t border-gray-200 space-y-2 text-sm text-gray-600">
                 <div className="flex justify-between">
-                  <span>₹{venue.price.toLocaleString('en-IN')} × 1 event</span>
-                  <span>₹{venue.price.toLocaleString('en-IN')}</span>
+                  <span>₹{(venue.price || 0).toLocaleString('en-IN')} × 1 event</span>
+                  <span>₹{(venue.price || 0).toLocaleString('en-IN')}</span>
                 </div>
                 <div className="flex justify-between font-semibold text-gray-900 pt-2 border-t">
                   <span>Total</span>
-                  <span>₹{venue.price.toLocaleString('en-IN')}</span>
+                  <span>₹{(venue.price || 0).toLocaleString('en-IN')}</span>
                 </div>
               </div>
             </motion.div>
