@@ -12,10 +12,15 @@ type Venue = {
   slug: string;
   location: string;
   city: string;
+  area?: string;
   capacity: number;
+  maxGuests?: number;
   price: number;
+  exactPrice?: number | null;
+  estimatedMinPrice?: number | null;
+  estimatedMaxPrice?: number | null;
   isVerified: boolean;
-  images: string[];
+  images: string[] | string;
   _count?: {
     reviews: number;
     bookings: number;
@@ -70,7 +75,16 @@ export default function VenuesPage() {
         if (err) {
           setError(err);
         } else {
-          setVenues((data as any)?.venues || []);
+          // Transform API data to match component expectations
+          const rawVenues = (data as any)?.venues || [];
+          const transformedVenues = rawVenues.map((v: any) => ({
+            ...v,
+            location: v.area || v.city || '',
+            capacity: v.maxGuests || 0,
+            price: v.exactPrice || v.estimatedMinPrice || 0,
+            images: typeof v.images === 'string' ? (v.images ? v.images.split(',') : []) : (v.images || []),
+          }));
+          setVenues(transformedVenues);
         }
       } catch (err: any) {
         setError(err.message || "Failed to load venues");
@@ -529,7 +543,7 @@ export default function VenuesPage() {
             >
               <div className="relative h-48">
                 <img
-                  src={venue.images[0] || "https://images.unsplash.com/photo-1519167758481-83f29da8c456?w=800"}
+                  src={(Array.isArray(venue.images) ? venue.images[0] : venue.images?.split(',')[0]) || "https://images.unsplash.com/photo-1519167758481-83f29da8c456?w=800"}
                   alt={venue.name}
                   className="h-full w-full object-cover"
                 />
@@ -564,7 +578,7 @@ export default function VenuesPage() {
                 <div className="flex items-end justify-between border-t border-gray-200 pt-4">
                   <div>
                     <span className="text-xs text-gray-600">Starting from</span>
-                    <p className="text-xl font-bold text-gradient">₹{venue.price.toLocaleString('en-IN')}</p>
+                    <p className="text-xl font-bold text-gradient">₹{(venue.price || 0).toLocaleString('en-IN')}</p>
                   </div>
                   <button className="rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2 text-sm font-semibold text-white shadow-lg hover:shadow-xl transition-all">
                     Book Now
