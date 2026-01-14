@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, PriceMode } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -85,7 +85,7 @@ async function main() {
       area: 'Andheri West',
       address: '123, J.P. Road, Andheri West, Mumbai',
       pincode: '400058',
-      priceMode: 'EXACT',
+      priceMode: PriceMode.EXACT,
       exactPrice: 250000,
       minGuests: 100,
       maxGuests: 1000,
@@ -110,7 +110,7 @@ async function main() {
       area: 'Hauz Khas',
       address: '456, Hauz Khas Village, New Delhi',
       pincode: '110016',
-      priceMode: 'ESTIMATED',
+      priceMode: PriceMode.ESTIMATED,
       estimatedMinPrice: 150000,
       estimatedMaxPrice: 300000,
       minGuests: 200,
