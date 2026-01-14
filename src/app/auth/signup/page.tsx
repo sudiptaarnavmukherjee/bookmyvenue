@@ -142,7 +142,7 @@ export default function SignUpPage() {
 
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-700">I am a</label>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => setFormData({...formData, role: "USER"})}
@@ -175,6 +175,17 @@ export default function SignUpPage() {
                 }`}
               >
                 🍽️ Catering Owner
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({...formData, role: "ADMIN"})}
+                className={`rounded-xl p-4 font-semibold transition-all ${
+                  formData.role === "ADMIN"
+                    ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg"
+                    : "bg-white/60 text-gray-700 hover:bg-white/80"
+                }`}
+              >
+                👑 Admin
               </button>
             </div>
           </div>
