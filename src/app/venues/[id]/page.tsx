@@ -123,11 +123,15 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
     setBookingLoading(true);
     try {
       const bookingData = {
+        type: "VENUE",
         venueId: venue?.id,
         eventDate: bookingDate,
-        guests: parseInt(guests),
-        message,
-        type: "VENUE" as const
+        guestCount: parseInt(guests),
+        customerName: session.user.name || "Guest",
+        customerEmail: session.user.email || "",
+        customerPhone: "N/A",
+        specialRequests: message,
+        totalAmount: venue?.price || 0,
       };
 
       const { data, error: err } = await api.createBooking(bookingData);
