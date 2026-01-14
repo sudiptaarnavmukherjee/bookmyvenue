@@ -57,7 +57,7 @@ export async function GET() {
             id: true,
             amount: true,
             status: true,
-            paymentMethod: true,
+            method: true,
             createdAt: true,
           },
         },

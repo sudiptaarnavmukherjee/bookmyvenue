@@ -94,7 +94,7 @@ interface Booking {
     id: string;
     amount: number;
     status: string;
-    paymentMethod?: string;
+    method?: string;
     createdAt: string;
   }[];
 }
@@ -680,7 +680,7 @@ export default function AdminDashboard() {
                                 }`}
                               >
                                 ₹{(payment.amount || 0).toLocaleString("en-IN")} - {payment.status}
-                                {payment.paymentMethod && ` (${payment.paymentMethod})`}
+                                {payment.method && ` (${payment.method})`}
                               </div>
                             ))}
                           </div>
