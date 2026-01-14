@@ -1,5 +1,6 @@
 "use client";
 
+// User Sign Up Page - Production Ready
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Mail, Lock, User, ArrowRight, Sparkles, AlertCircle } from "lucide-react";
