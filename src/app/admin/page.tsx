@@ -162,8 +162,6 @@ export default function AdminDashboard() {
         const data = await bookingsRes.json();
         setBookings(data.bookings || []);
       }
-        setStats(data);
-      }
     } catch (error) {
       console.error("Error fetching admin data:", error);
     } finally {
