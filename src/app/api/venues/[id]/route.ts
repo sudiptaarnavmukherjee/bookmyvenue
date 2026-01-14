@@ -7,10 +7,12 @@ export async function GET(
 ) {
   try {
     const params = await segmentData.params;
+    const idOrSlug = params.id;
 
-    const venue = await prisma.venue.findUnique({
+    // Try to find by ID first, then by slug
+    let venue = await prisma.venue.findUnique({
       where: {
-        id: params.id,
+        id: idOrSlug,
       },
       include: {
         owner: {
@@ -44,6 +46,45 @@ export async function GET(
       },
     });
 
+    // If not found by ID, try by slug
+    if (!venue) {
+      venue = await prisma.venue.findUnique({
+        where: {
+          slug: idOrSlug,
+        },
+        include: {
+          owner: {
+            select: {
+              name: true,
+              email: true,
+              phone: true,
+            },
+          },
+          reviews: {
+            include: {
+              user: {
+                select: {
+                  name: true,
+                  email: true,
+                },
+              },
+            },
+            orderBy: {
+              createdAt: "desc",
+            },
+          },
+          bookings: {
+            where: {
+              status: "CONFIRMED",
+            },
+            select: {
+              eventDate: true,
+            },
+          },
+        },
+      });
+    }
+
     if (!venue) {
       return NextResponse.json(
         { error: "Venue not found" },
@@ -53,7 +94,7 @@ export async function GET(
 
     // Increment view count
     await prisma.venue.update({
-      where: { id: params.id },
+      where: { id: venue.id },
       data: {
         viewCount: {
           increment: 1,
