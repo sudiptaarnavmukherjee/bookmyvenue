@@ -97,13 +97,7 @@ export default function VenueOwnerDashboard() {
   
   const handleBlockSuccess = () => {
     // Refresh to update calendar
-    fetchBookings();   setBookings(venueBookings);
-      }
-    } catch (err) {
-      setError("Failed to load bookings");
-    } finally {
-      setLoading(false);
-    }
+    fetchBookings();
   };
 
   const handleConfirm = async (id: string) => {
