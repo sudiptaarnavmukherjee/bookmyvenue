@@ -11,7 +11,6 @@ export async function GET(request: Request) {
     const where: any = {
       isActive: true,
       isVerified: true,
-      deletedAt: null,
     };
 
     if (city) {
@@ -49,15 +48,15 @@ export async function GET(request: Request) {
         },
       },
       orderBy: {
-        viewCount: "desc",
+        createdAt: "desc",
       },
     });
 
     return NextResponse.json({ venues });
-  } catch (error) {
-    console.error("Error fetching venues:", error);
+  } catch (error: any) {
+    console.error("Error fetching venues:", error?.message || error);
     return NextResponse.json(
-      { error: "Failed to fetch venues" },
+      { error: "Failed to fetch venues", details: error?.message },
       { status: 500 }
     );
   }
