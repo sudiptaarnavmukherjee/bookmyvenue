@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { api } from "@/lib/api-client";
-import { Calendar, CheckCircle2, Clock, Users, Loader2, Plus, Building, MapPin, X } from "lucide-react";
+import { Calendar, CheckCircle2, Clock, Users, Loader2, Plus, Building, MapPin, X, CalendarDays, Eye, Phone, Mail, IndianRupee } from "lucide-react";
+import AvailabilityCalendar from "@/components/calendar/AvailabilityCalendar";
+import BlockDateModal from "@/components/calendar/BlockDateModal";
 
 type Venue = {
   id: string;
@@ -20,12 +22,34 @@ type Venue = {
   coverImage?: string;
 };
 
+type Booking = {
+  id: string;
+  bookingNumber: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+  eventDate: string;
+  guestCount?: number;
+  status: string;
+  totalAmount?: number;
+  specialRequests?: string;
+  createdAt: string;
+  venue?: {
+    id: string;
+    name: string;
+  };
+};
+
 export default function VenueOwnerDashboard() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [venues, setVenues] = useState<Venue[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"venues" | "bookings">("venues");
+  const [activeTab, setActiveTab] = useState<"venues" | "bookings" | "calendar">("venues");
+  const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
+  const [showBlockModal, setShowBlockModal] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   
   const [showAddVenue, setShowAddVenue] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -39,10 +63,22 @@ export default function VenueOwnerDashboard() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await api.getMyVenues();
-      if (!res.error && res.data) {
-        const data = res.data as any;
-        setVenues(Array.isArray(data.venues) ? data.venues : Array.isArray(data) ? data : []);
+      // Fetch venues
+      const venueRes = await api.getMyVenues();
+      if (!venueRes.error && venueRes.data) {
+        const data = venueRes.data as any;
+        const venueList = Array.isArray(data.venues) ? data.venues : Array.isArray(data) ? data : [];
+        setVenues(venueList);
+        if (venueList.length > 0 && !selectedVenueId) {
+          setSelectedVenueId(venueList[0].id);
+        }
+      }
+      
+      // Fetch bookings
+      const bookingRes = await fetch("/api/bookings");
+      if (bookingRes.ok) {
+        const bookingData = await bookingRes.json();
+        setBookings(Array.isArray(bookingData) ? bookingData : bookingData.bookings || []);
       }
     } catch (err) {
       console.error(err);
@@ -109,6 +145,45 @@ export default function VenueOwnerDashboard() {
           </button>
         </div>
 
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6 flex-wrap">
+          <button
+            onClick={() => setActiveTab("venues")}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+              activeTab === "venues"
+                ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
+                : "bg-white text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            <Building className="inline h-5 w-5 mr-2" />
+            My Venues ({venues.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("bookings")}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+              activeTab === "bookings"
+                ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
+                : "bg-white text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            <Clock className="inline h-5 w-5 mr-2" />
+            Bookings ({bookings.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("calendar")}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+              activeTab === "calendar"
+                ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
+                : "bg-white text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            <CalendarDays className="inline h-5 w-5 mr-2" />
+            Calendar
+          </button>
+        </div>
+
+        {/* Venues Tab */}
+        {activeTab === "venues" && (
         <div className="bg-white rounded-2xl p-6 shadow-sm">
           <h2 className="text-xl font-bold text-gray-900 mb-6">My Venues</h2>
           
@@ -144,7 +219,159 @@ export default function VenueOwnerDashboard() {
             </div>
           )}
         </div>
+        )}
 
+        {/* Bookings Tab */}
+        {activeTab === "bookings" && (
+          <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <h2 className="text-xl font-bold text-gray-900 mb-6">My Bookings</h2>
+            
+            {bookings.length === 0 ? (
+              <div className="text-center py-12">
+                <Clock className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-700 mb-2">No bookings yet</h3>
+                <p className="text-gray-500">Bookings will appear here when customers book your venues</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {bookings.map((booking) => (
+                  <div key={booking.id} className="border rounded-xl p-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <h3 className="font-bold text-gray-900">{booking.bookingNumber}</h3>
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            booking.status === "CONFIRMED" 
+                              ? "bg-green-100 text-green-700"
+                              : booking.status === "PENDING"
+                              ? "bg-yellow-100 text-yellow-700"
+                              : booking.status === "CANCELLED"
+                              ? "bg-red-100 text-red-700"
+                              : "bg-gray-100 text-gray-700"
+                          }`}>
+                            {booking.status}
+                          </span>
+                        </div>
+                        {booking.venue && (
+                          <p className="text-sm text-purple-600 mt-1">Venue: {booking.venue.name}</p>
+                        )}
+                        <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                          <div>
+                            <p className="text-gray-500">Customer</p>
+                            <p className="font-medium">{booking.customerName}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500">Event Date</p>
+                            <p className="font-medium">{new Date(booking.eventDate).toLocaleDateString("en-IN")}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500">Guests</p>
+                            <p className="font-medium">{booking.guestCount || "N/A"}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500">Amount</p>
+                            <p className="font-medium text-purple-600">₹{(booking.totalAmount || 0).toLocaleString("en-IN")}</p>
+                          </div>
+                        </div>
+                        <div className="mt-2 flex items-center gap-4 text-sm text-gray-600">
+                          <span className="flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            {booking.customerPhone}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Mail className="h-3 w-3" />
+                            {booking.customerEmail}
+                          </span>
+                        </div>
+                        {booking.specialRequests && (
+                          <p className="mt-2 text-sm text-gray-500 bg-yellow-50 p-2 rounded">
+                            <strong>Special Requests:</strong> {booking.specialRequests}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Calendar Tab */}
+        {activeTab === "calendar" && (
+          <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <h2 className="text-xl font-bold text-gray-900 mb-6">Availability Calendar</h2>
+            
+            {venues.length === 0 ? (
+              <div className="text-center py-12">
+                <CalendarDays className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-700 mb-2">No venues yet</h3>
+                <p className="text-gray-500">Add a venue to manage its calendar</p>
+              </div>
+            ) : (
+              <>
+                {/* Venue Selector */}
+                {venues.length > 1 && (
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Venue</label>
+                    <select
+                      value={selectedVenueId || ""}
+                      onChange={(e) => setSelectedVenueId(e.target.value)}
+                      className="w-full max-w-xs px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    >
+                      {venues.map((venue) => (
+                        <option key={venue.id} value={venue.id}>
+                          {venue.name} - {venue.area}, {venue.city}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Calendar */}
+                {selectedVenueId && (
+                  <AvailabilityCalendar
+                    venueId={selectedVenueId}
+                    bookings={bookings.filter((b) => b.venue?.id === selectedVenueId).map((b) => ({
+                      id: b.id,
+                      bookingNumber: b.bookingNumber,
+                      customerName: b.customerName,
+                      customerPhone: b.customerPhone,
+                      eventDate: b.eventDate,
+                      guestCount: b.guestCount,
+                      status: b.status,
+                      totalAmount: b.totalAmount,
+                    }))}
+                    onDateClick={(date, blockedDate) => {
+                      setSelectedDate(date);
+                      if (!blockedDate && date >= new Date()) {
+                        setShowBlockModal(true);
+                      }
+                    }}
+                  />
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Block Date Modal */}
+        {selectedVenueId && selectedDate && (
+          <BlockDateModal
+            isOpen={showBlockModal}
+            venueId={selectedVenueId}
+            date={selectedDate}
+            onClose={() => {
+              setShowBlockModal(false);
+              setSelectedDate(null);
+            }}
+            onSuccess={() => {
+              setShowBlockModal(false);
+              setSelectedDate(null);
+              // Calendar will refetch automatically
+            }}
+          />
+        )}
         {showAddVenue && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">

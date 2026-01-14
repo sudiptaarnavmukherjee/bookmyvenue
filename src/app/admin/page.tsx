@@ -15,6 +15,11 @@ import {
   Clock,
   Shield,
   AlertCircle,
+  CalendarDays,
+  Phone,
+  Mail,
+  MapPin,
+  IndianRupee,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -45,6 +50,55 @@ interface Caterer {
   };
 }
 
+interface Booking {
+  id: string;
+  bookingNumber: string;
+  type: "VENUE" | "CATERING";
+  status: string;
+  eventDate: string;
+  guestCount: number;
+  totalAmount: number;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  specialRequests?: string;
+  createdAt: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    phone?: string;
+  };
+  venue?: {
+    id: string;
+    name: string;
+    city: string;
+    area: string;
+    coverImage?: string;
+    owner: {
+      name: string;
+      email: string;
+    };
+  };
+  caterer?: {
+    id: string;
+    name: string;
+    city: string;
+    coverImage?: string;
+    owner: {
+      name: string;
+      email: string;
+    };
+  };
+  payments?: {
+    id: string;
+    amount: number;
+    status: string;
+    paymentMethod?: string;
+    createdAt: string;
+  }[];
+}
+
 interface Stats {
   totalUsers: number;
   totalVenues: number;
@@ -57,12 +111,14 @@ interface Stats {
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"venues" | "caterers" | "users">("venues");
+  const [activeTab, setActiveTab] = useState<"venues" | "caterers" | "bookings">("venues");
   const [venues, setVenues] = useState<Venue[]>([]);
   const [caterers, setCaterers] = useState<Caterer[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
   useEffect(() => {
     if (status === "loading") return;
@@ -80,10 +136,11 @@ export default function AdminDashboard() {
       setLoading(true);
       
       // Fetch all data in parallel
-      const [venuesRes, caterersRes, statsRes] = await Promise.all([
+      const [venuesRes, caterersRes, statsRes, bookingsRes] = await Promise.all([
         fetch("/api/admin/venues"),
         fetch("/api/admin/caterers"),
         fetch("/api/admin/stats"),
+        fetch("/api/admin/bookings"),
       ]);
 
       if (venuesRes.ok) {
@@ -98,6 +155,13 @@ export default function AdminDashboard() {
 
       if (statsRes.ok) {
         const data = await statsRes.json();
+        setStats(data);
+      }
+
+      if (bookingsRes.ok) {
+        const data = await bookingsRes.json();
+        setBookings(data.bookings || []);
+      }
         setStats(data);
       }
     } catch (error) {
@@ -273,7 +337,7 @@ export default function AdminDashboard() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-2 mb-6 flex-wrap">
           <button
             onClick={() => setActiveTab("venues")}
             className={`px-6 py-3 rounded-xl font-semibold transition-all ${
@@ -295,6 +359,17 @@ export default function AdminDashboard() {
           >
             <UtensilsCrossed className="inline h-5 w-5 mr-2" />
             Caterers ({caterers.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("bookings")}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+              activeTab === "bookings"
+                ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
+                : "bg-white/60 text-gray-700 hover:bg-white"
+            }`}
+          >
+            <CalendarDays className="inline h-5 w-5 mr-2" />
+            Bookings ({bookings.length})
           </button>
         </div>
 
@@ -441,6 +516,202 @@ export default function AdminDashboard() {
                         >
                           {actionLoading === caterer.id ? "..." : "Revoke"}
                         </button>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* Bookings Tab */}
+        {activeTab === "bookings" && (
+          <div className="space-y-4">
+            {bookings.length === 0 ? (
+              <div className="glass-card rounded-2xl p-8 text-center">
+                <CalendarDays className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">No bookings found</p>
+              </div>
+            ) : (
+              bookings.map((booking) => (
+                <motion.div
+                  key={booking.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="glass-card rounded-2xl p-6"
+                >
+                  <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <h3 className="text-lg font-bold text-gray-900">
+                          {booking.bookingNumber}
+                        </h3>
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          booking.status === "CONFIRMED" 
+                            ? "bg-green-100 text-green-700"
+                            : booking.status === "PENDING"
+                            ? "bg-yellow-100 text-yellow-700"
+                            : booking.status === "CANCELLED"
+                            ? "bg-red-100 text-red-700"
+                            : "bg-gray-100 text-gray-700"
+                        }`}>
+                          {booking.status}
+                        </span>
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          booking.type === "VENUE" 
+                            ? "bg-purple-100 text-purple-700"
+                            : "bg-pink-100 text-pink-700"
+                        }`}>
+                          {booking.type}
+                        </span>
+                      </div>
+
+                      {/* Venue/Caterer Info */}
+                      <div className="mt-3 p-3 bg-gray-50 rounded-xl">
+                        {booking.venue ? (
+                          <div className="flex items-center gap-3">
+                            <Building2 className="h-5 w-5 text-purple-600" />
+                            <div>
+                              <p className="font-semibold text-gray-900">{booking.venue.name}</p>
+                              <p className="text-sm text-gray-600 flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                {booking.venue.area}, {booking.venue.city}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Owner: {booking.venue.owner?.name} ({booking.venue.owner?.email})
+                              </p>
+                            </div>
+                          </div>
+                        ) : booking.caterer ? (
+                          <div className="flex items-center gap-3">
+                            <UtensilsCrossed className="h-5 w-5 text-pink-600" />
+                            <div>
+                              <p className="font-semibold text-gray-900">{booking.caterer.name}</p>
+                              <p className="text-sm text-gray-600 flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                {booking.caterer.city}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Owner: {booking.caterer.owner?.name} ({booking.caterer.owner?.email})
+                              </p>
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      {/* Customer Info */}
+                      <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="p-3 bg-blue-50 rounded-xl">
+                          <p className="text-xs text-blue-600 font-semibold mb-1">CUSTOMER</p>
+                          <p className="font-semibold text-gray-900">{booking.customerName}</p>
+                          <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
+                            <Mail className="h-3 w-3" />
+                            {booking.customerEmail}
+                          </p>
+                          <p className="text-sm text-gray-600 flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            {booking.customerPhone}
+                          </p>
+                        </div>
+                        <div className="p-3 bg-purple-50 rounded-xl">
+                          <p className="text-xs text-purple-600 font-semibold mb-1">BOOKING USER</p>
+                          <p className="font-semibold text-gray-900">{booking.user?.name || "N/A"}</p>
+                          <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
+                            <Mail className="h-3 w-3" />
+                            {booking.user?.email || "N/A"}
+                          </p>
+                          {booking.user?.phone && (
+                            <p className="text-sm text-gray-600 flex items-center gap-1">
+                              <Phone className="h-3 w-3" />
+                              {booking.user.phone}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Event Details */}
+                      <div className="mt-3 flex flex-wrap gap-4 text-sm">
+                        <div className="flex items-center gap-2">
+                          <CalendarDays className="h-4 w-4 text-gray-500" />
+                          <span className="text-gray-700">
+                            <strong>Event:</strong> {new Date(booking.eventDate).toLocaleDateString("en-IN", { 
+                              weekday: "short",
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric"
+                            })}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-gray-500" />
+                          <span className="text-gray-700">
+                            <strong>Guests:</strong> {booking.guestCount || "N/A"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <IndianRupee className="h-4 w-4 text-gray-500" />
+                          <span className="text-gray-700">
+                            <strong>Total:</strong> ₹{(booking.totalAmount || 0).toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Special Requests */}
+                      {booking.specialRequests && (
+                        <div className="mt-3 p-3 bg-yellow-50 rounded-xl">
+                          <p className="text-xs text-yellow-700 font-semibold mb-1">SPECIAL REQUESTS</p>
+                          <p className="text-sm text-gray-700">{booking.specialRequests}</p>
+                        </div>
+                      )}
+
+                      {/* Payments */}
+                      {booking.payments && booking.payments.length > 0 && (
+                        <div className="mt-3">
+                          <p className="text-xs text-gray-500 font-semibold mb-2">PAYMENTS</p>
+                          <div className="flex flex-wrap gap-2">
+                            {booking.payments.map((payment) => (
+                              <div 
+                                key={payment.id}
+                                className={`px-3 py-2 rounded-lg text-xs ${
+                                  payment.status === "COMPLETED"
+                                    ? "bg-green-100 text-green-700"
+                                    : payment.status === "PENDING"
+                                    ? "bg-yellow-100 text-yellow-700"
+                                    : "bg-red-100 text-red-700"
+                                }`}
+                              >
+                                ₹{(payment.amount || 0).toLocaleString("en-IN")} - {payment.status}
+                                {payment.paymentMethod && ` (${payment.paymentMethod})`}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <p className="text-xs text-gray-400 mt-3">
+                        Booked on: {new Date(booking.createdAt).toLocaleString("en-IN")}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {booking.venue && (
+                        <Link
+                          href={`/venues/${booking.venue.id}`}
+                          className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-all"
+                          title="View Venue"
+                        >
+                          <Eye className="h-5 w-5" />
+                        </Link>
+                      )}
+                      {booking.caterer && (
+                        <Link
+                          href={`/catering/${booking.caterer.id}`}
+                          className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-all"
+                          title="View Caterer"
+                        >
+                          <Eye className="h-5 w-5" />
+                        </Link>
                       )}
                     </div>
                   </div>
