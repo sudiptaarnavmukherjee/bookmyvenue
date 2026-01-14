@@ -76,11 +76,16 @@ export default function VenueOwnerDashboard() {
       const { data, error: err } = await api.getBookings();
       
       if (err) {
-        
-        // Get owner's venue ID from first booking
-        if (venueBookings.length > 0 && venueBookings[0].venue?.id) {
-          setOwnerVenueId(venueBookings[0].venue.id);
-        }
+        setError(err);
+        return;
+      }
+      
+      const venueBookings = (data || []).filter(b => b.type === "VENUE");
+      setBookings(venueBookings);
+      
+      // Get owner's venue ID from first booking
+      if (venueBookings.length > 0 && venueBookings[0].venue?.id) {
+        setOwnerVenueId(venueBookings[0].venue.id);
       }
     } catch (err) {
       setError("Failed to load bookings");
