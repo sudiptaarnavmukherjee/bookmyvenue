@@ -1,4 +1,4 @@
-import { PrismaClient, PriceMode } from '@prisma/client';
+import { PrismaClient, PriceMode, PackageTier } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -185,7 +185,7 @@ async function main() {
     // Add packages for each caterer
     const packages = [
       {
-        tier: 'SILVER',
+        tier: PackageTier.SILVER,
         name: 'Silver Package',
         description: 'Basic package with essential items',
         pricePerPlate: caterer.minPlatePrice,
@@ -199,7 +199,7 @@ async function main() {
         catererId: createdCaterer.id,
       },
       {
-        tier: 'GOLD',
+        tier: PackageTier.GOLD,
         name: 'Gold Package',
         description: 'Premium package with variety',
         pricePerPlate: caterer.minPlatePrice + 200,
@@ -214,7 +214,7 @@ async function main() {
         catererId: createdCaterer.id,
       },
       {
-        tier: 'PLATINUM',
+        tier: PackageTier.PLATINUM,
         name: 'Platinum Package',
         description: 'Luxury package with premium items',
         pricePerPlate: caterer.minPlatePrice + 400,
