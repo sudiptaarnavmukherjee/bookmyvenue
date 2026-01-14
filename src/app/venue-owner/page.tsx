@@ -55,20 +55,6 @@ export default function VenueOwnerDashboard() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedBlockedDate, setSelectedBlockedDate] = useState<any>(null);
 
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/signin");
-      return;
-    }
-    if (status === "authenticated") {
-      if (session?.user?.role !== "VENUE_OWNER") {
-        router.push("/");
-        return;
-      }
-      fetchBookings();
-    }
-  }, [status, session, router]);
-
   const fetchBookings = async () => {
     try {
       setLoading(true);
@@ -93,6 +79,20 @@ export default function VenueOwnerDashboard() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/signin");
+      return;
+    }
+    if (status === "authenticated") {
+      if (session?.user?.role !== "VENUE_OWNER") {
+        router.push("/");
+        return;
+      }
+      fetchBookings();
+    }
+  }, [status, session, router]);
   
   const handleDateClick = (date: Date, blockedDate?: any) => {
     setSelectedDate(date);
