@@ -44,12 +44,12 @@ export async function GET() {
             slug: true,
             name: true,
             city: true,
-            area: true,
-            pricePerPlate: true,
+            minPlatePrice: true,
             coverImage: true,
             images: true,
             isPureVeg: true,
-            minGuests: true,
+            isMultiCuisine: true,
+            cuisines: true,
             _count: {
               select: {
                 reviews: true,
