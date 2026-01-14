@@ -101,10 +101,12 @@ export async function POST(request: Request) {
         minPlatePrice: parseFloat(minPlatePrice),
         isPureVeg: isPureVeg || false,
         isMultiCuisine: isMultiCuisine || true,
-        cuisines: cuisines || [],
-        images: images || [],
-        coverImage: coverImage || images?.[0] || "",
-        ownerId,
+        cuisines: Array.isArray(cuisines) ? cuisines.join(',') : (cuisines || ''),
+        images: Array.isArray(images) ? images.join(',') : (images || ''),
+        coverImage: coverImage || (Array.isArray(images) ? images[0] : '') || "",
+        owner: {
+          connect: { id: ownerId }
+        },
         isVerified: false, // Admin needs to verify
         isActive: true,
         packages: packages

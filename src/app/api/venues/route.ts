@@ -115,11 +115,15 @@ export async function POST(request: Request) {
         estimatedMaxPrice: estimatedMaxPrice ? parseFloat(estimatedMaxPrice) : null,
         minGuests: parseInt(minGuests),
         maxGuests: parseInt(maxGuests),
-        images: images || [],
-        coverImage: coverImage || images?.[0] || "",
-        amenities: amenities || [],
+        images: Array.isArray(images) ? images.join(',') : (images || ''),
+        videos: '',
+        offlineBookings: '',
+        coverImage: coverImage || (Array.isArray(images) ? images[0] : '') || "",
+        amenities: Array.isArray(amenities) ? amenities.join(',') : (amenities || ''),
         venueType,
-        ownerId,
+        owner: {
+          connect: { id: ownerId }
+        },
         isVerified: false, // Admin needs to verify
         isActive: true,
       },
