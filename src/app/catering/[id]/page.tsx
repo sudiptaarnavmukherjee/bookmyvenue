@@ -7,7 +7,7 @@ import { useSession } from "next-auth/react";
 import { api } from "@/lib/api-client";
 import { 
   MapPin, Star, Leaf, ArrowLeft, Heart, Share2,
-  Check, Users, Calendar, Loader2, AlertCircle
+  Check, Users, Calendar, Loader2, AlertCircle, Phone, Eye
 } from "lucide-react";
 
 type MenuPackage = {
@@ -23,11 +23,22 @@ type Caterer = {
   slug: string;
   name: string;
   city: string;
+  area?: string;
   isPureVeg: boolean;
   description: string;
   images: string[];
   pricePerPlate: number;
   minGuests: number;
+  maxGuests?: number;
+  cuisines?: string[];
+  silverPrice?: number;
+  goldPrice?: number;
+  platinumPrice?: number;
+  isAdminListed?: boolean;
+  bookingEnabled?: boolean;
+  contactNumber?: string;
+  contactName?: string;
+  viewCount?: number;
   menuPackages?: MenuPackage[];
   owner?: {
     id: string;
@@ -65,6 +76,15 @@ export default function CatererDetailPage({ params }: { params: Promise<{ id: st
     fetchCaterer();
   }, [catererSlug]);
 
+  // Track view when caterer is loaded
+  const trackView = async (catererId: string) => {
+    try {
+      await fetch(`/api/catering/${catererId}/views`, { method: 'POST' });
+    } catch (error) {
+      console.error('Failed to track view:', error);
+    }
+  };
+
   const fetchCaterer = async () => {
     try {
       setLoading(true);
@@ -86,6 +106,8 @@ export default function CatererDetailPage({ params }: { params: Promise<{ id: st
             menuPackages: rawCaterer.packages || rawCaterer.menuPackages || [],
           };
           setCaterer(transformedCaterer);
+          // Track view after successful fetch
+          trackView(rawCaterer.id);
           if (transformedCaterer.menuPackages && transformedCaterer.menuPackages.length > 0) {
             setSelectedPackage(transformedCaterer.menuPackages[0]);
           }
@@ -355,68 +377,119 @@ export default function CatererDetailPage({ params }: { params: Promise<{ id: st
               transition={{ delay: 0.3 }}
               className="glass-card rounded-3xl p-6 sticky top-8"
             >
-              {selectedPackage && (
+              {/* View Counter */}
+              {caterer.viewCount !== undefined && caterer.viewCount > 0 && (
+                <div className="flex items-center gap-2 text-gray-500 text-sm mb-4">
+                  <Eye className="h-4 w-4" />
+                  <span>{caterer.viewCount.toLocaleString()} views</span>
+                </div>
+              )}
+
+              {/* Fishbowl Mode - Call to Book */}
+              {caterer.isAdminListed && !caterer.bookingEnabled ? (
                 <>
+                  {/* Tier Pricing Display for Fishbowl */}
                   <div className="mb-6">
-                    <div className={`inline-block rounded-full bg-gradient-to-r ${TIER_COLORS[selectedPackage.tier]} px-4 py-1.5 mb-3`}>
-                      <span className="text-sm font-bold text-white">{selectedPackage.tier} Package</span>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Package Pricing</h3>
+                    <div className="space-y-3">
+                      {caterer.silverPrice && (
+                        <div className="flex items-center justify-between bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl p-4 border border-gray-200">
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-full bg-gradient-to-r from-gray-400 to-gray-600 flex items-center justify-center">
+                              <span className="text-white text-xs font-bold">S</span>
+                            </div>
+                            <span className="font-medium text-gray-700">Silver</span>
+                          </div>
+                          <span className="text-xl font-bold text-gray-800">₹{caterer.silverPrice}/plate</span>
+                        </div>
+                      )}
+                      {caterer.goldPrice && (
+                        <div className="flex items-center justify-between bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl p-4 border border-amber-200">
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-600 flex items-center justify-center">
+                              <span className="text-white text-xs font-bold">G</span>
+                            </div>
+                            <span className="font-medium text-amber-700">Gold</span>
+                          </div>
+                          <span className="text-xl font-bold text-amber-800">₹{caterer.goldPrice}/plate</span>
+                        </div>
+                      )}
+                      {caterer.platinumPrice && (
+                        <div className="flex items-center justify-between bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-200">
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-full bg-gradient-to-r from-purple-500 to-pink-600 flex items-center justify-center">
+                              <span className="text-white text-xs font-bold">P</span>
+                            </div>
+                            <span className="font-medium text-purple-700">Platinum</span>
+                          </div>
+                          <span className="text-xl font-bold text-purple-800">₹{caterer.platinumPrice}/plate</span>
+                        </div>
+                      )}
+                      {!caterer.silverPrice && !caterer.goldPrice && !caterer.platinumPrice && (
+                        <div className="text-center py-4">
+                          <p className="text-3xl font-bold text-gradient">₹{caterer.pricePerPlate}/plate</p>
+                          <span className="text-sm text-gray-500">Starting price</span>
+                        </div>
+                      )}
                     </div>
-                    <p className="text-4xl font-bold text-gradient">₹{selectedPackage.pricePerPlate}</p>
-                    <span className="text-sm text-gray-600">per plate</span>
                   </div>
 
-                  <div className="space-y-4 mb-6">
-                    <div>
-                      <label className="mb-2 block text-sm font-semibold text-gray-700">Event Date</label>
-                      <input
-                        type="date"
-                        value={bookingDate}
-                        onChange={(e) => setBookingDate(e.target.value)}
-                        min={new Date().toISOString().split('T')[0]}
-                        className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 focus:border-purple-600 outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="mb-2 block text-sm font-semibold text-gray-700">
-                        Number of Guests (min. {caterer.minGuests})
-                      </label>
-                      <input
-                        type="number"
-                        value={guests}
-                        onChange={(e) => setGuests(e.target.value)}
-                        placeholder="Enter guest count"
-                        min={caterer.minGuests}
-                        className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 focus:border-purple-600 outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="mb-2 block text-sm font-semibold text-gray-700">Special Requests</label>
-                      <textarea
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        placeholder="Dietary restrictions, special items..."
-                        rows={3}
-                        className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 focus:border-purple-600 outline-none resize-none"
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={handleBooking}
-                    disabled={!bookingDate || !guests || (parseInt(guests || "0") < caterer.minGuests) || bookingLoading}
-                    className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 py-4 font-bold text-white shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    {bookingLoading ? (
-                      <>
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                        Creating booking...
-                      </>
-                    ) : (
-                      "Request Booking"
+                  {/* Guest Info */}
+                  <div className="mb-6 rounded-2xl bg-white/60 p-4">
+                    <Users className="h-6 w-6 text-purple-600 mb-2" />
+                    <p className="text-sm text-gray-600">Minimum Order</p>
+                    <p className="text-xl font-bold text-gray-900">{caterer.minGuests} guests</p>
+                    {caterer.maxGuests && (
+                      <p className="text-sm text-gray-500">Max: {caterer.maxGuests} guests</p>
                     )}
-                  </button>
+                  </div>
+
+                  {/* Contact Info Card */}
+                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-5 mb-6 border border-purple-100">
+                    <p className="text-sm text-gray-600 mb-3">For bookings & menu details, contact:</p>
+                    {caterer.contactName && (
+                      <p className="font-semibold text-gray-900 mb-2">{caterer.contactName}</p>
+                    )}
+                    {caterer.contactNumber && (
+                      <a 
+                        href={`tel:${caterer.contactNumber}`}
+                        className="flex items-center gap-3 text-lg font-bold text-purple-700 hover:text-purple-800"
+                      >
+                        <Phone className="h-5 w-5" />
+                        {caterer.contactNumber}
+                      </a>
+                    )}
+                  </div>
+
+                  {/* Call to Book Button */}
+                  {caterer.contactNumber && (
+                    <a
+                      href={`tel:${caterer.contactNumber}`}
+                      className="w-full rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 py-4 font-bold text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3"
+                    >
+                      <Phone className="h-5 w-5" />
+                      <span>Call for Menu & Booking</span>
+                    </a>
+                  )}
+
+                  {/* WhatsApp Button */}
+                  {caterer.contactNumber && (
+                    <a
+                      href={`https://wa.me/91${caterer.contactNumber.replace(/\D/g, '')}?text=Hi, I'm interested in catering services from ${caterer.name} for my event.`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 w-full rounded-xl bg-gradient-to-r from-green-600 to-green-700 py-4 font-bold text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3"
+                    >
+                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                      </svg>
+                      <span>WhatsApp Inquiry</span>
+                    </a>
+                  )}
+
+                  <p className="text-center text-sm text-gray-500 mt-4">
+                    💡 Online booking coming soon!
+                  </p>
 
                   <div className="mt-4 flex gap-2">
                     <button className="flex-1 rounded-xl border-2 border-gray-200 py-3 flex items-center justify-center gap-2 hover:bg-white/60 transition-colors">
@@ -428,18 +501,97 @@ export default function CatererDetailPage({ params }: { params: Promise<{ id: st
                       Share
                     </button>
                   </div>
+                </>
+              ) : (
+                /* Online Booking Mode */
+                <>
+                  {selectedPackage && (
+                    <>
+                      <div className="mb-6">
+                        <div className={`inline-block rounded-full bg-gradient-to-r ${TIER_COLORS[selectedPackage.tier]} px-4 py-1.5 mb-3`}>
+                          <span className="text-sm font-bold text-white">{selectedPackage.tier} Package</span>
+                        </div>
+                        <p className="text-4xl font-bold text-gradient">₹{selectedPackage.pricePerPlate}</p>
+                        <span className="text-sm text-gray-600">per plate</span>
+                      </div>
 
-                  {guests && parseInt(guests) >= caterer.minGuests && (
-                    <div className="mt-6 pt-6 border-t border-gray-200 space-y-2 text-sm text-gray-600">
-                      <div className="flex justify-between">
-                        <span>₹{selectedPackage.pricePerPlate} × {guests} guests</span>
-                        <span>₹{totalPrice.toLocaleString('en-IN')}</span>
+                      <div className="space-y-4 mb-6">
+                        <div>
+                          <label className="mb-2 block text-sm font-semibold text-gray-700">Event Date</label>
+                          <input
+                            type="date"
+                            value={bookingDate}
+                            onChange={(e) => setBookingDate(e.target.value)}
+                            min={new Date().toISOString().split('T')[0]}
+                            className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 focus:border-purple-600 outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="mb-2 block text-sm font-semibold text-gray-700">
+                            Number of Guests (min. {caterer.minGuests})
+                          </label>
+                          <input
+                            type="number"
+                            value={guests}
+                            onChange={(e) => setGuests(e.target.value)}
+                            placeholder="Enter guest count"
+                            min={caterer.minGuests}
+                            className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 focus:border-purple-600 outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="mb-2 block text-sm font-semibold text-gray-700">Special Requests</label>
+                          <textarea
+                            value={message}
+                            onChange={(e) => setMessage(e.target.value)}
+                            placeholder="Dietary restrictions, special items..."
+                            rows={3}
+                            className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 focus:border-purple-600 outline-none resize-none"
+                          />
+                        </div>
                       </div>
-                      <div className="flex justify-between font-semibold text-gray-900 text-lg pt-2 border-t">
-                        <span>Total</span>
-                        <span className="text-gradient">₹{totalPrice.toLocaleString('en-IN')}</span>
+
+                      <button
+                        onClick={handleBooking}
+                        disabled={!bookingDate || !guests || (parseInt(guests || "0") < caterer.minGuests) || bookingLoading}
+                        className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 py-4 font-bold text-white shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        {bookingLoading ? (
+                          <>
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            Creating booking...
+                          </>
+                        ) : (
+                          "Request Booking"
+                        )}
+                      </button>
+
+                      <div className="mt-4 flex gap-2">
+                        <button className="flex-1 rounded-xl border-2 border-gray-200 py-3 flex items-center justify-center gap-2 hover:bg-white/60 transition-colors">
+                          <Heart className="h-5 w-5" />
+                          Save
+                        </button>
+                        <button className="flex-1 rounded-xl border-2 border-gray-200 py-3 flex items-center justify-center gap-2 hover:bg-white/60 transition-colors">
+                          <Share2 className="h-5 w-5" />
+                          Share
+                        </button>
                       </div>
-                    </div>
+
+                      {guests && parseInt(guests) >= caterer.minGuests && (
+                        <div className="mt-6 pt-6 border-t border-gray-200 space-y-2 text-sm text-gray-600">
+                          <div className="flex justify-between">
+                            <span>₹{selectedPackage.pricePerPlate} × {guests} guests</span>
+                            <span>₹{totalPrice.toLocaleString('en-IN')}</span>
+                          </div>
+                          <div className="flex justify-between font-semibold text-gray-900 text-lg pt-2 border-t">
+                            <span>Total</span>
+                            <span className="text-gradient">₹{totalPrice.toLocaleString('en-IN')}</span>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </>
               )}

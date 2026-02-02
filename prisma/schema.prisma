@@ -51,6 +51,8 @@ model User {
 
   // Status
   isActive Boolean @default(true)
+  isBanned Boolean @default(false)
+  banReason String?
 
   // KYC (for owners)
   aadhaarNumber String? @unique
@@ -68,6 +70,8 @@ model User {
   caterings    Caterer[]
   wishlists    Wishlist[]
   blockedDates BlockedDate[] @relation("BlockedDates")
+  payouts      Payout[]      @relation("OwnerPayouts")
+  auditLogs    AuditLog[]    @relation("AuditLogs")
   accounts     Account[]
   sessions     Session[]
 
@@ -127,6 +131,18 @@ model Venue {
   estimatedMinPrice Float?
   estimatedMaxPrice Float?
 
+  // Fishbowl Model - Prime/Non-Prime Pricing
+  primeDayPrice     Float?    // Wedding season / auspicious days price
+  nonPrimeDayPrice  Float?    // Off-season / regular days price
+  primeDays         String?   // Comma-separated: "Saturday,Sunday,Auspicious"
+  
+  // Fishbowl Model - Admin Control
+  isAdminListed     Boolean   @default(true)   // true = fishbowl (admin added), false = owner added
+  taggedToOwnerId   String?   // When verified, this owner gets control
+  contactNumber     String?   // Direct contact for fishbowl listings
+  contactName       String?   // Contact person name
+  bookingEnabled    Boolean   @default(false)  // Only true for verified + tagged owners
+
   // Verification & Status
   isVerified        Boolean   @default(false)
   isActive          Boolean   @default(true)
@@ -152,6 +168,7 @@ model Venue {
   // Analytics
   viewCount    Int @default(0)
   inquiryCount Int @default(0)
+  weeklyViews  Int @default(0)
 
   // SEO
   metaTitle       String?
@@ -162,16 +179,19 @@ model Venue {
   deletedAt DateTime?
 
   // Relations
-  ownerId      String
-  owner        User          @relation(fields: [ownerId], references: [id])
-  bookings     Booking[]
-  reviews      Review[]
-  wishlist     Wishlist[]
-  blockedDates BlockedDate[]
+  ownerId        String
+  owner          User            @relation(fields: [ownerId], references: [id])
+  bookings       Booking[]
+  reviews        Review[]
+  wishlist       Wishlist[]
+  blockedDates   BlockedDate[]
+  viewAnalytics  ViewAnalytics[]
 
   @@index([city])
+  @@index([area])
   @@index([slug])
   @@index([isVerified])
+  @@index([isAdminListed])
 }
 
 model Caterer {
@@ -189,6 +209,18 @@ model Caterer {
   rating        Float @default(0)
   totalReviews  Int   @default(0)
 
+  // Fishbowl Model - Tier Pricing (Admin sets these)
+  silverPrice    Float?    // Silver tier price per plate
+  goldPrice      Float?    // Gold tier price per plate
+  platinumPrice  Float?    // Platinum tier price per plate
+  
+  // Fishbowl Model - Admin Control
+  isAdminListed    Boolean   @default(true)   // true = fishbowl (admin added)
+  taggedToOwnerId  String?   // When verified, this owner gets control
+  contactNumber    String?   // Direct contact for fishbowl listings
+  contactName      String?   // Contact person name
+  bookingEnabled   Boolean   @default(false)  // Only true for verified + tagged owners
+
   // Features
   isPureVeg      Boolean  @default(false)
   isMultiCuisine Boolean  @default(true)
@@ -203,20 +235,28 @@ model Caterer {
   isActive   Boolean @default(true)
   isVerified Boolean @default(false)
 
+  // Analytics
+  viewCount    Int @default(0)
+  inquiryCount Int @default(0)
+  weeklyViews  Int @default(0)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
 
   // Relations
-  ownerId      String
-  owner        User          @relation(fields: [ownerId], references: [id])
-  packages     MenuPackage[]
-  bookings     Booking[]
-  reviews      Review[]
-  wishlist     Wishlist[]
-  blockedDates BlockedDate[]
+  ownerId        String
+  owner          User            @relation(fields: [ownerId], references: [id])
+  packages       MenuPackage[]
+  bookings       Booking[]
+  reviews        Review[]
+  wishlist       Wishlist[]
+  blockedDates   BlockedDate[]
+  viewAnalytics  ViewAnalytics[]
 
   @@index([city])
+  @@index([area])
   @@index([slug])
+  @@index([isAdminListed])
 }
 
 model MenuPackage {
@@ -293,6 +333,7 @@ model Booking {
   userId   String
   user     User      @relation(fields: [userId], references: [id])
   payments Payment[]
+  review   Review?
 
   @@index([eventDate])
   @@index([status])
@@ -300,22 +341,69 @@ model Booking {
   @@index([bookingNumber])
 }
 
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PaymentType {
+  ADVANCE
+  BALANCE
+  FULL
+  REFUND
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
 model Payment {
-  id       String @id @default(cuid())
+  id       String        @id @default(cuid())
   amount   Float
-  currency String @default("INR")
-  status   String @default("PENDING")
+  currency String        @default("INR")
+  status   PaymentStatus @default(PENDING)
+  type     PaymentType   @default(ADVANCE)
 
   // Gateway details (Razorpay)
-  orderId   String? @unique
-  paymentId String? @unique
-  signature String?
+  razorpayOrderId   String? @unique
+  razorpayPaymentId String? @unique
+  razorpaySignature String?
+
+  // Receipt
+  receiptNumber String? @unique
+  receiptUrl    String?
 
   // Metadata
-  method        String?
+  method        String?  // card, upi, netbanking, wallet
+  bank          String?  // For netbanking
+  wallet        String?  // For wallet payments
+  vpa           String?  // For UPI
+  cardLast4     String?  // Last 4 digits of card
+  cardNetwork   String?  // Visa, Mastercard, etc.
+
+  // Timestamps
   paidAt        DateTime?
   failedAt      DateTime?
+  refundedAt    DateTime?
   failureReason String?
+
+  // Refund details
+  refundId      String?
+  refundAmount  Float?
+  refundReason  String?
+
+  // Commission & Payout tracking
+  platformFee     Float?   // Platform commission amount
+  ownerAmount     Float?   // Amount to be paid to owner
+  isOwnerPaid     Boolean  @default(false)
+  ownerPaidAt     DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
@@ -325,21 +413,113 @@ model Payment {
   booking   Booking @relation(fields: [bookingId], references: [id])
 
   @@index([bookingId])
-  @@index([orderId])
+  @@index([razorpayOrderId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// Owner Payout tracking
+model Payout {
+  id           String       @id @default(cuid())
+  amount       Float
+  currency     String       @default("INR")
+  status       PayoutStatus @default(PENDING)
+
+  // Bank details snapshot (at time of payout)
+  bankAccountNumber String?
+  bankIfscCode      String?
+  bankAccountName   String?
+  bankName          String?
+
+  // UPI details
+  upiId String?
+
+  // Razorpay Payout
+  razorpayPayoutId   String? @unique
+  razorpayFundAcctId String?
+
+  // Processing details
+  processedAt     DateTime?
+  failedAt        DateTime?
+  failureReason   String?
+  transferMode    String?  // NEFT, IMPS, UPI
+
+  // Period covered
+  periodStart DateTime
+  periodEnd   DateTime
+  
+  // Summary
+  totalBookings    Int     @default(0)
+  totalGross       Float   @default(0)
+  platformFee      Float   @default(0)
+  taxDeducted      Float?  @default(0)  // TDS if applicable
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  // Relations
+  ownerId String
+  owner   User   @relation("OwnerPayouts", fields: [ownerId], references: [id])
+
+  @@index([ownerId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// Email notification log
+model EmailLog {
+  id        String   @id @default(cuid())
+  to        String
+  subject   String
+  template  String   // Template name used
+  status    String   @default("PENDING") // PENDING, SENT, FAILED
+  
+  // Email service response
+  messageId   String?
+  provider    String?  // resend, sendgrid, etc.
+  error       String?
+  
+  // Metadata
+  metadata    Json?    // Any additional data
+  
+  sentAt      DateTime?
+  createdAt   DateTime @default(now())
+
+  // Optional relations
+  bookingId String?
+  userId    String?
+
+  @@index([to])
+  @@index([template])
+  @@index([createdAt])
 }
 
 model Review {
   id      String  @id @default(cuid())
-  rating  Int
-  comment String?
+  rating  Int     // 1-5 stars
+  comment String? @db.Text
+  images  String? // Comma-separated image URLs
 
   // Venue Review
   venueId String?
-  venue   Venue?  @relation(fields: [venueId], references: [id])
+  venue   Venue?  @relation(fields: [venueId], references: [id], onDelete: Cascade)
 
   // Caterer Review
   catererId String?
-  caterer   Caterer? @relation(fields: [catererId], references: [id])
+  caterer   Caterer? @relation(fields: [catererId], references: [id], onDelete: Cascade)
+
+  // Booking verification - must have completed booking to review
+  bookingId String? @unique
+  booking   Booking? @relation(fields: [bookingId], references: [id])
+
+  // Owner response
+  ownerResponse   String?   @db.Text
+  ownerRespondedAt DateTime?
+
+  // Moderation
+  isVerified Boolean @default(false) // Verified purchase
+  isApproved Boolean @default(true)  // Admin moderation
+  isFlagged  Boolean @default(false) // Flagged for review
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
@@ -350,6 +530,8 @@ model Review {
 
   @@index([venueId])
   @@index([catererId])
+  @@index([rating])
+  @@index([isApproved])
 }
 
 model Wishlist {
@@ -398,4 +580,286 @@ model BlockedDate {
   @@unique([catererId, date])
   @@index([venueId, date])
   @@index([catererId, date])
+}
+
+// Area model for intelligent location-based sorting
+model Area {
+  id           String  @id @default(cuid())
+  name         String  @unique
+  city         String
+  state        String  @default("West Bengal")
+  pincode      String?
+  latitude     Float?
+  longitude    Float?
+  isPopular    Boolean @default(false)
+  priority     Int     @default(0)  // Higher priority = shown first
+  
+  // Analytics
+  venueCount   Int     @default(0)
+  catererCount Int     @default(0)
+  totalViews   Int     @default(0)
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now())
+
+  @@index([city])
+  @@index([isPopular])
+}
+
+// View Analytics for tracking popularity
+model ViewAnalytics {
+  id          String   @id @default(cuid())
+  venueId     String?
+  venue       Venue?   @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  catererId   String?
+  caterer     Caterer? @relation(fields: [catererId], references: [id], onDelete: Cascade)
+  area        String?
+  city        String?
+  date        DateTime @default(now())
+  viewCount   Int      @default(1)
+  uniqueViews Int      @default(1)
+  
+  @@index([venueId, date])
+  @@index([catererId, date])
+  @@index([area, date])
+}
+
+// Audit Log for compliance and tracking
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String   // PAYOUT_APPROVED, USER_BANNED, VENUE_VERIFIED, etc.
+  entityType String   // PAYOUT, USER, VENUE, CATERER, BOOKING, REVIEW
+  entityId   String   // ID of the entity
+  userId     String   // Admin/user who performed the action
+  
+  // Change details
+  details    Json?    // Action-specific data
+  previousValue Json? // State before change
+  newValue   Json?    // State after change
+  
+  // Request context
+  ipAddress  String?
+  userAgent  String?
+  
+  createdAt  DateTime @default(now())
+  
+  // Relations
+  user       User     @relation("AuditLogs", fields: [userId], references: [id])
+
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// System Configuration
+model SystemConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  type      String   @default("string") // string, number, boolean, json
+  category  String   @default("general") // general, payment, email, etc.
+  description String?
+  
+  updatedBy String?
+  updatedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([category])
+}
+
+// ==================== PHASE 8 MODELS ====================
+
+// Promotional Codes / Discount Coupons
+model PromoCode {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  description String?
+  
+  // Discount Configuration
+  discountType   String    // PERCENTAGE, FLAT
+  discountValue  Float     // Percentage or flat amount
+  maxDiscount    Float?    // Maximum discount for percentage type
+  minOrderValue  Float?    // Minimum order value to apply
+  
+  // Usage Limits
+  usageLimit     Int?      // Total times code can be used (null = unlimited)
+  perUserLimit   Int       @default(1)  // Times per user
+  usedCount      Int       @default(0)
+  
+  // Validity
+  startDate      DateTime  @default(now())
+  expiryDate     DateTime?
+  isActive       Boolean   @default(true)
+  
+  // Targeting
+  applicableTo   String    @default("ALL")  // ALL, VENUE, CATERING
+  applicableIds  String?   // Specific venue/caterer IDs (comma-separated)
+  forNewUsers    Boolean   @default(false)  // Only for first-time users
+  
+  // Creator
+  createdBy      String?   // Admin who created
+  
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  
+  // Relations
+  usages         PromoCodeUsage[]
+
+  @@index([code])
+  @@index([isActive])
+  @@index([expiryDate])
+}
+
+// Track promo code usage
+model PromoCodeUsage {
+  id          String    @id @default(cuid())
+  promoCodeId String
+  promoCode   PromoCode @relation(fields: [promoCodeId], references: [id])
+  
+  userId      String
+  bookingId   String?
+  
+  discountApplied Float
+  orderAmount     Float
+  
+  usedAt      DateTime  @default(now())
+
+  @@unique([promoCodeId, bookingId])
+  @@index([userId])
+  @@index([promoCodeId])
+}
+
+// Invoice/Receipt Storage
+model Invoice {
+  id            String    @id @default(cuid())
+  invoiceNumber String    @unique
+  
+  // Type
+  type          String    @default("RECEIPT")  // RECEIPT, INVOICE, PROFORMA
+  
+  // Booking Reference
+  bookingId     String
+  paymentId     String?
+  
+  // Amounts
+  subtotal      Float
+  discount      Float     @default(0)
+  taxAmount     Float     @default(0)
+  totalAmount   Float
+  
+  // Tax Details (for GST compliance)
+  cgst          Float?
+  sgst          Float?
+  igst          Float?
+  gstNumber     String?   // Customer GST (for B2B)
+  
+  // PDF Storage
+  pdfUrl        String?
+  generatedAt   DateTime?
+  
+  // Customer Details Snapshot
+  customerName  String
+  customerEmail String
+  customerPhone String
+  customerAddress String?
+  
+  // Business Details Snapshot
+  businessName  String
+  businessAddress String
+  businessGst   String?
+  
+  createdAt     DateTime  @default(now())
+  
+  @@index([bookingId])
+  @@index([invoiceNumber])
+}
+
+// SMS Log for tracking
+model SmsLog {
+  id          String    @id @default(cuid())
+  to          String    // Phone number
+  message     String    @db.Text
+  template    String    // Template ID
+  
+  // Provider details
+  provider    String    @default("twilio")  // twilio, msg91, etc.
+  messageId   String?   // Provider message ID
+  status      String    @default("PENDING")  // PENDING, SENT, DELIVERED, FAILED
+  
+  // Error tracking
+  error       String?
+  
+  // Cost tracking
+  cost        Float?
+  
+  // Relations
+  bookingId   String?
+  userId      String?
+  
+  sentAt      DateTime?
+  deliveredAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([to])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// Cancellation Request
+model CancellationRequest {
+  id          String    @id @default(cuid())
+  bookingId   String    @unique
+  
+  // Request Details
+  requestedBy String    // USER, OWNER, ADMIN
+  reason      String    @db.Text
+  
+  // Status
+  status      String    @default("PENDING")  // PENDING, APPROVED, REJECTED, PROCESSED
+  
+  // Refund Details
+  refundAmount      Float?
+  refundPercentage  Float?    // Based on cancellation policy
+  platformFeeRetained Float?
+  
+  // Processing
+  processedBy   String?   // Admin who processed
+  processedAt   DateTime?
+  processNotes  String?
+  
+  // Refund Tracking
+  refundStatus  String?   // PENDING, PROCESSING, COMPLETED, FAILED
+  refundId      String?   // Razorpay refund ID
+  refundedAt    DateTime?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([status])
+  @@index([bookingId])
+}
+
+// Email Templates
+model EmailTemplate {
+  id          String    @id @default(cuid())
+  name        String    @unique  // booking_confirmation, payment_receipt, etc.
+  subject     String
+  body        String    @db.Text  // HTML template with {{variables}}
+  
+  // Metadata
+  description String?
+  category    String    @default("transactional")  // transactional, marketing, reminder
+  
+  // Status
+  isActive    Boolean   @default(true)
+  
+  // Version control
+  version     Int       @default(1)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([name])
+  @@index([category])
 }

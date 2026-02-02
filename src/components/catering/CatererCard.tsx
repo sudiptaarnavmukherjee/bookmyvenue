@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Star, MapPin, Leaf, Heart } from "lucide-react";
+import { Star, MapPin, Leaf, Heart, Phone, Medal, Award, Crown, CheckCircle2, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api-client";
 import { useSession } from "next-auth/react";
@@ -14,11 +14,21 @@ interface CatererCardProps {
   catererId?: string;
   name: string;
   city: string;
+  area?: string;
   minPlatePrice: number;
+  silverPrice?: number;
+  goldPrice?: number;
+  platinumPrice?: number;
   rating: number;
   totalReviews: number;
   isPureVeg: boolean;
   coverImage: string;
+  isVerified?: boolean;
+  bookingEnabled?: boolean;
+  isAdminListed?: boolean;
+  contactNumber?: string;
+  contactName?: string;
+  viewCount?: number;
   inWishlist?: boolean;
 }
 
@@ -27,16 +37,29 @@ export function CatererCard({
   catererId,
   name,
   city,
+  area,
   minPlatePrice,
+  silverPrice,
+  goldPrice,
+  platinumPrice,
   rating,
   totalReviews,
   isPureVeg,
   coverImage,
+  isVerified = false,
+  bookingEnabled = false,
+  isAdminListed = true,
+  contactNumber,
+  contactName,
+  viewCount,
   inWishlist = false,
 }: CatererCardProps) {
   const { data: session } = useSession();
   const [isInWishlist, setIsInWishlist] = useState(inWishlist);
   const [wishlistLoading, setWishlistLoading] = useState(false);
+
+  // Determine if this is a fishbowl listing
+  const isFishbowl = isAdminListed && !bookingEnabled;
 
   const handleWishlistToggle = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -47,15 +70,16 @@ export function CatererCard({
       return;
     }
 
-    if (!catererId) return;
+    const targetId = catererId || id;
+    if (!targetId) return;
 
     try {
       setWishlistLoading(true);
       if (isInWishlist) {
-        await api.removeFromWishlist(undefined, catererId);
+        await api.removeFromWishlist(undefined, targetId);
         setIsInWishlist(false);
       } else {
-        await api.addToWishlist({ catererId });
+        await api.addToWishlist({ catererId: targetId });
         setIsInWishlist(true);
       }
     } catch (err) {
@@ -65,81 +89,162 @@ export function CatererCard({
     }
   };
 
+  const handleCall = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (contactNumber) {
+      window.location.href = `tel:${contactNumber}`;
+    }
+  };
+
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 0,
-    }).format(price);
+    return `₹${price}`;
   };
 
   return (
     <motion.div
-      whileHover={{ y: -8, scale: 1.02 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
-      className="card-elite hover-scale overflow-hidden"
+      whileHover={{ y: -4, scale: 1.01 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100"
     >
       <Link href={`/catering/${id}`}>
-        <div className="relative aspect-[4/3] overflow-hidden image-overlay">
+        {/* Image Section */}
+        <div className="relative aspect-[16/10] overflow-hidden">
           <Image
-            src={coverImage}
+            src={coverImage || "/placeholder-food.jpg"}
             alt={name}
             fill
-            className="object-cover transition-transform duration-500 hover:scale-110"
+            className="object-cover transition-transform duration-500 hover:scale-105"
           />
+          
+          {/* Top Left - Wishlist */}
           <button
             onClick={handleWishlistToggle}
             disabled={wishlistLoading}
-            className="absolute left-4 top-4 rounded-full bg-white/90 p-2.5 shadow-lg hover:bg-white transition-all disabled:opacity-50 z-10"
+            className="absolute left-3 top-3 rounded-full bg-white/95 p-2 shadow-lg hover:bg-white transition-all disabled:opacity-50 z-10"
           >
             <Heart
               className={cn(
                 "h-5 w-5 transition-colors",
-                isInWishlist ? "fill-red-500 text-red-500" : "text-gray-600"
+                isInWishlist ? "fill-rose-500 text-rose-500" : "text-gray-600"
               )}
             />
           </button>
-          {isPureVeg && (
-            <div className="badge-verified absolute right-4 top-4 bg-gradient-to-r from-emerald-500 to-teal-500">
-              <Leaf className="h-3.5 w-3.5" />
-              Pure Veg
+          
+          {/* Top Right - Badges */}
+          <div className="absolute right-3 top-3 flex flex-col gap-2 z-10">
+            {isPureVeg && (
+              <div className="flex items-center gap-1 px-2.5 py-1 bg-green-500 text-white text-xs font-semibold rounded-full shadow-lg">
+                <Leaf className="h-3.5 w-3.5" />
+                Pure Veg
+              </div>
+            )}
+            {isVerified && bookingEnabled && (
+              <div className="flex items-center gap-1 px-2.5 py-1 bg-blue-500 text-white text-xs font-semibold rounded-full shadow-lg">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Verified
+              </div>
+            )}
+          </div>
+
+          {/* Bottom - Tier Pricing */}
+          {(silverPrice || goldPrice || platinumPrice) && (
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 pt-8">
+              <div className="flex items-center justify-center gap-2">
+                {silverPrice && (
+                  <div className="bg-gray-100 px-2.5 py-1 rounded-lg text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <Medal className="h-3 w-3 text-gray-500" />
+                      <span className="text-[10px] text-gray-500 font-medium">SILVER</span>
+                    </div>
+                    <p className="text-sm font-bold text-gray-800">{formatPrice(silverPrice)}</p>
+                  </div>
+                )}
+                {goldPrice && (
+                  <div className="bg-yellow-100 px-2.5 py-1 rounded-lg text-center border border-yellow-300">
+                    <div className="flex items-center justify-center gap-1">
+                      <Award className="h-3 w-3 text-yellow-600" />
+                      <span className="text-[10px] text-yellow-700 font-medium">GOLD</span>
+                    </div>
+                    <p className="text-sm font-bold text-yellow-800">{formatPrice(goldPrice)}</p>
+                  </div>
+                )}
+                {platinumPrice && (
+                  <div className="bg-purple-100 px-2.5 py-1 rounded-lg text-center border border-purple-300">
+                    <div className="flex items-center justify-center gap-1">
+                      <Crown className="h-3 w-3 text-purple-600" />
+                      <span className="text-[10px] text-purple-700 font-medium">PLATINUM</span>
+                    </div>
+                    <p className="text-sm font-bold text-purple-800">{formatPrice(platinumPrice)}</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
 
-        <div className="p-6">
-          <h3 className="mb-3 text-xl font-bold text-gray-900">{name}</h3>
+        {/* Content Section */}
+        <div className="p-4">
+          <h3 className="text-lg font-bold text-gray-900 mb-1.5 line-clamp-1">{name}</h3>
 
-          <div className="mb-3 flex items-center gap-2 text-sm text-gray-600">
-            <MapPin className="h-4 w-4 text-purple-600" />
-            <span className="font-medium">{city}</span>
-          </div>
-
-          <div className="mb-4 flex items-center gap-2">
-            <div className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-amber-400 to-orange-400 px-3 py-1.5 shadow-md">
-              <Star className="h-4 w-4 fill-white text-white" />
-              <span className="text-sm font-bold text-white">{rating}</span>
-            </div>
-            <span className="text-sm text-gray-600 font-medium">
-              ({totalReviews.toLocaleString()} reviews)
+          <div className="flex items-center gap-1.5 text-gray-600 mb-2">
+            <MapPin className="h-4 w-4 text-orange-500 flex-shrink-0" />
+            <span className="text-sm font-medium truncate">
+              {area ? `${area}, ${city}` : city}
             </span>
           </div>
 
-          <div className="divider-elegant mb-4" />
-
-          <div className="mb-6">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Starting from</p>
-            <p className="text-3xl font-bold text-gradient bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              {formatPrice(minPlatePrice)}
-              <span className="text-base font-normal text-gray-600">/plate</span>
-            </p>
+          <div className="flex items-center justify-between mb-3">
+            {rating > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 bg-green-600 px-2 py-0.5 rounded-md">
+                  <Star className="h-3.5 w-3.5 fill-white text-white" />
+                  <span className="text-sm font-bold text-white">{rating.toFixed(1)}</span>
+                </div>
+                {totalReviews > 0 && (
+                  <span className="text-xs text-gray-500">({totalReviews} reviews)</span>
+                )}
+              </div>
+            )}
+            {viewCount !== undefined && viewCount > 0 && (
+              <div className="flex items-center gap-1 text-gray-400 text-xs">
+                <Eye className="h-3.5 w-3.5" />
+                <span>{viewCount > 100 ? `${Math.floor(viewCount/100)*100}+` : viewCount}</span>
+              </div>
+            )}
           </div>
 
-          <button className="btn-wedding-primary w-full">
-            View Packages
-          </button>
+          {/* Starting Price (if no tier prices) */}
+          {!silverPrice && !goldPrice && !platinumPrice && (
+            <div className="mb-3 p-2 bg-orange-50 rounded-lg">
+              <p className="text-xs text-gray-500">Starting from</p>
+              <p className="text-xl font-bold text-orange-600">
+                {formatPrice(minPlatePrice)}<span className="text-sm font-normal text-gray-500">/plate</span>
+              </p>
+            </div>
+          )}
+
+          {/* CTA Button */}
+          {isFishbowl ? (
+            <button
+              onClick={handleCall}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-orange-500 to-rose-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
+            >
+              <Phone className="h-4 w-4" />
+              Call {contactName || "to Book"}
+            </button>
+          ) : bookingEnabled ? (
+            <button className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all">
+              View Menu & Book
+            </button>
+          ) : (
+            <button className="w-full flex items-center justify-center gap-2 py-3 border-2 border-orange-500 text-orange-600 rounded-xl font-semibold hover:bg-orange-50 transition-all">
+              View Packages
+            </button>
+          )}
         </div>
       </Link>
     </motion.div>
   );
 }
+

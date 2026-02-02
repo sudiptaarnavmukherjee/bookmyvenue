@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Search, Filter, MapPin, Users, Star, CheckCircle2, X, Loader2, AlertCircle, ChevronDown, SlidersHorizontal } from "lucide-react";
+import { Search, Filter, MapPin, Users, Star, CheckCircle2, X, Loader2, AlertCircle, ChevronDown, SlidersHorizontal, TrendingUp, Eye } from "lucide-react";
 import { api } from "@/lib/api-client";
 
 type Venue = {
@@ -19,7 +19,12 @@ type Venue = {
   exactPrice?: number | null;
   estimatedMinPrice?: number | null;
   estimatedMaxPrice?: number | null;
+  primeDayPrice?: number | null;
+  nonPrimeDayPrice?: number | null;
   isVerified: boolean;
+  isAdminListed?: boolean;
+  bookingEnabled?: boolean;
+  viewCount?: number;
   images: string[] | string;
   _count?: {
     reviews: number;
@@ -27,14 +32,14 @@ type Venue = {
   };
 };
 
-// Kolkata specific areas
-const KOLKATA_AREAS = [
-  "Salt Lake (Sector I-V)", "New Town", "Rajarhat",
-  "Park Street", "Alipore", "Ballygunge", "Jadavpur",
-  "Gariahat", "Behala", "Barasat", "Madhyamgram",
-  "Barrackpore", "Howrah", "Dum Dum", "Tollygunge",
-  "Kasba", "Ruby Area", "E.M. Bypass", "Science City Area"
-];
+type Area = {
+  id: string;
+  name: string;
+  city: string;
+  isPopular: boolean;
+  priority: number;
+  venueCount: number;
+};
 
 const VENUE_TYPES = [
   "Banquet Hall", "Lawn/Garden", "Resort", "Hotel",
@@ -51,11 +56,13 @@ const AMENITIES = [
 export default function VenuesPage() {
   const router = useRouter();
   const [venues, setVenues] = useState<Venue[]>([]);
+  const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"default" | "price-low" | "price-high" | "capacity" | "verified">("default");
+  const [sortBy, setSortBy] = useState<"area" | "price-low" | "price-high" | "popular" | "newest">("area");
+  const [selectedArea, setSelectedArea] = useState<string>("");
   const [filters, setFilters] = useState({
     cities: [] as string[],
     areas: [] as string[],
@@ -67,24 +74,36 @@ export default function VenuesPage() {
   });
 
   useEffect(() => {
-    const fetchVenues = async () => {
+    const fetchData = async () => {
       setLoading(true);
       setError(null);
       try {
-        const { data, error: err } = await api.getVenues();
-        if (err) {
-          setError(err);
+        // Build query params
+        const params = new URLSearchParams();
+        params.set("sortBy", sortBy);
+        if (selectedArea) params.set("area", selectedArea);
+        
+        const response = await fetch(`/api/venues?${params.toString()}`);
+        const data = await response.json();
+        
+        if (data.error) {
+          setError(data.error);
         } else {
           // Transform API data to match component expectations
-          const rawVenues = (data as any)?.venues || [];
+          const rawVenues = data.venues || [];
           const transformedVenues = rawVenues.map((v: any) => ({
             ...v,
             location: v.area || v.city || '',
             capacity: v.maxGuests || 0,
-            price: v.exactPrice || v.estimatedMinPrice || 0,
+            price: v.exactPrice || v.primeDayPrice || v.estimatedMinPrice || 0,
             images: typeof v.images === 'string' ? (v.images ? v.images.split(',') : []) : (v.images || []),
           }));
           setVenues(transformedVenues);
+          
+          // Set areas from API response
+          if (data.areas) {
+            setAreas(data.areas);
+          }
         }
       } catch (err: any) {
         setError(err.message || "Failed to load venues");
@@ -92,9 +111,26 @@ export default function VenuesPage() {
         setLoading(false);
       }
     };
-    fetchVenues();
+    fetchData();
+  }, [sortBy, selectedArea]);
+
+  // Fetch areas separately for filter options
+  useEffect(() => {
+    const fetchAreas = async () => {
+      try {
+        const response = await fetch("/api/areas");
+        const data = await response.json();
+        if (data.success) {
+          setAreas(data.areas || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch areas:", error);
+      }
+    };
+    fetchAreas();
   }, []);
 
+  const popularAreas = areas.filter(a => a.isPopular);
   const availableCities = Array.from(new Set(venues.map(v => v.city))).filter(Boolean).sort();
 
   const toggleCity = (city: string) => {
@@ -141,7 +177,7 @@ export default function VenuesPage() {
     if (filters.cities.length > 0 && !filters.cities.includes(venue.city)) return false;
     // Area filter (check if venue location contains the area name)
     if (filters.areas.length > 0 && !filters.areas.some(area => 
-      venue.location.toLowerCase().includes(area.toLowerCase().split('(')[0].trim())
+      (venue.area || venue.location || '').toLowerCase().includes(area.toLowerCase().split('(')[0].trim())
     )) return false;
     // Capacity filter
     if (venue.capacity < filters.minCapacity) return false;
@@ -149,27 +185,11 @@ export default function VenuesPage() {
     if (venue.price > filters.maxPrice) return false;
     // Verified filter
     if (filters.verifiedOnly && !venue.isVerified) return false;
-    // Note: Venue type and amenities would require database fields, 
-    // so we'll skip them for now until schema is updated
     return true;
   });
 
-  // Apply sorting
-  const sortedVenues = [...filteredVenues].sort((a, b) => {
-    switch (sortBy) {
-      case "price-low":
-        return a.price - b.price;
-      case "price-high":
-        return b.price - a.price;
-      case "capacity":
-        return b.capacity - a.capacity;
-      case "verified":
-        if (a.isVerified === b.isVerified) return 0;
-        return a.isVerified ? -1 : 1;
-      default:
-        return 0;
-    }
-  });
+  // Sorting is now handled by the API, but we can apply additional client-side sorting if needed
+  const sortedVenues = filteredVenues;
 
   const clearFilters = () => {
     setFilters({
@@ -182,7 +202,8 @@ export default function VenuesPage() {
       verifiedOnly: false
     });
     setSearchQuery("");
-    setSortBy("default");
+    setSortBy("area");
+    setSelectedArea("");
   };
 
   return (
@@ -198,7 +219,7 @@ export default function VenuesPage() {
         </motion.div>
 
         {/* Search and Filter Bar */}
-        <div className="mb-8 flex flex-col sm:flex-row gap-4">
+        <div className="mb-6 flex flex-col sm:flex-row gap-4">
           <div className="glass-card flex flex-1 items-center gap-3 rounded-2xl px-4 py-3">
             <Search className="h-5 w-5 text-gray-400" />
             <input
@@ -224,11 +245,11 @@ export default function VenuesPage() {
                 onChange={(e) => setSortBy(e.target.value as any)}
                 className="flex-1 bg-transparent outline-none font-semibold cursor-pointer"
               >
-                <option value="default">Sort By: Default</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-                <option value="capacity">Capacity: High to Low</option>
-                <option value="verified">Verified First</option>
+                <option value="area">📍 Sort: By Area Priority</option>
+                <option value="popular">🔥 Sort: Most Popular</option>
+                <option value="price-low">💰 Price: Low to High</option>
+                <option value="price-high">💰 Price: High to Low</option>
+                <option value="newest">🆕 Newest First</option>
               </select>
             </div>
           </div>
@@ -245,6 +266,46 @@ export default function VenuesPage() {
             )}
           </button>
         </div>
+
+        {/* Popular Areas Quick Filter */}
+        {popularAreas.length > 0 && (
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp className="h-5 w-5 text-purple-600" />
+              <span className="font-semibold text-gray-700">Popular Areas</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setSelectedArea("")}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  !selectedArea
+                    ? "bg-purple-600 text-white"
+                    : "bg-white/60 text-gray-700 hover:bg-white"
+                }`}
+              >
+                All Areas
+              </button>
+              {popularAreas.map((area) => (
+                <button
+                  key={area.id}
+                  onClick={() => setSelectedArea(selectedArea === area.name ? "" : area.name)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
+                    selectedArea === area.name
+                      ? "bg-purple-600 text-white"
+                      : "bg-white/60 text-gray-700 hover:bg-white"
+                  }`}
+                >
+                  {area.name}
+                  {area.venueCount > 0 && (
+                    <span className={`text-xs ${selectedArea === area.name ? "text-purple-200" : "text-gray-500"}`}>
+                      ({area.venueCount})
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Filter Panel */}
         {showFilters && (
@@ -298,30 +359,40 @@ export default function VenuesPage() {
                 </div>
               </div>
 
-              {/* Kolkata Areas Filter */}
-              {filters.cities.includes("Kolkata") && (
-                <div>
-                  <label className="mb-3 block font-semibold text-gray-700">
-                    Kolkata Areas <span className="text-xs text-gray-500">(19 locations)</span>
-                  </label>
-                  <div className="max-h-48 overflow-y-auto space-y-1 pr-2 custom-scrollbar">
-                    {KOLKATA_AREAS.map(area => (
+              {/* Areas Filter - Dynamic from API */}
+              <div>
+                <label className="mb-3 block font-semibold text-gray-700">
+                  Areas <span className="text-xs text-gray-500">({areas.length} locations)</span>
+                </label>
+                <div className="max-h-48 overflow-y-auto space-y-1 pr-2 custom-scrollbar">
+                  {areas.length > 0 ? (
+                    areas.map(area => (
                       <label
-                        key={area}
+                        key={area.id}
                         className="flex items-center gap-2 cursor-pointer hover:bg-purple-50 p-2 rounded-lg transition-colors"
                       >
                         <input
                           type="checkbox"
-                          checked={filters.areas.includes(area)}
-                          onChange={() => toggleArea(area)}
+                          checked={filters.areas.includes(area.name)}
+                          onChange={() => toggleArea(area.name)}
                           className="rounded text-purple-600"
                         />
-                        <span className="text-sm">{area}</span>
+                        <span className="text-sm flex items-center gap-2">
+                          {area.name}
+                          {area.isPopular && (
+                            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                          )}
+                          {area.venueCount > 0 && (
+                            <span className="text-xs text-gray-400">({area.venueCount})</span>
+                          )}
+                        </span>
                       </label>
-                    ))}
-                  </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-500">No areas configured</p>
+                  )}
                 </div>
-              )}
+              </div>
 
               {/* Venue Type Filter */}
               <div>

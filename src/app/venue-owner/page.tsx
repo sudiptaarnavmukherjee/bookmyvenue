@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { api } from "@/lib/api-client";
-import { Calendar, CheckCircle2, Clock, Users, Loader2, Plus, Building, MapPin, X, CalendarDays, Eye, Phone, Mail, IndianRupee } from "lucide-react";
+import { Calendar, CheckCircle2, Clock, Users, Loader2, Plus, Building, MapPin, X, CalendarDays, Eye, Phone, Mail, IndianRupee, Wallet } from "lucide-react";
 import AvailabilityCalendar from "@/components/calendar/AvailabilityCalendar";
 import BlockDateModal from "@/components/calendar/BlockDateModal";
+import EarningsDashboard from "@/components/owner/EarningsDashboard";
 
 type Venue = {
   id: string;
@@ -46,7 +47,7 @@ export default function VenueOwnerDashboard() {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"venues" | "bookings" | "calendar">("venues");
+  const [activeTab, setActiveTab] = useState<"venues" | "bookings" | "calendar" | "earnings">("venues");
   const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
   const [showBlockModal, setShowBlockModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -179,6 +180,17 @@ export default function VenueOwnerDashboard() {
           >
             <CalendarDays className="inline h-5 w-5 mr-2" />
             Calendar
+          </button>
+          <button
+            onClick={() => setActiveTab("earnings")}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+              activeTab === "earnings"
+                ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
+                : "bg-white text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            <Wallet className="inline h-5 w-5 mr-2" />
+            Earnings
           </button>
         </div>
 
@@ -352,6 +364,14 @@ export default function VenueOwnerDashboard() {
                 )}
               </>
             )}
+          </div>
+        )}
+
+        {/* Earnings Tab */}
+        {activeTab === "earnings" && (
+          <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <h2 className="text-xl font-bold text-gray-900 mb-6">Earnings & Payouts</h2>
+            <EarningsDashboard />
           </div>
         )}
 

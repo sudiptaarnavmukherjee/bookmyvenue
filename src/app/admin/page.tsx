@@ -20,8 +20,40 @@ import {
   Mail,
   MapPin,
   IndianRupee,
+  CreditCard,
+  BarChart3,
+  Activity,
+  MessageSquare,
+  UserCog,
 } from "lucide-react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+
+// Lazy load Phase 7 components
+const PayoutManagement = dynamic(() => import("@/components/admin/PayoutManagement"), {
+  loading: () => <ComponentLoader text="Loading Payouts..." />,
+});
+const RevenueAnalytics = dynamic(() => import("@/components/admin/RevenueAnalytics"), {
+  loading: () => <ComponentLoader text="Loading Analytics..." />,
+});
+const AuditLogViewer = dynamic(() => import("@/components/admin/AuditLogViewer"), {
+  loading: () => <ComponentLoader text="Loading Audit Logs..." />,
+});
+const ReviewModeration = dynamic(() => import("@/components/admin/ReviewModeration"), {
+  loading: () => <ComponentLoader text="Loading Reviews..." />,
+});
+const UserManagement = dynamic(() => import("@/components/admin/UserManagement"), {
+  loading: () => <ComponentLoader text="Loading Users..." />,
+});
+
+function ComponentLoader({ text }: { text: string }) {
+  return (
+    <div className="flex items-center justify-center py-12">
+      <Sparkles className="h-8 w-8 text-purple-600 animate-spin mr-3" />
+      <span className="text-gray-600">{text}</span>
+    </div>
+  );
+}
 
 interface Venue {
   id: string;
@@ -111,7 +143,7 @@ interface Stats {
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"venues" | "caterers" | "bookings">("venues");
+  const [activeTab, setActiveTab] = useState<"venues" | "caterers" | "bookings" | "payouts" | "analytics" | "audit" | "reviews" | "users">("venues");
   const [venues, setVenues] = useState<Venue[]>([]);
   const [caterers, setCaterers] = useState<Caterer[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -334,6 +366,102 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* Quick Actions - Fishbowl */}
+        <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <h3 className="font-semibold text-amber-900 flex items-center gap-2">
+                🐟 Fishbowl Mode - Add Listings
+              </h3>
+              <p className="text-sm text-amber-700">Add venues/caterers with approximate pricing. Customers will call to book.</p>
+            </div>
+            <div className="flex gap-3">
+              <Link
+                href="/admin/venues/add"
+                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center gap-2"
+              >
+                <Building2 className="h-4 w-4" />
+                Add Venue
+              </Link>
+              <Link
+                href="/admin/caterers/add"
+                className="px-4 py-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center gap-2"
+              >
+                <UtensilsCrossed className="h-4 w-4" />
+                Add Caterer
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Management Links */}
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Link
+            href="/admin/venues"
+            className="glass-card rounded-2xl p-5 hover:shadow-lg transition-all group"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-gray-900 group-hover:text-purple-600 transition-colors">
+                  Manage Venues
+                </h3>
+                <p className="text-sm text-gray-600">Tag owners, enable online booking</p>
+              </div>
+              <div className="h-12 w-12 rounded-xl bg-purple-100 flex items-center justify-center group-hover:bg-purple-200 transition-colors">
+                <Building2 className="h-6 w-6 text-purple-600" />
+              </div>
+            </div>
+          </Link>
+          <Link
+            href="/admin/caterers"
+            className="glass-card rounded-2xl p-5 hover:shadow-lg transition-all group"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-gray-900 group-hover:text-orange-600 transition-colors">
+                  Manage Caterers
+                </h3>
+                <p className="text-sm text-gray-600">Tag owners, enable online booking</p>
+              </div>
+              <div className="h-12 w-12 rounded-xl bg-orange-100 flex items-center justify-center group-hover:bg-orange-200 transition-colors">
+                <UtensilsCrossed className="h-6 w-6 text-orange-600" />
+              </div>
+            </div>
+          </Link>
+          <Link
+            href="/admin/areas"
+            className="glass-card rounded-2xl p-5 hover:shadow-lg transition-all group"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-gray-900 group-hover:text-green-600 transition-colors">
+                  Manage Areas
+                </h3>
+                <p className="text-sm text-gray-600">Configure area-based sorting</p>
+              </div>
+              <div className="h-12 w-12 rounded-xl bg-green-100 flex items-center justify-center group-hover:bg-green-200 transition-colors">
+                <MapPin className="h-6 w-6 text-green-600" />
+              </div>
+            </div>
+          </Link>
+          <Link
+            href="/admin/analytics"
+            className="glass-card rounded-2xl p-5 hover:shadow-lg transition-all group"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                  View Analytics
+                </h3>
+                <p className="text-sm text-gray-600">Track views and engagement</p>
+              </div>
+              <div className="h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                <Eye className="h-6 w-6 text-blue-600" />
+              </div>
+            </div>
+          </Link>
+        </div>
+
         {/* Tabs */}
         <div className="flex gap-2 mb-6 flex-wrap">
           <button
@@ -352,6 +480,79 @@ export default function AdminDashboard() {
             className={`px-6 py-3 rounded-xl font-semibold transition-all ${
               activeTab === "caterers"
                 ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
+                : "bg-white/60 text-gray-700 hover:bg-white"
+            }`}
+          >
+            <UtensilsCrossed className="inline h-5 w-5 mr-2" />
+            Caterers ({caterers.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("bookings")}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+              activeTab === "bookings"
+                ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
+                : "bg-white/60 text-gray-700 hover:bg-white"
+            }`}
+          >
+            <CalendarDays className="inline h-5 w-5 mr-2" />
+            Bookings ({bookings.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("payouts")}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+              activeTab === "payouts"
+                ? "bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg"
+                : "bg-white/60 text-gray-700 hover:bg-white"
+            }`}
+          >
+            <CreditCard className="inline h-5 w-5 mr-2" />
+            Payouts
+          </button>
+          <button
+            onClick={() => setActiveTab("analytics")}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+              activeTab === "analytics"
+                ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg"
+                : "bg-white/60 text-gray-700 hover:bg-white"
+            }`}
+          >
+            <BarChart3 className="inline h-5 w-5 mr-2" />
+            Revenue
+          </button>
+          <button
+            onClick={() => setActiveTab("reviews")}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+              activeTab === "reviews"
+                ? "bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-lg"
+                : "bg-white/60 text-gray-700 hover:bg-white"
+            }`}
+          >
+            <MessageSquare className="inline h-5 w-5 mr-2" />
+            Reviews
+          </button>
+          <button
+            onClick={() => setActiveTab("users")}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+              activeTab === "users"
+                ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg"
+                : "bg-white/60 text-gray-700 hover:bg-white"
+            }`}
+          >
+            <UserCog className="inline h-5 w-5 mr-2" />
+            Users
+          </button>
+          <button
+            onClick={() => setActiveTab("audit")}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+              activeTab === "audit"
+                ? "bg-gradient-to-r from-gray-600 to-slate-600 text-white shadow-lg"
+                : "bg-white/60 text-gray-700 hover:bg-white"
+            }`}
+          >
+            <Activity className="inline h-5 w-5 mr-2" />
+            Audit Logs
+          </button>
+        </div>
                 : "bg-white/60 text-gray-700 hover:bg-white"
             }`}
           >
@@ -716,6 +917,61 @@ export default function AdminDashboard() {
                 </motion.div>
               ))
             )}
+          </div>
+        )}
+
+        {/* Payouts Tab */}
+        {activeTab === "payouts" && (
+          <div className="glass-card rounded-2xl p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+              <CreditCard className="h-6 w-6 text-green-600" />
+              Payout Management
+            </h2>
+            <PayoutManagement />
+          </div>
+        )}
+
+        {/* Revenue Analytics Tab */}
+        {activeTab === "analytics" && (
+          <div className="glass-card rounded-2xl p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+              <BarChart3 className="h-6 w-6 text-blue-600" />
+              Revenue Analytics
+            </h2>
+            <RevenueAnalytics />
+          </div>
+        )}
+
+        {/* Review Moderation Tab */}
+        {activeTab === "reviews" && (
+          <div className="glass-card rounded-2xl p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+              <MessageSquare className="h-6 w-6 text-orange-600" />
+              Review Moderation
+            </h2>
+            <ReviewModeration />
+          </div>
+        )}
+
+        {/* User Management Tab */}
+        {activeTab === "users" && (
+          <div className="glass-card rounded-2xl p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+              <UserCog className="h-6 w-6 text-indigo-600" />
+              User Management
+            </h2>
+            <UserManagement />
+          </div>
+        )}
+
+        {/* Audit Logs Tab */}
+        {activeTab === "audit" && (
+          <div className="glass-card rounded-2xl p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+              <Activity className="h-6 w-6 text-gray-600" />
+              Audit Logs
+            </h2>
+            <AuditLogViewer />
           </div>
         )}
       </div>

@@ -25,6 +25,13 @@ export async function GET() {
             phone: true,
           },
         },
+        taggedToOwner: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
       },
       orderBy: [
         { isVerified: "asc" }, // Unverified first
@@ -32,11 +39,102 @@ export async function GET() {
       ],
     });
 
-    return NextResponse.json({ caterers });
+    return NextResponse.json({ success: true, caterers });
   } catch (error) {
     console.error("Error fetching caterers for admin:", error);
     return NextResponse.json(
       { error: "Failed to fetch caterers" },
+      { status: 500 }
+    );
+  }
+}
+
+// POST - Admin creates a fishbowl caterer
+export async function POST(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user || session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const {
+      name,
+      description,
+      city,
+      area,
+      address,
+      silverPrice,
+      goldPrice,
+      platinumPrice,
+      minPlatePrice,
+      isPureVeg,
+      cuisines,
+      minGuests,
+      contactName,
+      contactNumber,
+      phone,
+      images,
+      coverImage,
+    } = body;
+
+    // Validation
+    if (!name || !city || !address) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    // Generate unique slug
+    const baseSlug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+    const uniqueSlug = `${baseSlug}-${area?.toLowerCase().replace(/[^a-z0-9]+/g, "-") || city.toLowerCase()}-${Date.now().toString(36)}`;
+
+    // Create the fishbowl caterer
+    const caterer = await prisma.caterer.create({
+      data: {
+        name,
+        slug: uniqueSlug,
+        description: description || "",
+        city,
+        area: area || "",
+        address,
+        phone: phone || contactNumber || "",
+        minPlatePrice: parseFloat(minPlatePrice || silverPrice) || 0,
+        silverPrice: silverPrice ? parseFloat(silverPrice) : null,
+        goldPrice: goldPrice ? parseFloat(goldPrice) : null,
+        platinumPrice: platinumPrice ? parseFloat(platinumPrice) : null,
+        isPureVeg: isPureVeg || false,
+        isMultiCuisine: true,
+        cuisines: cuisines || "",
+        minGuests: parseInt(minGuests) || 100,
+        contactName: contactName || "",
+        contactNumber: contactNumber || "",
+        images: images || "",
+        coverImage: coverImage || (images ? images.split(",")[0].trim() : ""),
+        // Fishbowl flags
+        isAdminListed: true,
+        bookingEnabled: false,
+        isVerified: false,
+        isActive: true,
+        // Admin is the owner initially
+        owner: { connect: { id: session.user.id } },
+      },
+    });
+
+    return NextResponse.json({ 
+      success: true, 
+      caterer,
+      message: "Fishbowl caterer created successfully" 
+    });
+  } catch (error: any) {
+    console.error("Error creating fishbowl caterer:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to create caterer" },
       { status: 500 }
     );
   }

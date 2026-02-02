@@ -2,19 +2,22 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Calendar, Users, MapPin, Heart, X, Check, Clock, Loader2, AlertCircle } from "lucide-react";
+import { Calendar, Users, MapPin, Heart, X, Check, Clock, Loader2, AlertCircle, CreditCard } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { api } from "@/lib/api-client";
+import { PayNowButton } from "@/components/payment/PaymentComponents";
 
 type Booking = {
   id: string;
   bookingNumber: string;
   type: "VENUE" | "CATERING";
-  status: "PENDING" | "CONFIRMED" | "CANCELLED";
+  status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED";
   eventDate: string;
   guests: number;
   totalAmount: number;
+  advanceAmount?: number;
+  isPaid?: boolean;
   venue?: {
     id: string;
     name: string;
@@ -299,8 +302,13 @@ export default function MyBookingsPage() {
                       <div>
                         <span className="text-sm text-gray-600">Total Amount</span>
                         <p className="text-2xl font-bold text-gradient">₹{(booking.totalAmount || 0).toLocaleString('en-IN')}</p>
+                        {booking.advanceAmount && booking.advanceAmount > 0 && (
+                          <p className="text-xs text-green-600">
+                            Paid: ₹{booking.advanceAmount.toLocaleString('en-IN')}
+                          </p>
+                        )}
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap justify-end">
                         {slug && (
                           <button 
                             onClick={() => {
@@ -311,6 +319,18 @@ export default function MyBookingsPage() {
                           >
                             View Details
                           </button>
+                        )}
+                        {/* Payment Button for customers */}
+                        {!isOwner && booking.status !== "CANCELLED" && !booking.isPaid && (
+                          <PayNowButton
+                            bookingId={booking.id}
+                            bookingNumber={booking.bookingNumber}
+                            venueName={name}
+                            totalAmount={booking.totalAmount || 0}
+                            advancePaid={booking.advanceAmount || 0}
+                            status={booking.status}
+                            onPaymentSuccess={loadBookings}
+                          />
                         )}
                         {isOwner && booking.status === "PENDING" && (
                           <button 

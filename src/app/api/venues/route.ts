@@ -5,16 +5,33 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const city = searchParams.get("city");
+    const area = searchParams.get("area");
     const minGuests = searchParams.get("minGuests");
     const maxPrice = searchParams.get("maxPrice");
+    const sortBy = searchParams.get("sortBy") || "area"; // area, price-low, price-high, newest
+    const includeUnverified = searchParams.get("includeUnverified") === "true";
 
     const where: any = {
       isActive: true,
-      isVerified: true,
     };
+
+    // Include unverified (fishbowl) venues for browsing
+    if (!includeUnverified) {
+      where.OR = [
+        { isVerified: true },
+        { isAdminListed: true }, // Show fishbowl venues too
+      ];
+    }
 
     if (city) {
       where.city = city;
+    }
+
+    if (area) {
+      where.area = {
+        contains: area,
+        mode: "insensitive",
+      };
     }
 
     if (minGuests) {
@@ -24,11 +41,24 @@ export async function GET(request: Request) {
     }
 
     if (maxPrice) {
-      where.OR = [
-        { exactPrice: { lte: parseFloat(maxPrice) } },
-        { estimatedMaxPrice: { lte: parseFloat(maxPrice) } },
+      where.AND = [
+        ...(where.AND || []),
+        {
+          OR: [
+            { exactPrice: { lte: parseFloat(maxPrice) } },
+            { estimatedMaxPrice: { lte: parseFloat(maxPrice) } },
+            { primeDayPrice: { lte: parseFloat(maxPrice) } },
+          ],
+        },
       ];
     }
+
+    // Fetch areas for sorting
+    const areas = await prisma.area.findMany({
+      select: { name: true, priority: true },
+      orderBy: { priority: "desc" },
+    });
+    const areaPriorityMap = new Map(areas.map(a => [a.name.toLowerCase(), a.priority]));
 
     const venues = await prisma.venue.findMany({
       where,
@@ -47,12 +77,48 @@ export async function GET(request: Request) {
           },
         },
       },
-      orderBy: {
-        createdAt: "desc",
-      },
     });
 
-    return NextResponse.json({ venues });
+    // Apply sorting
+    let sortedVenues = [...venues];
+    
+    switch (sortBy) {
+      case "area":
+        // Sort by area priority (highest first), then by view count
+        sortedVenues.sort((a, b) => {
+          const aPriority = areaPriorityMap.get(a.area?.toLowerCase() || "") || 0;
+          const bPriority = areaPriorityMap.get(b.area?.toLowerCase() || "") || 0;
+          if (bPriority !== aPriority) return bPriority - aPriority;
+          // Secondary sort by view count
+          return (b.viewCount || 0) - (a.viewCount || 0);
+        });
+        break;
+      case "price-low":
+        sortedVenues.sort((a, b) => {
+          const aPrice = a.exactPrice || a.estimatedMinPrice || a.nonPrimeDayPrice || 0;
+          const bPrice = b.exactPrice || b.estimatedMinPrice || b.nonPrimeDayPrice || 0;
+          return aPrice - bPrice;
+        });
+        break;
+      case "price-high":
+        sortedVenues.sort((a, b) => {
+          const aPrice = a.exactPrice || a.estimatedMaxPrice || a.primeDayPrice || 0;
+          const bPrice = b.exactPrice || b.estimatedMaxPrice || b.primeDayPrice || 0;
+          return bPrice - aPrice;
+        });
+        break;
+      case "popular":
+        sortedVenues.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
+        break;
+      case "newest":
+      default:
+        sortedVenues.sort((a, b) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        break;
+    }
+
+    return NextResponse.json({ venues: sortedVenues, areas });
   } catch (error: any) {
     console.error("Error fetching venues:", error?.message || error);
     return NextResponse.json(

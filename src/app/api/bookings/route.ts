@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { createBookingSchema, formatZodErrors } from "@/lib/validations";
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export async function GET(request: Request) {
   try {
@@ -160,6 +162,12 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    // Rate limiting
+    const { success: rateLimitOk, resetTime } = rateLimit(request, { windowMs: 60000, maxRequests: 10 });
+    if (!rateLimitOk) {
+      return rateLimitResponse(resetTime);
+    }
+
     const user = await getCurrentUser();
 
     if (!user) {
@@ -170,43 +178,32 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
+    
+    // Zod validation
+    const validationResult = createBookingSchema.safeParse(body);
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: formatZodErrors(validationResult.error) },
+        { status: 400 }
+      );
+    }
+
     const {
       type,
       venueId,
       catererId,
       eventDate,
-      eventType,
       guestCount,
       selectedPackage,
       totalAmount,
-      advanceAmount,
       customerName,
       customerEmail,
       customerPhone,
       specialRequests,
-    } = body;
+    } = validationResult.data;
 
-    // Validation
-    if (!type || !eventDate || !customerName || !customerEmail || !customerPhone) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
-
-    if (type === "VENUE" && !venueId) {
-      return NextResponse.json(
-        { error: "Venue ID is required for venue booking" },
-        { status: 400 }
-      );
-    }
-
-    if (type === "CATERING" && !catererId) {
-      return NextResponse.json(
-        { error: "Caterer ID is required for catering booking" },
-        { status: 400 }
-      );
-    }
+    const eventType = (body as any).eventType;
+    const advanceAmount = (body as any).advanceAmount;
 
     // Check if date is already blocked or booked
     const blockedDate = await prisma.blockedDate.findFirst({

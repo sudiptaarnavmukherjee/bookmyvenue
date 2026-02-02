@@ -1,0 +1,23 @@
+# BookMyVenue
+
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://bookmyvenue.in/sitemap.xml
+
+# Disallow admin and API routes
+Disallow: /admin
+Disallow: /api/
+Disallow: /auth/
+
+# Allow search engine crawlers
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+# Crawl delay for other bots
+User-agent: *
+Crawl-delay: 1

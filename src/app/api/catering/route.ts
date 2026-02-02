@@ -5,20 +5,44 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const city = searchParams.get("city");
+    const area = searchParams.get("area");
     const isPureVeg = searchParams.get("isPureVeg");
+    const sortBy = searchParams.get("sortBy") || "area"; // area, price-low, price-high, popular, newest
+    const includeUnverified = searchParams.get("includeUnverified") === "true";
 
     const where: any = {
       isActive: true,
-      isVerified: true,
     };
+
+    // Include unverified (fishbowl) caterers for browsing
+    if (!includeUnverified) {
+      where.OR = [
+        { isVerified: true },
+        { isAdminListed: true }, // Show fishbowl caterers too
+      ];
+    }
 
     if (city) {
       where.city = city;
     }
 
-    if (isPureVeg !== null) {
+    if (area) {
+      where.area = {
+        contains: area,
+        mode: "insensitive",
+      };
+    }
+
+    if (isPureVeg !== null && isPureVeg !== undefined) {
       where.isPureVeg = isPureVeg === "true";
     }
+
+    // Fetch areas for sorting
+    const areas = await prisma.area.findMany({
+      select: { name: true, priority: true },
+      orderBy: { priority: "desc" },
+    });
+    const areaPriorityMap = new Map(areas.map(a => [a.name.toLowerCase(), a.priority]));
 
     const caterers = await prisma.caterer.findMany({
       where,
@@ -42,12 +66,51 @@ export async function GET(request: Request) {
           },
         },
       },
-      orderBy: {
-        rating: "desc",
-      },
     });
 
-    return NextResponse.json({ caterers });
+    // Apply sorting
+    let sortedCaterers = [...caterers];
+    
+    switch (sortBy) {
+      case "area":
+        // Sort by area priority (highest first), then by view count
+        sortedCaterers.sort((a, b) => {
+          const aPriority = areaPriorityMap.get(a.area?.toLowerCase() || "") || 0;
+          const bPriority = areaPriorityMap.get(b.area?.toLowerCase() || "") || 0;
+          if (bPriority !== aPriority) return bPriority - aPriority;
+          // Secondary sort by view count
+          return (b.viewCount || 0) - (a.viewCount || 0);
+        });
+        break;
+      case "price-low":
+        sortedCaterers.sort((a, b) => {
+          const aPrice = a.silverPrice || a.minPlatePrice || 0;
+          const bPrice = b.silverPrice || b.minPlatePrice || 0;
+          return aPrice - bPrice;
+        });
+        break;
+      case "price-high":
+        sortedCaterers.sort((a, b) => {
+          const aPrice = a.platinumPrice || a.minPlatePrice || 0;
+          const bPrice = b.platinumPrice || b.minPlatePrice || 0;
+          return bPrice - aPrice;
+        });
+        break;
+      case "popular":
+        sortedCaterers.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
+        break;
+      case "rating":
+        sortedCaterers.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        break;
+      case "newest":
+      default:
+        sortedCaterers.sort((a, b) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        break;
+    }
+
+    return NextResponse.json({ caterers: sortedCaterers, areas });
   } catch (error) {
     console.error("Error fetching caterers:", error);
     return NextResponse.json(

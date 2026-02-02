@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Users, MapPin, CheckCircle2, Heart } from "lucide-react";
+import { Users, MapPin, CheckCircle2, Heart, Phone, Calendar, Star, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api-client";
 import { useSession } from "next-auth/react";
@@ -14,14 +14,22 @@ interface VenueCardProps {
   venueId?: string;
   name: string;
   city: string;
-  priceMode: "exact" | "estimated";
+  area?: string;
+  priceMode: "exact" | "estimated" | "EXACT" | "ESTIMATED";
   exactPrice?: number;
   estimatedMinPrice?: number;
   estimatedMaxPrice?: number;
+  primeDayPrice?: number;
+  nonPrimeDayPrice?: number;
   minGuests: number;
   maxGuests: number;
   coverImage: string;
   isVerified: boolean;
+  bookingEnabled?: boolean;
+  isAdminListed?: boolean;
+  contactNumber?: string;
+  contactName?: string;
+  viewCount?: number;
   inWishlist?: boolean;
 }
 
@@ -30,19 +38,30 @@ export function VenueCard({
   venueId,
   name,
   city,
+  area,
   priceMode,
   exactPrice,
   estimatedMinPrice,
   estimatedMaxPrice,
+  primeDayPrice,
+  nonPrimeDayPrice,
   minGuests,
   maxGuests,
   coverImage,
   isVerified,
+  bookingEnabled = false,
+  isAdminListed = true,
+  contactNumber,
+  contactName,
+  viewCount,
   inWishlist = false,
 }: VenueCardProps) {
   const { data: session } = useSession();
   const [isInWishlist, setIsInWishlist] = useState(inWishlist);
   const [wishlistLoading, setWishlistLoading] = useState(false);
+
+  // Determine if this is a fishbowl listing (admin added, no online booking)
+  const isFishbowl = isAdminListed && !bookingEnabled;
 
   const handleWishlistToggle = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -53,15 +72,16 @@ export function VenueCard({
       return;
     }
 
-    if (!venueId) return;
+    if (!venueId && !id) return;
 
     try {
       setWishlistLoading(true);
+      const targetId = venueId || id;
       if (isInWishlist) {
-        await api.removeFromWishlist(venueId);
+        await api.removeFromWishlist(targetId);
         setIsInWishlist(false);
       } else {
-        await api.addToWishlist({ venueId });
+        await api.addToWishlist({ venueId: targetId });
         setIsInWishlist(true);
       }
     } catch (err) {
@@ -71,7 +91,18 @@ export function VenueCard({
     }
   };
 
+  const handleCall = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (contactNumber) {
+      window.location.href = `tel:${contactNumber}`;
+    }
+  };
+
   const formatPrice = (price: number) => {
+    if (price >= 100000) {
+      return `₹${(price / 100000).toFixed(1)}L`;
+    }
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
@@ -79,87 +110,127 @@ export function VenueCard({
     }).format(price);
   };
 
+  const normalizedPriceMode = priceMode?.toUpperCase();
+
   return (
     <motion.div
-      whileHover={{ y: -8, scale: 1.02 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
-      className="card-elite hover-scale overflow-hidden"
+      whileHover={{ y: -4, scale: 1.01 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100"
     >
       <Link href={`/venues/${id}`}>
-        <div className="relative aspect-[4/3] overflow-hidden image-overlay">
+        {/* Image Section */}
+        <div className="relative aspect-[16/10] overflow-hidden">
           <Image
-            src={coverImage}
+            src={coverImage || "/placeholder-venue.jpg"}
             alt={name}
             fill
-            className="object-cover transition-transform duration-500 hover:scale-110"
+            className="object-cover transition-transform duration-500 hover:scale-105"
           />
+          
+          {/* Top Left - Wishlist */}
           <button
             onClick={handleWishlistToggle}
             disabled={wishlistLoading}
-            className="absolute left-4 top-4 rounded-full bg-white/90 p-2.5 shadow-lg hover:bg-white transition-all disabled:opacity-50 z-10"
+            className="absolute left-3 top-3 rounded-full bg-white/95 p-2 shadow-lg hover:bg-white transition-all disabled:opacity-50 z-10"
           >
             <Heart
               className={cn(
                 "h-5 w-5 transition-colors",
-                isInWishlist ? "fill-red-500 text-red-500" : "text-gray-600"
+                isInWishlist ? "fill-rose-500 text-rose-500" : "text-gray-600"
               )}
             />
           </button>
-          {isVerified && (
-            <div className="badge-verified absolute right-4 top-4">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              Verified
-            </div>
-          )}
-        </div>
-
-        <div className="p-6">
-          <h3 className="mb-3 text-xl font-bold text-gray-900">{name}</h3>
-
-          <div className="mb-3 flex items-center gap-2 text-sm text-gray-600">
-            <MapPin className="h-4 w-4 text-purple-600" />
-            <span className="font-medium">{city}</span>
+          
+          {/* Top Right - Badges */}
+          <div className="absolute right-3 top-3 flex flex-col gap-2 z-10">
+            {isVerified && bookingEnabled ? (
+              <div className="flex items-center gap-1 px-2.5 py-1 bg-green-500 text-white text-xs font-semibold rounded-full shadow-lg">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Verified
+              </div>
+            ) : isFishbowl ? (
+              <div className="flex items-center gap-1 px-2.5 py-1 bg-amber-500 text-white text-xs font-semibold rounded-full shadow-lg">
+                <Phone className="h-3.5 w-3.5" />
+                Call to Book
+              </div>
+            ) : null}
           </div>
 
-          <div className="mb-4 flex items-center gap-2 text-sm text-gray-600">
-            <Users className="h-4 w-4 text-purple-600" />
-            <span className="font-medium">
-              {minGuests} - {maxGuests} guests
+          {/* Bottom - Price Badge */}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 pt-8">
+            {primeDayPrice && nonPrimeDayPrice ? (
+              <div className="flex items-center gap-3">
+                <div className="bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg">
+                  <p className="text-[10px] text-gray-500 font-medium">PRIME</p>
+                  <p className="text-sm font-bold text-rose-600">{formatPrice(primeDayPrice)}</p>
+                </div>
+                <div className="bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg">
+                  <p className="text-[10px] text-gray-500 font-medium">REGULAR</p>
+                  <p className="text-sm font-bold text-gray-800">{formatPrice(nonPrimeDayPrice)}</p>
+                </div>
+              </div>
+            ) : normalizedPriceMode === "EXACT" && exactPrice ? (
+              <div className="bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg inline-block">
+                <p className="text-lg font-bold text-gray-900">{formatPrice(exactPrice)}</p>
+              </div>
+            ) : (
+              <div className="bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg inline-block">
+                <p className="text-[10px] text-gray-500 font-medium">APPROX.</p>
+                <p className="text-sm font-bold text-gray-800">
+                  {formatPrice(estimatedMinPrice || 0)} - {formatPrice(estimatedMaxPrice || 0)}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Content Section */}
+        <div className="p-4">
+          <h3 className="text-lg font-bold text-gray-900 mb-1.5 line-clamp-1">{name}</h3>
+
+          <div className="flex items-center gap-1.5 text-gray-600 mb-2">
+            <MapPin className="h-4 w-4 text-rose-500 flex-shrink-0" />
+            <span className="text-sm font-medium truncate">
+              {area ? `${area}, ${city}` : city}
             </span>
           </div>
 
-          <div className="divider-elegant mb-4" />
-
-          <div className="mb-6">
-            {priceMode === "exact" ? (
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Starting from</p>
-                <p className="text-3xl font-bold text-gradient bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  {formatPrice(exactPrice!)}
-                </p>
-              </div>
-            ) : (
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Estimated Range</p>
-                <p className="text-xl font-bold text-gray-900">
-                  {formatPrice(estimatedMinPrice!)} - {formatPrice(estimatedMaxPrice!)}
-                </p>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-1.5 text-gray-600">
+              <Users className="h-4 w-4 text-purple-500" />
+              <span className="text-sm">{minGuests}-{maxGuests} guests</span>
+            </div>
+            {viewCount !== undefined && viewCount > 0 && (
+              <div className="flex items-center gap-1 text-gray-400 text-xs">
+                <Eye className="h-3.5 w-3.5" />
+                <span>{viewCount > 100 ? `${Math.floor(viewCount/100)*100}+` : viewCount} views</span>
               </div>
             )}
           </div>
 
-          <button
-            className={cn(
-              "w-full rounded-xl py-3 font-semibold transition-colors",
-              isVerified
-                ? "bg-rose-600 text-white hover:bg-rose-700"
-                : "border-2 border-rose-600 text-rose-600 hover:bg-rose-50"
-            )}
-          >
-            {isVerified ? "Book Now" : "Get Quote"}
-          </button>
+          {/* CTA Button */}
+          {isFishbowl ? (
+            <button
+              onClick={handleCall}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
+            >
+              <Phone className="h-4 w-4" />
+              Call {contactName || "to Book"}
+            </button>
+          ) : bookingEnabled ? (
+            <button className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all">
+              <Calendar className="h-4 w-4" />
+              Book Online
+            </button>
+          ) : (
+            <button className="w-full flex items-center justify-center gap-2 py-3 border-2 border-rose-500 text-rose-600 rounded-xl font-semibold hover:bg-rose-50 transition-all">
+              View Details
+            </button>
+          )}
         </div>
       </Link>
     </motion.div>
   );
 }
+
