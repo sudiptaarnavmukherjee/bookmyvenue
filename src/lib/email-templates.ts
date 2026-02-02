@@ -12,7 +12,7 @@ export async function getEmailTemplate(name: string): Promise<string | null> {
   const template = await prisma.emailTemplate.findUnique({
     where: { name },
   });
-  return template?.htmlContent || null;
+  return template?.body || null;
 }
 
 // Render template with variables
