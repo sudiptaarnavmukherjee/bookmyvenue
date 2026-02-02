@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
       ownerEmail: c.booking.venue?.owner.email || c.booking.caterer?.owner.email,
       eventDate: c.booking.eventDate,
       totalAmount: c.booking.totalAmount,
-      paidAmount: c.booking.paidAmount,
+      paidAmount: c.booking.advanceAmount || 0,
       refundAmount: c.refundAmount,
       refundPercentage: c.refundPercentage,
       reason: c.reason,

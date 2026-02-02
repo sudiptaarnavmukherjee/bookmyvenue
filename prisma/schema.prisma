@@ -334,6 +334,7 @@ model Booking {
   user     User      @relation(fields: [userId], references: [id])
   payments Payment[]
   review   Review?
+  cancellationRequest CancellationRequest?
 
   @@index([eventDate])
   @@index([status])
@@ -810,6 +811,7 @@ model SmsLog {
 model CancellationRequest {
   id          String    @id @default(cuid())
   bookingId   String    @unique
+  booking     Booking   @relation(fields: [bookingId], references: [id])
   
   // Request Details
   requestedBy String    // USER, OWNER, ADMIN
@@ -817,6 +819,7 @@ model CancellationRequest {
   
   // Status
   status      String    @default("PENDING")  // PENDING, APPROVED, REJECTED, PROCESSED
+  approvedAt  DateTime?
   
   // Refund Details
   refundAmount      Float?
