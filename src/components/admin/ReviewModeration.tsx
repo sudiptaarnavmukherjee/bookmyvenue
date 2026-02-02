@@ -27,6 +27,7 @@ interface Review {
     id: string;
     name: string | null;
     email: string;
+    image?: string | null;
   };
   venue: {
     id: string;
