@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { PayoutStatus, Prisma } from "@prisma/client";
 
 // GET /api/admin/payouts - Get all payout requests
 export async function GET(req: NextRequest) {
@@ -13,11 +14,11 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
-    const status = searchParams.get("status");
+    const status = searchParams.get("status") as PayoutStatus | null;
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
 
-    const where = status ? { status } : {};
+    const where: Prisma.PayoutWhereInput = status ? { status } : {};
 
     const [payouts, total, stats] = await Promise.all([
       prisma.payout.findMany({
