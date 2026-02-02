@@ -47,12 +47,12 @@ interface AnalyticsData {
   largeTransactions: Array<{
     id: string;
     amount: number;
-    status: string;
-    createdAt: string;
+    paidAt: string;
+    method: string;
     booking: {
-      id: string;
-      venue?: { name: string };
-      caterer?: { businessName: string };
+      bookingNumber: string;
+      customerName: string;
+      propertyName: string;
     };
   }>;
 }
@@ -294,10 +294,10 @@ export default function RevenueAnalytics() {
               <div key={txn.id} className="py-3 flex items-center justify-between">
                 <div>
                   <p className="font-medium">
-                    {txn.booking.venue?.name || txn.booking.caterer?.businessName}
+                    {txn.booking.propertyName}
                   </p>
                   <p className="text-sm text-gray-500">
-                    {new Date(txn.createdAt).toLocaleDateString("en-IN", {
+                    {new Date(txn.paidAt).toLocaleDateString("en-IN", {
                       day: "numeric",
                       month: "short",
                       year: "numeric",

@@ -41,7 +41,7 @@ interface UserData {
 
 interface UserDetails extends UserData {
   venues: Array<{ id: string; name: string; isActive: boolean }>;
-  caterers: Array<{ id: string; businessName: string; isActive: boolean }>;
+  caterers: Array<{ id: string; name: string; isActive: boolean }>;
   bookings: Array<{
     id: string;
     status: string;

@@ -54,7 +54,7 @@ export async function GET(
         caterings: {
           select: {
             id: true,
-            businessName: true,
+            name: true,
             city: true,
             isVerified: true,
             isActive: true,

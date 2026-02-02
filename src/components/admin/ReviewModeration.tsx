@@ -27,20 +27,20 @@ interface Review {
     id: string;
     name: string | null;
     email: string;
-    image: string | null;
   };
+  venue: {
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
   caterer: {
     id: string;
-    businessName: string;
-    owner: {
-      name: string | null;
-      email: string;
-    };
-  };
+    name: string;
+    slug: string;
+  } | null;
   booking: {
-    id: string;
+    bookingNumber: string;
     eventDate: string;
-    totalAmount: number;
   } | null;
 }
 
@@ -289,15 +289,11 @@ export default function ReviewModeration() {
                       {/* Review Comment */}
                       <p className="text-gray-700 mt-3">{review.comment}</p>
 
-                      {/* Caterer Info */}
+                      {/* Property Info */}
                       <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                         <div className="flex items-center gap-2 text-sm">
                           <Building className="h-4 w-4 text-gray-400" />
-                          <span className="font-medium">{review.caterer.businessName}</span>
-                          <span className="text-gray-400">•</span>
-                          <span className="text-gray-500">
-                            Owner: {review.caterer.owner.name || review.caterer.owner.email}
-                          </span>
+                          <span className="font-medium">{review.venue?.name || review.caterer?.name}</span>
                         </div>
                         {review.booking && (
                           <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
@@ -307,7 +303,7 @@ export default function ReviewModeration() {
                               {new Date(review.booking.eventDate).toLocaleDateString("en-IN")}
                             </span>
                             <span>
-                              Amount: ₹{review.booking.totalAmount.toLocaleString("en-IN")}
+                              Booking: {review.booking.bookingNumber}
                             </span>
                           </div>
                         )}
