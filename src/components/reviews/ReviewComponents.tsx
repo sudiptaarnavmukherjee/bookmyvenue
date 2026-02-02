@@ -247,7 +247,7 @@ export function ReviewCard({ review, onFlag }: { review: Review; onFlag?: (id: s
         <div className="mt-4 ml-4 pl-4 border-l-2 border-pink-200 bg-pink-50/50 rounded-r-lg p-3">
           <div className="flex items-center gap-2 mb-2">
             <MessageSquare className="w-4 h-4 text-pink-600" />
-            <span className="text-sm font-semibold text-pink-600">Owner's Response</span>
+            <span className="text-sm font-semibold text-pink-600">Owner&apos;s Response</span>
             {review.ownerRespondedAt && (
               <span className="text-xs text-gray-500">
                 • {new Date(review.ownerRespondedAt).toLocaleDateString("en-IN")}

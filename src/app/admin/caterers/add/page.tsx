@@ -227,8 +227,8 @@ export default function AdminAddCatererPage() {
             <div>
               <h3 className="font-semibold text-blue-900">Fishbowl Catering Model</h3>
               <p className="text-sm text-blue-700 mt-1">
-                Add caterers with Silver, Gold & Platinum tier pricing. Customers will see approximate rates 
-                and a "Call for Booking" option. Once verified and tagged to an owner, they can add custom menus.
+                Add caterers with Silver, Gold &amp; Platinum tier pricing. Customers will see approximate rates 
+                and a &quot;Call for Booking&quot; option. Once verified and tagged to an owner, they can add custom menus.
               </p>
             </div>
           </div>

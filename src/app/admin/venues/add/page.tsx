@@ -242,7 +242,7 @@ export default function AdminAddVenuePage() {
             <div>
               <h3 className="font-semibold text-blue-900">Fishbowl Model</h3>
               <p className="text-sm text-blue-700 mt-1">
-                This venue will be listed with approximate pricing. Customers will see a "Call for Booking" 
+                This venue will be listed with approximate pricing. Customers will see a &quot;Call for Booking&quot; 
                 button instead of online booking. Once you verify an owner and tag this venue to their account, 
                 online booking will be enabled.
               </p>

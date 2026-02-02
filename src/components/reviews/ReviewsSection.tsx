@@ -145,7 +145,7 @@ export function ReviewsSection({
                 Share your experience!
               </h3>
               <p className="text-sm text-gray-600">
-                You've completed a booking. Help others by writing a review.
+                You&apos;ve completed a booking. Help others by writing a review.
               </p>
             </div>
             <button
