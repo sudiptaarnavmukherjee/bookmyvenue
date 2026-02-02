@@ -244,6 +244,13 @@ export async function POST(request: Request) {
     // Create booking and block the date atomically
     const booking = await prisma.$transaction(async (tx) => {
       // Create the booking
+      // Note: guestCount and totalAmount are already numbers from Zod validation
+      // advanceAmount comes from body directly, so needs parsing if string
+      const parsedAdvance = advanceAmount 
+        ? (typeof advanceAmount === 'string' ? parseFloat(advanceAmount) : advanceAmount)
+        : null;
+      const parsedTotal = totalAmount ?? null;
+      
       const newBooking = await tx.booking.create({
         data: {
           bookingNumber,
@@ -253,12 +260,12 @@ export async function POST(request: Request) {
           catererId: type === "CATERING" ? catererId : null,
           eventDate: new Date(eventDate),
           eventType,
-          guestCount: guestCount ? parseInt(guestCount) : null,
+          guestCount: guestCount ?? null,
           selectedPackage,
-          totalAmount: totalAmount ? parseFloat(totalAmount) : null,
-          advanceAmount: advanceAmount ? parseFloat(advanceAmount) : null,
-          balanceAmount: totalAmount && advanceAmount 
-            ? parseFloat(totalAmount) - parseFloat(advanceAmount)
+          totalAmount: parsedTotal,
+          advanceAmount: parsedAdvance,
+          balanceAmount: parsedTotal && parsedAdvance 
+            ? parsedTotal - parsedAdvance
             : null,
           customerName,
           customerEmail,
