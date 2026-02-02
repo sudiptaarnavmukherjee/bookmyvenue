@@ -154,10 +154,11 @@ export async function PATCH(request: NextRequest) {
       where: { id },
       data: {
         status: newStatus,
-        approvedBy: session.user.id,
+        processedBy: session.user.id,
         approvedAt: new Date(),
+        processedAt: new Date(),
         refundAmount: finalRefundAmount,
-        adminNotes: reason,
+        processNotes: reason,
       },
     });
 
