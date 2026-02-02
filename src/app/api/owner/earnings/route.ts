@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { PaymentStatus, PayoutStatus } from "@prisma/client";
 
 // GET /api/owner/earnings - Get owner earnings summary
 export async function GET(req: NextRequest) {
@@ -52,7 +53,7 @@ export async function GET(req: NextRequest) {
 
     // Get completed payments for owner's properties
     const paymentsWhere = {
-      status: "COMPLETED",
+      status: PaymentStatus.COMPLETED,
       booking: {
         OR: [
           { venueId: { in: venueIds } },
@@ -87,7 +88,7 @@ export async function GET(req: NextRequest) {
       prisma.payout.aggregate({
         where: {
           ownerId,
-          status: "COMPLETED",
+          status: PayoutStatus.COMPLETED,
           ...(startDate && { processedAt: { gte: startDate } }),
         },
         _sum: { amount: true },
@@ -193,7 +194,7 @@ async function getMonthlyEarnings(
 
     const earnings = await prisma.payment.aggregate({
       where: {
-        status: "COMPLETED",
+        status: PaymentStatus.COMPLETED,
         paidAt: {
           gte: startOfMonth,
           lte: endOfMonth,
