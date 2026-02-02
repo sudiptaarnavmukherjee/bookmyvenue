@@ -276,7 +276,7 @@ export async function POST(request: Request) {
             : null,
           customerName,
           customerEmail,
-          customerPhone,
+          customerPhone: customerPhone || "",
           specialRequests,
           status: "PENDING",
           isPaid: false,
