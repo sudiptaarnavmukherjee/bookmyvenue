@@ -3,6 +3,7 @@ import prisma from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { createBookingSchema, formatZodErrors } from "@/lib/validations";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
+import { PackageTier } from "@prisma/client";
 
 export async function GET(request: Request) {
   try {
@@ -251,6 +252,12 @@ export async function POST(request: Request) {
         : null;
       const parsedTotal = totalAmount ?? null;
       
+      // Validate and cast selectedPackage to PackageTier enum
+      const validPackages: PackageTier[] = ['SILVER', 'GOLD', 'DIAMOND', 'PLATINUM'];
+      const packageTier: PackageTier | null = selectedPackage && validPackages.includes(selectedPackage as PackageTier) 
+        ? (selectedPackage as PackageTier) 
+        : null;
+
       const newBooking = await tx.booking.create({
         data: {
           bookingNumber,
@@ -261,7 +268,7 @@ export async function POST(request: Request) {
           eventDate: new Date(eventDate),
           eventType,
           guestCount: guestCount ?? null,
-          selectedPackage,
+          selectedPackage: packageTier,
           totalAmount: parsedTotal,
           advanceAmount: parsedAdvance,
           balanceAmount: parsedTotal && parsedAdvance 
