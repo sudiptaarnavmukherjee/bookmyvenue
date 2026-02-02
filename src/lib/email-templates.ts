@@ -4,7 +4,16 @@
 import { prisma } from "@/lib/prisma";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy-loaded Resend instance to avoid build-time errors
+let resendInstance: Resend | null = null;
+
+function getResend(): Resend {
+  if (!resendInstance) {
+    resendInstance = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resendInstance;
+}
+
 const FROM_EMAIL = process.env.FROM_EMAIL || "ShubhSpace <noreply@shubhspace.com>";
 
 // Get or create email template
@@ -51,7 +60,7 @@ export async function sendTemplatedEmail(data: {
     const renderedSubject = renderTemplate(data.subject, data.variables);
 
     // Send email via Resend
-    const result = await resend.emails.send({
+    const result = await getResend().emails.send({
       from: FROM_EMAIL,
       to: data.to,
       subject: renderedSubject,

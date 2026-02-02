@@ -1,11 +1,18 @@
 import Razorpay from "razorpay";
 import crypto from "crypto";
 
-// Initialize Razorpay instance
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-});
+// Lazy-loaded Razorpay instance to avoid build-time errors
+let razorpayInstance: Razorpay | null = null;
+
+function getRazorpay(): Razorpay {
+  if (!razorpayInstance) {
+    razorpayInstance = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID!,
+      key_secret: process.env.RAZORPAY_KEY_SECRET!,
+    });
+  }
+  return razorpayInstance;
+}
 
 // Platform commission percentage (e.g., 5%)
 export const PLATFORM_COMMISSION_PERCENT = parseFloat(
@@ -43,7 +50,7 @@ export async function createOrder(params: CreateOrderParams): Promise<OrderRespo
   // Razorpay expects amount in paise (1 INR = 100 paise)
   const amountInPaise = Math.round(amount * 100);
 
-  const order = await razorpay.orders.create({
+  const order = await getRazorpay().orders.create({
     amount: amountInPaise,
     currency,
     receipt,
@@ -74,12 +81,12 @@ export function verifyPaymentSignature(params: VerifyPaymentParams): boolean {
 
 // Fetch payment details
 export async function fetchPayment(paymentId: string) {
-  return razorpay.payments.fetch(paymentId);
+  return getRazorpay().payments.fetch(paymentId);
 }
 
 // Fetch order details
 export async function fetchOrder(orderId: string) {
-  return razorpay.orders.fetch(orderId);
+  return getRazorpay().orders.fetch(orderId);
 }
 
 interface RefundParams {
@@ -99,7 +106,7 @@ export async function initiateRefund(params: RefundParams) {
     refundOptions.amount = Math.round(amount * 100);
   }
 
-  return razorpay.payments.refund(paymentId, refundOptions);
+  return getRazorpay().payments.refund(paymentId, refundOptions);
 }
 
 // Calculate amounts
@@ -144,4 +151,4 @@ export const PAYMENT_STATUS_MAP = {
   failed: "FAILED",
 } as const;
 
-export default razorpay;
+export { getRazorpay as default };
