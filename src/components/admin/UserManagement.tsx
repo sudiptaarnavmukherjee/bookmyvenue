@@ -33,7 +33,7 @@ interface UserData {
   image: string | null;
   _count?: {
     venues: number;
-    caterers: number;
+    caterings: number;
     bookings: number;
     reviews: number;
   };
@@ -41,7 +41,7 @@ interface UserData {
 
 interface UserDetails extends UserData {
   venues: Array<{ id: string; name: string; isActive: boolean }>;
-  caterers: Array<{ id: string; name: string; isActive: boolean }>;
+  caterings: Array<{ id: string; name: string; isActive: boolean }>;
   bookings: Array<{
     id: string;
     status: string;
@@ -267,9 +267,9 @@ export default function UserManagement() {
                                     {user._count.venues} venues
                                   </span>
                                 )}
-                                {user._count.caterers > 0 && (
+                                {user._count.caterings > 0 && (
                                   <span className="text-xs text-gray-400">
-                                    {user._count.caterers} caterers
+                                    {user._count.caterings} caterers
                                   </span>
                                 )}
                                 {user._count.bookings > 0 && (

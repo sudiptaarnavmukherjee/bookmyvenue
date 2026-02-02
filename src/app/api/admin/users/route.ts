@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
           _count: {
             select: {
               venues: true,
-              caterers: true,
+              caterings: true,
               bookings: true,
               reviews: true,
             },
