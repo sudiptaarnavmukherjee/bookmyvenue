@@ -547,11 +547,12 @@ export default function VenuesPage() {
         {/* Results Count */}
         <p className="mb-4 text-sm text-gray-600 flex items-center justify-between">
           <span>Showing {sortedVenues.length} of {venues.length} venues</span>
-          {sortBy !== "default" && (
+          {sortBy !== "area" && (
             <span className="text-xs text-purple-600 font-semibold">
               Sorted by: {sortBy === "price-low" ? "Price (Low to High)" : 
                          sortBy === "price-high" ? "Price (High to Low)" :
-                         sortBy === "capacity" ? "Capacity" : "Verified First"}
+                         sortBy === "popular" ? "Most Popular" : 
+                         sortBy === "newest" ? "Newest" : "Area"}
             </span>
           )}
         </p>
