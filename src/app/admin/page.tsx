@@ -29,6 +29,16 @@ import {
 import Link from "next/link";
 import dynamic from "next/dynamic";
 
+// ComponentLoader must be defined before dynamic imports that use it
+function ComponentLoader({ text }: { text: string }) {
+  return (
+    <div className="flex items-center justify-center py-12">
+      <Sparkles className="h-8 w-8 text-purple-600 animate-spin mr-3" />
+      <span className="text-gray-600">{text}</span>
+    </div>
+  );
+}
+
 // Lazy load Phase 7 components
 const PayoutManagement = dynamic(() => import("@/components/admin/PayoutManagement"), {
   loading: () => <ComponentLoader text="Loading Payouts..." />,
@@ -45,15 +55,6 @@ const ReviewModeration = dynamic(() => import("@/components/admin/ReviewModerati
 const UserManagement = dynamic(() => import("@/components/admin/UserManagement"), {
   loading: () => <ComponentLoader text="Loading Users..." />,
 });
-
-function ComponentLoader({ text }: { text: string }) {
-  return (
-    <div className="flex items-center justify-center py-12">
-      <Sparkles className="h-8 w-8 text-purple-600 animate-spin mr-3" />
-      <span className="text-gray-600">{text}</span>
-    </div>
-  );
-}
 
 interface Venue {
   id: string;
@@ -551,24 +552,6 @@ export default function AdminDashboard() {
           >
             <Activity className="inline h-5 w-5 mr-2" />
             Audit Logs
-          </button>
-        </div>
-                : "bg-white/60 text-gray-700 hover:bg-white"
-            }`}
-          >
-            <UtensilsCrossed className="inline h-5 w-5 mr-2" />
-            Caterers ({caterers.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("bookings")}
-            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
-              activeTab === "bookings"
-                ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
-                : "bg-white/60 text-gray-700 hover:bg-white"
-            }`}
-          >
-            <CalendarDays className="inline h-5 w-5 mr-2" />
-            Bookings ({bookings.length})
           </button>
         </div>
 
