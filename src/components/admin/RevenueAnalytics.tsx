@@ -49,6 +49,7 @@ interface AnalyticsData {
     amount: number;
     paidAt: string;
     method: string;
+    status: string;
     booking: {
       bookingNumber: string;
       customerName: string;
