@@ -1,3 +1,4 @@
+import React from "react";
 import { siteConfig } from "./seo";
 
 // Organization schema for the website
