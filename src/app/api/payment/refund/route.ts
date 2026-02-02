@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { PaymentStatus } from "@prisma/client";
 import { initiateRefund } from "@/lib/razorpay";
 import { z } from "zod";
 
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if payment can be refunded
-    if (payment.status !== "COMPLETED") {
+    if (payment.status !== PaymentStatus.COMPLETED) {
       return NextResponse.json(
         { error: "Only completed payments can be refunded" },
         { status: 400 }
@@ -124,7 +125,7 @@ export async function POST(req: NextRequest) {
     if (newStatus === "REFUNDED") {
       const booking = await prisma.booking.findUnique({
         where: { id: payment.bookingId },
-        include: { payments: { where: { status: "COMPLETED" } } },
+        include: { payments: { where: { status: PaymentStatus.COMPLETED } } },
       });
 
       if (booking) {

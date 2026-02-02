@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { PaymentStatus } from "@prisma/client";
 import {
   createOrder,
   calculateAmounts,
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
       include: {
         venue: { select: { name: true, ownerId: true } },
         caterer: { select: { name: true, ownerId: true } },
-        payments: { where: { status: "COMPLETED" } },
+        payments: { where: { status: PaymentStatus.COMPLETED } },
         user: { select: { id: true, email: true, name: true } },
       },
     });
@@ -132,7 +133,7 @@ export async function POST(req: NextRequest) {
         bookingId: booking.id,
         amount: paymentAmount,
         type: paymentType,
-        status: "PENDING",
+        status: PaymentStatus.PENDING,
         razorpayOrderId: order.id,
         receiptNumber,
         platformFee,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { PaymentStatus } from "@prisma/client";
 import { z } from "zod";
 
 // Validation schema
@@ -120,7 +121,7 @@ export async function GET(
     const payments = await prisma.payment.findMany({
       where: {
         booking: { userId: id },
-        status: "COMPLETED",
+        status: PaymentStatus.COMPLETED,
       },
       select: {
         amount: true,

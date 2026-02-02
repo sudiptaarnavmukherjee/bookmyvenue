@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { PaymentStatus, PayoutStatus } from "@prisma/client";
 
 // GET /api/admin/analytics/revenue - Get revenue analytics
 export async function GET(req: NextRequest) {
@@ -36,7 +37,7 @@ export async function GET(req: NextRequest) {
     // Get completed payments in range
     const payments = await prisma.payment.findMany({
       where: {
-        status: "COMPLETED",
+        status: PaymentStatus.COMPLETED,
         paidAt: { gte: startDate },
       },
       select: {
@@ -108,7 +109,7 @@ export async function GET(req: NextRequest) {
 
     // Get pending payouts
     const pendingPayouts = await prisma.payout.aggregate({
-      where: { status: "PENDING" },
+      where: { status: PayoutStatus.PENDING },
       _sum: { amount: true },
       _count: true,
     });
@@ -126,7 +127,7 @@ export async function GET(req: NextRequest) {
     // Recent large transactions
     const largeTransactions = await prisma.payment.findMany({
       where: {
-        status: "COMPLETED",
+        status: PaymentStatus.COMPLETED,
         paidAt: { gte: startDate },
         amount: { gte: 50000 }, // 50k+
       },

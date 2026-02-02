@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { PaymentStatus, PayoutStatus } from "@prisma/client";
 
 // GET /api/owner/analytics - Get comprehensive analytics for venue/catering owners
 export async function GET(request: NextRequest) {
@@ -95,7 +96,7 @@ export async function GET(request: NextRequest) {
       include: {
         venue: { select: { id: true, name: true } },
         caterer: { select: { id: true, name: true } },
-        payments: { where: { status: "COMPLETED" } },
+        payments: { where: { status: PaymentStatus.COMPLETED } },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -202,7 +203,7 @@ export async function GET(request: NextRequest) {
     const pendingPayouts = await prisma.payout.aggregate({
       where: {
         ownerId: userId,
-        status: { in: ["PENDING", "PROCESSING"] },
+        status: { in: [PayoutStatus.PENDING, PayoutStatus.PROCESSING] },
       },
       _sum: { amount: true },
       _count: true,
@@ -212,7 +213,7 @@ export async function GET(request: NextRequest) {
     const completedPayouts = await prisma.payout.aggregate({
       where: {
         ownerId: userId,
-        status: "COMPLETED",
+        status: PayoutStatus.COMPLETED,
         processedAt: { gte: startDate },
       },
       _sum: { amount: true },

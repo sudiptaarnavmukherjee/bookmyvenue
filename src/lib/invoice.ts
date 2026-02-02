@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { PaymentStatus } from "@prisma/client";
 
 // Generate unique invoice number
 export function generateInvoiceNumber(type: string = "RECEIPT"): string {
@@ -461,7 +462,7 @@ export async function createInvoice(bookingId: string, paymentId?: string) {
     include: {
       venue: { include: { owner: true } },
       caterer: { include: { owner: true } },
-      payments: { where: { status: "COMPLETED" } },
+      payments: { where: { status: PaymentStatus.COMPLETED } },
       user: true,
     },
   });

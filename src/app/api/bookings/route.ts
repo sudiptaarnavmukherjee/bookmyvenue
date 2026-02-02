@@ -3,7 +3,7 @@ import prisma from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { createBookingSchema, formatZodErrors } from "@/lib/validations";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
-import { PackageTier } from "@prisma/client";
+import { PackageTier, BookingStatus } from "@prisma/client";
 
 export async function GET(request: Request) {
   try {
@@ -278,7 +278,7 @@ export async function POST(request: Request) {
           customerEmail,
           customerPhone: customerPhone || "",
           specialRequests,
-          status: "PENDING",
+          status: BookingStatus.PENDING,
           isPaid: false,
         },
         include: {

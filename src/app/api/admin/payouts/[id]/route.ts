@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { PaymentStatus, PayoutStatus } from "@prisma/client";
 import { z } from "zod";
 
 // Validation schema
@@ -54,7 +55,7 @@ export async function GET(
 
     const payments = await prisma.payment.findMany({
       where: {
-        status: "COMPLETED",
+        status: PaymentStatus.COMPLETED,
         paidAt: {
           gte: payout.periodStart,
           lte: payout.periodEnd,
@@ -157,7 +158,7 @@ export async function POST(
             { status: 400 }
           );
         }
-        updateData = { status: "PROCESSING" };
+        updateData = { status: PayoutStatus.PROCESSING };
         auditAction = "PAYOUT_APPROVED";
         break;
 
@@ -169,7 +170,7 @@ export async function POST(
           );
         }
         updateData = {
-          status: "FAILED",
+          status: PayoutStatus.FAILED,
           failedAt: new Date(),
           failureReason: notes || "Rejected by admin",
         };
@@ -184,7 +185,7 @@ export async function POST(
           );
         }
         updateData = {
-          status: "COMPLETED",
+          status: PayoutStatus.COMPLETED,
           processedAt: new Date(),
           razorpayPayoutId: transactionId,
         };
@@ -196,7 +197,7 @@ export async function POST(
 
         await prisma.payment.updateMany({
           where: {
-            status: "COMPLETED",
+            status: PaymentStatus.COMPLETED,
             isOwnerPaid: false,
             paidAt: {
               gte: payout.periodStart,
@@ -224,7 +225,7 @@ export async function POST(
           );
         }
         updateData = {
-          status: "FAILED",
+          status: PayoutStatus.FAILED,
           failedAt: new Date(),
           failureReason: notes || "Transfer failed",
         };

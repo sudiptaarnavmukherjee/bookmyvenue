@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { PaymentStatus } from "@prisma/client";
 import { sendCancellationSMS } from "@/lib/sms";
 import { sendCancellationEmail } from "@/lib/email-templates";
 
@@ -73,7 +74,7 @@ export async function GET(
         caterer: { include: { owner: true } },
         cancellationRequest: true,
         payments: {
-          where: { status: "COMPLETED" },
+          where: { status: PaymentStatus.COMPLETED },
           select: { amount: true },
         },
       },
@@ -187,7 +188,7 @@ export async function PATCH(
         venue: { include: { owner: true } },
         caterer: { include: { owner: true } },
         payments: {
-          where: { status: "COMPLETED" },
+          where: { status: PaymentStatus.COMPLETED },
           select: { amount: true },
         },
       },

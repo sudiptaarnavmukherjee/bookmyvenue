@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { PaymentStatus } from "@prisma/client";
 import { generateInvoiceNumber, generateInvoiceHTML, calculateGST, formatCurrency } from "@/lib/invoice";
 
 // GET /api/bookings/[id]/invoice - Get or generate invoice for a booking
@@ -39,7 +40,7 @@ export async function GET(
           },
         },
         payments: {
-          where: { status: "COMPLETED" },
+          where: { status: PaymentStatus.COMPLETED },
           orderBy: { createdAt: "desc" },
         },
         user: true,
@@ -231,7 +232,7 @@ export async function POST(
       include: {
         venue: { include: { owner: true } },
         caterer: { include: { owner: true } },
-        payments: { where: { status: "COMPLETED" } },
+        payments: { where: { status: PaymentStatus.COMPLETED } },
       },
     });
 

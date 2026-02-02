@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
+import { PaymentStatus } from "@prisma/client";
 import { sendPaymentConfirmation, sendBookingConfirmation, notifyOwnerNewBooking } from "@/lib/email";
 
 // Razorpay webhook events
@@ -134,7 +135,7 @@ async function handlePaymentCaptured(payload: RazorpayWebhookPayload) {
               owner: { select: { email: true, name: true } },
             },
           },
-          payments: { where: { status: "COMPLETED" } },
+          payments: { where: { status: PaymentStatus.COMPLETED } },
         },
       },
     },
@@ -149,7 +150,7 @@ async function handlePaymentCaptured(payload: RazorpayWebhookPayload) {
     where: { id: payment.id },
     data: {
       razorpayPaymentId,
-      status: "COMPLETED",
+      status: PaymentStatus.COMPLETED,
       paidAt: new Date(),
       method,
       bank,
@@ -280,7 +281,7 @@ async function handlePaymentFailed(payload: RazorpayWebhookPayload) {
   await prisma.payment.update({
     where: { id: payment.id },
     data: {
-      status: "FAILED",
+      status: PaymentStatus.FAILED,
       failedAt: new Date(),
       failureReason: error_description || error_code || "Payment failed",
     },

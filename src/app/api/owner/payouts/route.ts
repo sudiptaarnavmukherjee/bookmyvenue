@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { PaymentStatus, PayoutStatus } from "@prisma/client";
 import { z } from "zod";
 
 // Validation schema for payout request
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
 
     const where = {
       ownerId: session.user.id,
-      ...(status && { status }),
+      ...(status && { status: status as PayoutStatus }),
     };
 
     const [payouts, total] = await Promise.all([
@@ -127,7 +128,7 @@ export async function POST(req: NextRequest) {
     // Check pending payout amount
     const pendingPayments = await prisma.payment.aggregate({
       where: {
-        status: "COMPLETED",
+        status: PaymentStatus.COMPLETED,
         isOwnerPaid: false,
         booking: {
           OR: [
@@ -161,7 +162,7 @@ export async function POST(req: NextRequest) {
     const pendingPayout = await prisma.payout.findFirst({
       where: {
         ownerId: session.user.id,
-        status: "PENDING",
+        status: PayoutStatus.PENDING,
       },
     });
 
@@ -175,7 +176,7 @@ export async function POST(req: NextRequest) {
     // Get payments to be included in this payout
     const paymentsToPayout = await prisma.payment.findMany({
       where: {
-        status: "COMPLETED",
+        status: PaymentStatus.COMPLETED,
         isOwnerPaid: false,
         booking: {
           OR: [
@@ -210,7 +211,7 @@ export async function POST(req: NextRequest) {
       data: {
         ownerId: session.user.id,
         amount: totalGross,
-        status: "PENDING",
+        status: PayoutStatus.PENDING,
         bankAccountNumber: data.bankAccountNumber,
         bankIfscCode: data.bankIfscCode,
         bankAccountName: data.bankAccountName,
