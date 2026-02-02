@@ -25,13 +25,6 @@ export async function GET() {
             phone: true,
           },
         },
-        taggedToOwner: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
       },
       orderBy: [
         { isVerified: "asc" }, // Unverified first
@@ -39,7 +32,26 @@ export async function GET() {
       ],
     });
 
-    return NextResponse.json({ success: true, caterers });
+    // Fetch tagged owners for caterers that have taggedToOwnerId
+    const taggedOwnerIds = caterers
+      .filter(c => c.taggedToOwnerId)
+      .map(c => c.taggedToOwnerId as string);
+    
+    const taggedOwners = taggedOwnerIds.length > 0 
+      ? await prisma.user.findMany({
+          where: { id: { in: taggedOwnerIds } },
+          select: { id: true, name: true, email: true },
+        })
+      : [];
+    
+    const taggedOwnerMap = new Map(taggedOwners.map(u => [u.id, u]));
+    
+    const caterersWithTaggedOwner = caterers.map(c => ({
+      ...c,
+      taggedToOwner: c.taggedToOwnerId ? taggedOwnerMap.get(c.taggedToOwnerId) || null : null,
+    }));
+
+    return NextResponse.json({ success: true, caterers: caterersWithTaggedOwner });
   } catch (error) {
     console.error("Error fetching caterers for admin:", error);
     return NextResponse.json(

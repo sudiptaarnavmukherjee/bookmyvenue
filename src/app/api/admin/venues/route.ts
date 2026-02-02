@@ -26,13 +26,6 @@ export async function GET() {
             phone: true,
           },
         },
-        taggedToOwner: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
       },
       orderBy: [
         { isVerified: "asc" }, // Unverified first
@@ -40,7 +33,26 @@ export async function GET() {
       ],
     });
 
-    return NextResponse.json({ success: true, venues });
+    // Fetch tagged owners for venues that have taggedToOwnerId
+    const taggedOwnerIds = venues
+      .filter(v => v.taggedToOwnerId)
+      .map(v => v.taggedToOwnerId as string);
+    
+    const taggedOwners = taggedOwnerIds.length > 0 
+      ? await prisma.user.findMany({
+          where: { id: { in: taggedOwnerIds } },
+          select: { id: true, name: true, email: true },
+        })
+      : [];
+    
+    const taggedOwnerMap = new Map(taggedOwners.map(u => [u.id, u]));
+    
+    const venuesWithTaggedOwner = venues.map(v => ({
+      ...v,
+      taggedToOwner: v.taggedToOwnerId ? taggedOwnerMap.get(v.taggedToOwnerId) || null : null,
+    }));
+
+    return NextResponse.json({ success: true, venues: venuesWithTaggedOwner });
   } catch (error) {
     console.error("Error fetching venues for admin:", error);
     return NextResponse.json(
