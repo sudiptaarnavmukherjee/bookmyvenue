@@ -75,7 +75,6 @@ export async function GET(request: Request) {
 
     // Top areas by total views
     const topAreas = await prisma.area.findMany({
-      where: { isActive: true },
       orderBy: { totalViews: "desc" },
       take: 8,
       select: {

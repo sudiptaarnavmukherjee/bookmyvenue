@@ -16,7 +16,7 @@ export async function GET() {
         select: { slug: true, updatedAt: true },
       }),
       prisma.area.findMany({
-        where: { isActive: true },
+        where: { isPopular: true },
         select: { name: true, city: true },
       }),
     ]);
