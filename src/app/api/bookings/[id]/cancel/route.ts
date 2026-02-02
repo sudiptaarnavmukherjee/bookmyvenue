@@ -72,12 +72,19 @@ export async function GET(
         venue: { include: { owner: true } },
         caterer: { include: { owner: true } },
         cancellationRequest: true,
+        payments: {
+          where: { status: "COMPLETED" },
+          select: { amount: true },
+        },
       },
     });
 
     if (!booking) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
+
+    // Calculate paid amount from completed payments
+    const paidAmount = booking.payments.reduce((sum, p) => sum + p.amount, 0) || booking.advanceAmount || 0;
 
     // Check authorization
     const isOwner = booking.userId === user.id;
@@ -118,8 +125,7 @@ export async function GET(
       });
     }
 
-    // Calculate refund
-    const paidAmount = booking.paidAmount || 0;
+    // Calculate refund (using paidAmount calculated above)
     const { refundAmount, refundPercentage, daysBeforeEvent } = calculateRefundAmount(
       booking.eventDate,
       paidAmount
@@ -180,6 +186,10 @@ export async function PATCH(
         user: true,
         venue: { include: { owner: true } },
         caterer: { include: { owner: true } },
+        payments: {
+          where: { status: "COMPLETED" },
+          select: { amount: true },
+        },
       },
     });
 
@@ -189,6 +199,9 @@ export async function PATCH(
         { status: 404 }
       );
     }
+
+    // Calculate paid amount from completed payments
+    const paidAmount = booking.payments.reduce((sum, p) => sum + p.amount, 0) || booking.advanceAmount || 0;
 
     // Customer or owner can cancel
     const isOwner = booking.userId === user.id;
@@ -211,8 +224,7 @@ export async function PATCH(
       );
     }
 
-    // Calculate refund
-    const paidAmount = booking.paidAmount || 0;
+    // Calculate refund (using paidAmount calculated above from payments)
     const { refundAmount, refundPercentage } = calculateRefundAmount(
       booking.eventDate,
       paidAmount
