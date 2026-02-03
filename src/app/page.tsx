@@ -624,7 +624,7 @@ export default function HomePage() {
                     <Star key={j} className="w-5 h-5 text-amber-400 fill-amber-400" />
                   ))}
                 </div>
-                <p className="text-gray-700 text-lg mb-6 leading-relaxed">"{testimonial.text}"</p>
+                <p className="text-gray-700 text-lg mb-6 leading-relaxed">&ldquo;{testimonial.text}&rdquo;</p>
                 <div className="flex items-center gap-4">
                   <img 
                     src={testimonial.image} 
