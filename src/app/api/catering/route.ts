@@ -7,23 +7,29 @@ export async function GET(request: Request) {
     const city = searchParams.get("city");
     const area = searchParams.get("area");
     const isPureVeg = searchParams.get("isPureVeg");
-    const sortBy = searchParams.get("sortBy") || "area"; // area, price-low, price-high, popular, newest
-    const includeUnverified = searchParams.get("includeUnverified") === "true";
+    const sortBy = searchParams.get("sortBy") || "newest";
+    const limit = searchParams.get("limit");
+    const search = searchParams.get("search");
 
     const where: any = {
       isActive: true,
+      // Show both verified caterers AND admin-listed fishbowl caterers
+      OR: [
+        { isVerified: true },
+        { isAdminListed: true },
+      ],
     };
 
-    // Include unverified (fishbowl) caterers for browsing
-    if (!includeUnverified) {
-      where.OR = [
-        { isVerified: true },
-        { isAdminListed: true }, // Show fishbowl caterers too
-      ];
-    }
-
     if (city) {
-      where.city = city;
+      where.AND = [
+        ...(where.AND || []),
+        {
+          OR: [
+            { city: { contains: city, mode: "insensitive" } },
+            { area: { contains: city, mode: "insensitive" } },
+          ],
+        },
+      ];
     }
 
     if (area) {
@@ -33,15 +39,35 @@ export async function GET(request: Request) {
       };
     }
 
-    if (isPureVeg !== null && isPureVeg !== undefined) {
+    if (search) {
+      where.AND = [
+        ...(where.AND || []),
+        {
+          OR: [
+            { name: { contains: search, mode: "insensitive" } },
+            { city: { contains: search, mode: "insensitive" } },
+            { area: { contains: search, mode: "insensitive" } },
+            { description: { contains: search, mode: "insensitive" } },
+            { cuisines: { contains: search, mode: "insensitive" } },
+          ],
+        },
+      ];
+    }
+
+    if (isPureVeg !== null && isPureVeg !== undefined && isPureVeg !== "") {
       where.isPureVeg = isPureVeg === "true";
     }
 
     // Fetch areas for sorting
-    const areas = await prisma.area.findMany({
-      select: { name: true, priority: true },
-      orderBy: { priority: "desc" },
-    });
+    let areas: any[] = [];
+    try {
+      areas = await prisma.area.findMany({
+        select: { name: true, priority: true },
+        orderBy: { priority: "desc" },
+      });
+    } catch {
+      // Area table might not exist, continue without it
+    }
     const areaPriorityMap = new Map(areas.map(a => [a.name.toLowerCase(), a.priority]));
 
     const caterers = await prisma.caterer.findMany({
@@ -66,6 +92,7 @@ export async function GET(request: Request) {
           },
         },
       },
+      take: limit ? parseInt(limit) : undefined,
     });
 
     // Apply sorting
@@ -73,12 +100,10 @@ export async function GET(request: Request) {
     
     switch (sortBy) {
       case "area":
-        // Sort by area priority (highest first), then by view count
         sortedCaterers.sort((a, b) => {
           const aPriority = areaPriorityMap.get(a.area?.toLowerCase() || "") || 0;
           const bPriority = areaPriorityMap.get(b.area?.toLowerCase() || "") || 0;
           if (bPriority !== aPriority) return bPriority - aPriority;
-          // Secondary sort by view count
           return (b.viewCount || 0) - (a.viewCount || 0);
         });
         break;
@@ -110,11 +135,20 @@ export async function GET(request: Request) {
         break;
     }
 
-    return NextResponse.json({ caterers: sortedCaterers, areas });
-  } catch (error) {
-    console.error("Error fetching caterers:", error);
+    return NextResponse.json({ 
+      caterers: sortedCaterers, 
+      areas,
+      total: sortedCaterers.length 
+    });
+  } catch (error: any) {
+    console.error("Error fetching caterers:", error?.message || error);
     return NextResponse.json(
-      { error: "Failed to fetch caterers" },
+      { 
+        error: "Failed to fetch caterers",
+        details: error?.message,
+        caterers: [],
+        areas: []
+      },
       { status: 500 }
     );
   }

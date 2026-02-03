@@ -8,23 +8,30 @@ export async function GET(request: Request) {
     const area = searchParams.get("area");
     const minGuests = searchParams.get("minGuests");
     const maxPrice = searchParams.get("maxPrice");
-    const sortBy = searchParams.get("sortBy") || "area"; // area, price-low, price-high, newest
-    const includeUnverified = searchParams.get("includeUnverified") === "true";
+    const sortBy = searchParams.get("sortBy") || "newest";
+    const limit = searchParams.get("limit");
+    const search = searchParams.get("search");
 
     const where: any = {
       isActive: true,
+      deletedAt: null,
+      // Show both verified venues AND admin-listed fishbowl venues
+      OR: [
+        { isVerified: true },
+        { isAdminListed: true },
+      ],
     };
 
-    // Include unverified (fishbowl) venues for browsing
-    if (!includeUnverified) {
-      where.OR = [
-        { isVerified: true },
-        { isAdminListed: true }, // Show fishbowl venues too
-      ];
-    }
-
     if (city) {
-      where.city = city;
+      where.AND = [
+        ...(where.AND || []),
+        {
+          OR: [
+            { city: { contains: city, mode: "insensitive" } },
+            { area: { contains: city, mode: "insensitive" } },
+          ],
+        },
+      ];
     }
 
     if (area) {
@@ -32,6 +39,20 @@ export async function GET(request: Request) {
         contains: area,
         mode: "insensitive",
       };
+    }
+
+    if (search) {
+      where.AND = [
+        ...(where.AND || []),
+        {
+          OR: [
+            { name: { contains: search, mode: "insensitive" } },
+            { city: { contains: search, mode: "insensitive" } },
+            { area: { contains: search, mode: "insensitive" } },
+            { description: { contains: search, mode: "insensitive" } },
+          ],
+        },
+      ];
     }
 
     if (minGuests) {
@@ -54,10 +75,15 @@ export async function GET(request: Request) {
     }
 
     // Fetch areas for sorting
-    const areas = await prisma.area.findMany({
-      select: { name: true, priority: true },
-      orderBy: { priority: "desc" },
-    });
+    let areas: any[] = [];
+    try {
+      areas = await prisma.area.findMany({
+        select: { name: true, priority: true },
+        orderBy: { priority: "desc" },
+      });
+    } catch {
+      // Area table might not exist, continue without it
+    }
     const areaPriorityMap = new Map(areas.map(a => [a.name.toLowerCase(), a.priority]));
 
     const venues = await prisma.venue.findMany({
@@ -77,6 +103,7 @@ export async function GET(request: Request) {
           },
         },
       },
+      take: limit ? parseInt(limit) : undefined,
     });
 
     // Apply sorting
@@ -84,12 +111,10 @@ export async function GET(request: Request) {
     
     switch (sortBy) {
       case "area":
-        // Sort by area priority (highest first), then by view count
         sortedVenues.sort((a, b) => {
           const aPriority = areaPriorityMap.get(a.area?.toLowerCase() || "") || 0;
           const bPriority = areaPriorityMap.get(b.area?.toLowerCase() || "") || 0;
           if (bPriority !== aPriority) return bPriority - aPriority;
-          // Secondary sort by view count
           return (b.viewCount || 0) - (a.viewCount || 0);
         });
         break;
@@ -118,11 +143,20 @@ export async function GET(request: Request) {
         break;
     }
 
-    return NextResponse.json({ venues: sortedVenues, areas });
+    return NextResponse.json({ 
+      venues: sortedVenues, 
+      areas,
+      total: sortedVenues.length 
+    });
   } catch (error: any) {
     console.error("Error fetching venues:", error?.message || error);
     return NextResponse.json(
-      { error: "Failed to fetch venues", details: error?.message },
+      { 
+        error: "Failed to fetch venues", 
+        details: error?.message,
+        venues: [],
+        areas: []
+      },
       { status: 500 }
     );
   }

@@ -7,7 +7,7 @@ import {
   Heart, Sparkles, Building2, Users, Award,
   ArrowRight, Shield, Clock, Zap,
   ChefHat, PartyPopper, Utensils, CheckCircle,
-  TrendingUp, Phone, Mail
+  TrendingUp, Phone, Mail, Loader2
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -27,6 +27,21 @@ interface FeaturedVenue {
   image: string;
   capacity?: number;
   isVerified?: boolean;
+  isAdminListed?: boolean;
+}
+
+// Featured caterer type
+interface FeaturedCaterer {
+  id: string;
+  name: string;
+  slug?: string;
+  location: string;
+  price: number;
+  rating: number;
+  reviews: number;
+  image: string;
+  cuisines?: string;
+  isPureVeg?: boolean;
 }
 
 // Animated counter hook
@@ -49,6 +64,22 @@ function useCountUp(end: number, duration: number = 2000) {
   return { count, start: () => setHasStarted(true) };
 }
 
+// Placeholder data when no venues exist
+const PLACEHOLDER_VENUES: FeaturedVenue[] = [
+  { id: '1', name: 'Grand Palace Banquet', location: 'Salt Lake', price: 150000, rating: 4.8, reviews: 124, image: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800', isVerified: true },
+  { id: '2', name: 'Royal Gardens', location: 'New Town', price: 200000, rating: 4.9, reviews: 89, image: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800', isVerified: true },
+  { id: '3', name: 'Sunset Lawns', location: 'Rajarhat', price: 80000, rating: 4.6, reviews: 67, image: 'https://images.unsplash.com/photo-1478146896981-b80fe463b330?w=800', isVerified: false },
+  { id: '4', name: 'Heritage Manor', location: 'Barasat', price: 120000, rating: 4.7, reviews: 95, image: 'https://images.unsplash.com/photo-1587271407850-8d438ca9fdf2?w=800', isVerified: true },
+  { id: '5', name: 'Garden View Resort', location: 'Kalyani', price: 95000, rating: 4.5, reviews: 78, image: 'https://images.unsplash.com/photo-1510076857177-7470076d4098?w=800', isVerified: false },
+  { id: '6', name: 'Crystal Banquet Hall', location: 'Howrah', price: 70000, rating: 4.4, reviews: 56, image: 'https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=800', isVerified: true },
+];
+
+const PLACEHOLDER_CATERERS: FeaturedCaterer[] = [
+  { id: '1', name: 'Royal Bengali Caterers', location: 'Salt Lake', price: 500, rating: 4.8, reviews: 234, image: 'https://images.unsplash.com/photo-1555244162-803834f70033?w=800', cuisines: 'Bengali, Multi-Cuisine', isPureVeg: false },
+  { id: '2', name: 'Shubh Catering Service', location: 'New Town', price: 400, rating: 4.7, reviews: 189, image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800', cuisines: 'North Indian, Bengali', isPureVeg: true },
+  { id: '3', name: 'Taste of Bengal', location: 'Rajarhat', price: 350, rating: 4.6, reviews: 156, image: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=800', cuisines: 'Bengali, Chinese', isPureVeg: false },
+];
+
 export default function HomePage() {
   useOwnerRedirect();
   const router = useRouter();
@@ -61,7 +92,11 @@ export default function HomePage() {
   
   // Data state
   const [featuredVenues, setFeaturedVenues] = useState<FeaturedVenue[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [featuredCaterers, setFeaturedCaterers] = useState<FeaturedCaterer[]>([]);
+  const [venuesLoading, setVenuesLoading] = useState(true);
+  const [caterersLoading, setCaterersLoading] = useState(true);
+  const [venueError, setVenueError] = useState<string | null>(null);
+  const [catererError, setCatererError] = useState<string | null>(null);
 
   // Stats with animation
   const venueCount = useCountUp(500, 2500);
@@ -80,12 +115,20 @@ export default function HomePage() {
 
   // Fetch featured venues
   useEffect(() => {
-    const fetchFeatured = async () => {
+    const fetchVenues = async () => {
       try {
-        const res = await fetch('/api/venues?limit=6&sortBy=popular');
+        setVenuesLoading(true);
+        setVenueError(null);
+        const res = await fetch('/api/venues?limit=6&sortBy=newest');
+        
+        if (!res.ok) {
+          throw new Error('Failed to fetch venues');
+        }
+        
         const data = await res.json();
-        if (data.venues) {
-          setFeaturedVenues(data.venues.slice(0, 6).map((v: any) => ({
+        
+        if (data.venues && data.venues.length > 0) {
+          const mappedVenues = data.venues.map((v: any) => ({
             id: v.id,
             name: v.name,
             slug: v.slug,
@@ -94,30 +137,75 @@ export default function HomePage() {
             area: v.area,
             price: v.exactPrice || v.primeDayPrice || v.estimatedMinPrice || 50000,
             rating: v.avgRating || 4.5,
-            reviews: v._count?.reviews || Math.floor(Math.random() * 50) + 10,
-            image: (typeof v.images === 'string' ? v.images.split(',')[0] : v.images?.[0]) || 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800',
-            capacity: v.maxGuests || v.capacity,
-            isVerified: v.isVerified
-          })));
+            reviews: v._count?.reviews || 0,
+            image: (typeof v.images === 'string' && v.images ? v.images.split(',')[0].trim() : '') || 
+                   'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800',
+            capacity: v.maxGuests,
+            isVerified: v.isVerified,
+            isAdminListed: v.isAdminListed
+          }));
+          setFeaturedVenues(mappedVenues);
+        } else {
+          // Use placeholder data if no venues in database
+          setFeaturedVenues(PLACEHOLDER_VENUES);
         }
       } catch (error) {
         console.error('Failed to fetch venues:', error);
-        // Set placeholder data
-        setFeaturedVenues([
-          { id: '1', name: 'Grand Palace Banquet', location: 'Salt Lake', price: 150000, rating: 4.8, reviews: 124, image: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800', isVerified: true },
-          { id: '2', name: 'Royal Gardens', location: 'New Town', price: 200000, rating: 4.9, reviews: 89, image: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800', isVerified: true },
-          { id: '3', name: 'Sunset Lawns', location: 'Rajarhat', price: 80000, rating: 4.6, reviews: 67, image: 'https://images.unsplash.com/photo-1478146896981-b80fe463b330?w=800', isVerified: false },
-        ]);
+        setVenueError('Failed to load venues');
+        setFeaturedVenues(PLACEHOLDER_VENUES);
       } finally {
-        setLoading(false);
+        setVenuesLoading(false);
       }
     };
-    fetchFeatured();
+    fetchVenues();
+  }, []);
+
+  // Fetch featured caterers
+  useEffect(() => {
+    const fetchCaterers = async () => {
+      try {
+        setCaterersLoading(true);
+        setCatererError(null);
+        const res = await fetch('/api/catering?limit=3&sortBy=newest');
+        
+        if (!res.ok) {
+          throw new Error('Failed to fetch caterers');
+        }
+        
+        const data = await res.json();
+        
+        if (data.caterers && data.caterers.length > 0) {
+          const mappedCaterers = data.caterers.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            slug: c.slug,
+            location: c.area || c.city || 'Kolkata',
+            price: c.minPlatePrice || c.silverPrice || 400,
+            rating: c.rating || 4.5,
+            reviews: c._count?.reviews || 0,
+            image: (typeof c.images === 'string' && c.images ? c.images.split(',')[0].trim() : '') ||
+                   'https://images.unsplash.com/photo-1555244162-803834f70033?w=800',
+            cuisines: c.cuisines,
+            isPureVeg: c.isPureVeg
+          }));
+          setFeaturedCaterers(mappedCaterers);
+        } else {
+          setFeaturedCaterers(PLACEHOLDER_CATERERS);
+        }
+      } catch (error) {
+        console.error('Failed to fetch caterers:', error);
+        setCatererError('Failed to load caterers');
+        setFeaturedCaterers(PLACEHOLDER_CATERERS);
+      } finally {
+        setCaterersLoading(false);
+      }
+    };
+    fetchCaterers();
   }, []);
 
   const handleSearch = useCallback(() => {
     const params = new URLSearchParams();
-    if (searchQuery) params.set("city", searchQuery);
+    if (searchQuery) params.set("search", searchQuery);
     if (selectedDate) params.set("date", selectedDate);
     if (guestCount) params.set("guests", guestCount);
     
@@ -449,11 +537,17 @@ export default function HomePage() {
             </Link>
           </motion.div>
 
-          {loading ? (
+          {venuesLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3].map((i) => (
+              {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="bg-gray-100 rounded-2xl h-96 animate-pulse" />
               ))}
+            </div>
+          ) : featuredVenues.length === 0 ? (
+            <div className="text-center py-12">
+              <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-600 mb-2">No venues available yet</h3>
+              <p className="text-gray-500">Check back soon for amazing venues!</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
@@ -475,16 +569,19 @@ export default function HomePage() {
                         src={venue.image}
                         alt={venue.name}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800';
+                        }}
                       />
                       
                       {/* Gradient Overlay */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                       
                       {/* Badges */}
-                      {venue.isVerified && (
-                        <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-full">
+                      {(venue.isVerified || venue.isAdminListed) && (
+                        <div className={`absolute top-4 left-4 flex items-center gap-1.5 ${venue.isVerified ? 'bg-green-500' : 'bg-violet-500'} text-white text-xs font-bold px-3 py-1.5 rounded-full`}>
                           <CheckCircle className="w-3.5 h-3.5" />
-                          Verified
+                          {venue.isVerified ? 'Verified' : 'Featured'}
                         </div>
                       )}
                       
@@ -544,6 +641,118 @@ export default function HomePage() {
               className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white px-8 py-4 rounded-xl font-bold shadow-lg shadow-violet-500/30 hover:shadow-xl transition-all"
             >
               View All Venues <ArrowRight className="w-5 h-5" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Featured Caterers Section */}
+      <section className="py-16 md:py-24 px-4 bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10 md:mb-12"
+          >
+            <div>
+              <span className="text-orange-600 font-semibold text-sm uppercase tracking-wide">Delicious</span>
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mt-2 mb-2">
+                Top Catering Services
+              </h2>
+              <p className="text-gray-600 text-lg">Exquisite cuisines for your special day</p>
+            </div>
+            <Link 
+              href="/catering"
+              className="hidden md:inline-flex items-center gap-2 text-orange-600 hover:text-orange-700 font-semibold text-lg group"
+            >
+              View All Caterers 
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </motion.div>
+
+          {caterersLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white rounded-2xl h-80 animate-pulse" />
+              ))}
+            </div>
+          ) : featuredCaterers.length === 0 ? (
+            <div className="text-center py-12">
+              <ChefHat className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-600 mb-2">No caterers available yet</h3>
+              <p className="text-gray-500">Check back soon for amazing catering services!</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+              {featuredCaterers.map((caterer, i) => (
+                <motion.div
+                  key={caterer.id}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                >
+                  <Link
+                    href={`/catering/${caterer.slug || caterer.id}`}
+                    className="group block bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100"
+                  >
+                    <div className="relative h-48 overflow-hidden">
+                      <img
+                        src={caterer.image}
+                        alt={caterer.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1555244162-803834f70033?w=800';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                      
+                      {caterer.isPureVeg && (
+                        <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-full">
+                          <Utensils className="w-3.5 h-3.5" />
+                          Pure Veg
+                        </div>
+                      )}
+
+                      <div className="absolute bottom-4 left-4 right-4">
+                        <h3 className="text-xl font-bold text-white mb-1">{caterer.name}</h3>
+                        <div className="flex items-center gap-1.5 text-white/90">
+                          <MapPin className="w-4 h-4" />
+                          <span className="text-sm">{caterer.location}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-5">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-2xl font-bold text-gray-900">₹{caterer.price}</span>
+                          <span className="text-gray-500 text-sm ml-1">per plate</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 bg-amber-50 px-3 py-1.5 rounded-lg">
+                          <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                          <span className="font-bold text-gray-900">{caterer.rating.toFixed(1)}</span>
+                        </div>
+                      </div>
+                      {caterer.cuisines && (
+                        <p className="text-gray-500 text-sm mt-2 line-clamp-1">
+                          {caterer.cuisines}
+                        </p>
+                      )}
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-8 text-center md:hidden">
+            <Link 
+              href="/catering"
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white px-8 py-4 rounded-xl font-bold shadow-lg shadow-orange-500/30 hover:shadow-xl transition-all"
+            >
+              View All Caterers <ArrowRight className="w-5 h-5" />
             </Link>
           </div>
         </div>

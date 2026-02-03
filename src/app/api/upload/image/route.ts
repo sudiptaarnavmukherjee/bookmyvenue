@@ -3,20 +3,40 @@ import { v2 as cloudinary } from 'cloudinary';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+// Check if Cloudinary is configured
+const isCloudinaryConfigured = () => {
+  return !!(
+    process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET
+  );
+};
+
+// Configure Cloudinary only if all credentials are present
+if (isCloudinaryConfigured()) {
+  cloudinary.config({
+    cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+}
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if Cloudinary is configured
+    if (!isCloudinaryConfigured()) {
+      console.error('Cloudinary not configured. Missing environment variables.');
+      return NextResponse.json(
+        { error: 'Image upload service not configured. Please add Cloudinary credentials in Vercel environment variables.' },
+        { status: 503 }
+      );
+    }
+
     const session = await getServerSession(authOptions);
     
     if (!session?.user) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Please sign in to upload images' },
         { status: 401 }
       );
     }
@@ -82,7 +102,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Upload error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to upload image' },
+      { error: error.message || 'Failed to upload image. Please try again.' },
       { status: 500 }
     );
   }
@@ -90,6 +110,13 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    if (!isCloudinaryConfigured()) {
+      return NextResponse.json(
+        { error: 'Image service not configured' },
+        { status: 503 }
+      );
+    }
+
     const session = await getServerSession(authOptions);
     
     if (!session?.user) {
