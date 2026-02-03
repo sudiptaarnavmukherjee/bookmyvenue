@@ -481,15 +481,14 @@ export default function AdminAddVenuePage() {
               </button>
             </div>
             <ImageUploader
-              onUpload={(urls) => {
+              images={formData.images}
+              onImagesChange={(images) => {
                 setFormData(prev => ({
                   ...prev,
-                  images: [...prev.images, ...urls]
+                  images
                 }));
-                setShowImageUploader(false);
               }}
-              multiple
-              maxFiles={10}
+              maxImages={10}
             />
           </div>
         </div>
