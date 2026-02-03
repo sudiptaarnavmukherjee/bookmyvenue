@@ -90,15 +90,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="scroll-smooth">
       <head>
         <JsonLd data={generateOrganizationSchema()} />
         <JsonLd data={generateSearchActionSchema()} />
       </head>
-      <body className={inter.className}>
+      <body className={`${inter.className} overflow-x-hidden antialiased`}>
         <SessionProvider>
           <DesktopNav />
-          <main className="min-h-screen bg-cream-50">
+          <main className="min-h-screen">
             {children}
           </main>
           <MobileNav />
