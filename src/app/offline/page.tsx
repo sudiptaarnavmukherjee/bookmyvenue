@@ -16,11 +16,11 @@ export default function OfflinePage() {
         </div>
         
         <h1 className="text-3xl font-bold text-gray-900 mb-4">
-          You're Offline
+          You&apos;re Offline
         </h1>
         
         <p className="text-gray-600 mb-8">
-          It looks like you've lost your internet connection. 
+          It looks like you&apos;ve lost your internet connection. 
           Please check your connection and try again.
         </p>
 
@@ -45,7 +45,7 @@ export default function OfflinePage() {
         <p className="mt-8 text-sm text-gray-500">
           Some features may still be available offline.
           <br />
-          Venues you've viewed before are cached for quick access.
+          Venues you&apos;ve viewed before are cached for quick access.
         </p>
       </div>
     </div>

@@ -624,7 +624,7 @@ export default function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="col-span-2 md:col-span-1">
               <h3 className="text-white font-bold text-xl mb-4">BookMyVenue</h3>
-              <p className="text-sm">India's leading platform for wedding venues and catering services with transparent pricing.</p>
+              <p className="text-sm">India&apos;s leading platform for wedding venues and catering services with transparent pricing.</p>
             </div>
             <div>
               <h4 className="text-white font-semibold mb-4">Quick Links</h4>
