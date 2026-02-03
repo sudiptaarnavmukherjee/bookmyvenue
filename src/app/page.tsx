@@ -1,20 +1,18 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { 
-  Search, MapPin, Calendar, ChevronRight, Star, 
-  Heart, Sparkles, Building2, Users, Award,
-  ArrowRight, Shield, Clock, Zap,
-  ChefHat, PartyPopper, Utensils, CheckCircle,
-  TrendingUp, Phone, Mail, Loader2
+  Search, MapPin, Calendar, Star, 
+  Building2, Users, ChefHat, Phone,
+  CheckCircle, ArrowRight, Leaf, ChevronRight, Navigation
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useOwnerRedirect } from "@/hooks/useOwnerRedirect";
+import Image from "next/image";
 
-// Featured venue type
-interface FeaturedVenue {
+// Types
+interface Venue {
   id: string;
   name: string;
   slug?: string;
@@ -22,877 +20,568 @@ interface FeaturedVenue {
   city?: string;
   area?: string;
   price: number;
-  rating: number;
-  reviews: number;
-  image: string;
+  priceRange?: string;
+  image: string | null;
   capacity?: number;
   isVerified?: boolean;
   isAdminListed?: boolean;
+  bookingEnabled?: boolean;
+  viewCount?: number;
+  reviewCount?: number;
 }
 
-// Featured caterer type
-interface FeaturedCaterer {
+interface Caterer {
   id: string;
   name: string;
   slug?: string;
   location: string;
+  city?: string;
   price: number;
-  rating: number;
-  reviews: number;
-  image: string;
-  cuisines?: string;
+  image: string | null;
   isPureVeg?: boolean;
+  cuisines?: string;
+  rating?: number;
+  isVerified?: boolean;
+  isAdminListed?: boolean;
+  bookingEnabled?: boolean;
+  reviewCount?: number;
 }
 
-// Animated counter hook
-function useCountUp(end: number, duration: number = 2000) {
-  const [count, setCount] = useState(0);
-  const [hasStarted, setHasStarted] = useState(false);
-  
-  useEffect(() => {
-    if (!hasStarted) return;
-    let startTime: number;
-    const step = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / duration, 1);
-      setCount(Math.floor(progress * end));
-      if (progress < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }, [end, duration, hasStarted]);
-  
-  return { count, start: () => setHasStarted(true) };
+interface Stats {
+  totalVenues: number;
+  totalCaterers: number;
+  completedBookings: number;
 }
 
-// Placeholder data when no venues exist
-const PLACEHOLDER_VENUES: FeaturedVenue[] = [
-  { id: '1', name: 'Grand Palace Banquet', location: 'Salt Lake', price: 150000, rating: 4.8, reviews: 124, image: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800', isVerified: true },
-  { id: '2', name: 'Royal Gardens', location: 'New Town', price: 200000, rating: 4.9, reviews: 89, image: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800', isVerified: true },
-  { id: '3', name: 'Sunset Lawns', location: 'Rajarhat', price: 80000, rating: 4.6, reviews: 67, image: 'https://images.unsplash.com/photo-1478146896981-b80fe463b330?w=800', isVerified: false },
-  { id: '4', name: 'Heritage Manor', location: 'Barasat', price: 120000, rating: 4.7, reviews: 95, image: 'https://images.unsplash.com/photo-1587271407850-8d438ca9fdf2?w=800', isVerified: true },
-  { id: '5', name: 'Garden View Resort', location: 'Kalyani', price: 95000, rating: 4.5, reviews: 78, image: 'https://images.unsplash.com/photo-1510076857177-7470076d4098?w=800', isVerified: false },
-  { id: '6', name: 'Crystal Banquet Hall', location: 'Howrah', price: 70000, rating: 4.4, reviews: 56, image: 'https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=800', isVerified: true },
-];
+// Skeleton loader component
+function CardSkeleton() {
+  return (
+    <div className="bg-white rounded-2xl overflow-hidden shadow-sm animate-pulse">
+      <div className="h-48 bg-gray-200" />
+      <div className="p-4 space-y-3">
+        <div className="h-5 bg-gray-200 rounded w-3/4" />
+        <div className="h-4 bg-gray-200 rounded w-1/2" />
+        <div className="h-6 bg-gray-200 rounded w-1/3" />
+      </div>
+    </div>
+  );
+}
 
-const PLACEHOLDER_CATERERS: FeaturedCaterer[] = [
-  { id: '1', name: 'Royal Bengali Caterers', location: 'Salt Lake', price: 500, rating: 4.8, reviews: 234, image: 'https://images.unsplash.com/photo-1555244162-803834f70033?w=800', cuisines: 'Bengali, Multi-Cuisine', isPureVeg: false },
-  { id: '2', name: 'Shubh Catering Service', location: 'New Town', price: 400, rating: 4.7, reviews: 189, image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800', cuisines: 'North Indian, Bengali', isPureVeg: true },
-  { id: '3', name: 'Taste of Bengal', location: 'Rajarhat', price: 350, rating: 4.6, reviews: 156, image: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=800', cuisines: 'Bengali, Chinese', isPureVeg: false },
-];
+// Venue Card Component - Optimized
+function VenueCard({ venue }: { venue: Venue }) {
+  const fallbackImage = "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=600&q=75";
+  
+  return (
+    <Link 
+      href={`/venues/${venue.slug || venue.id}`}
+      className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300 border border-gray-100"
+    >
+      {/* Image */}
+      <div className="relative h-48 overflow-hidden bg-gray-100">
+        <img
+          src={venue.image || fallbackImage}
+          alt={venue.name}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          loading="lazy"
+        />
+        
+        {/* Badges */}
+        <div className="absolute top-3 left-3 flex gap-2">
+          {venue.isVerified && (
+            <span className="bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded-full flex items-center gap-1">
+              <CheckCircle className="w-3 h-3" />
+              Verified
+            </span>
+          )}
+          {venue.isAdminListed && !venue.bookingEnabled && (
+            <span className="bg-amber-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
+              Call to Book
+            </span>
+          )}
+        </div>
 
+        {/* View Count */}
+        {venue.viewCount && venue.viewCount > 10 && (
+          <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
+            {venue.viewCount} views
+          </div>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="p-4">
+        <h3 className="font-bold text-gray-900 text-lg truncate group-hover:text-purple-600 transition-colors">
+          {venue.name}
+        </h3>
+        
+        <div className="flex items-center gap-1 text-gray-500 text-sm mt-1">
+          <MapPin className="w-4 h-4" />
+          <span>{venue.location}</span>
+          {venue.capacity && (
+            <>
+              <span className="mx-1">•</span>
+              <Users className="w-4 h-4" />
+              <span>{venue.capacity} guests</span>
+            </>
+          )}
+        </div>
+
+        {/* Price */}
+        <div className="mt-3 flex items-center justify-between">
+          <div>
+            {venue.priceRange ? (
+              <p className="text-purple-600 font-bold">{venue.priceRange}</p>
+            ) : (
+              <p className="text-purple-600 font-bold">
+                ₹{(venue.price / 1000).toFixed(0)}K
+                <span className="text-gray-400 font-normal text-sm"> /event</span>
+              </p>
+            )}
+          </div>
+          
+          {venue.bookingEnabled ? (
+            <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-medium">
+              Book Online
+            </span>
+          ) : (
+            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full font-medium flex items-center gap-1">
+              <Phone className="w-3 h-3" />
+              Call
+            </span>
+          )}
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+// Caterer Card Component - Zomato Style
+function CatererCard({ caterer }: { caterer: Caterer }) {
+  const fallbackImage = "https://images.unsplash.com/photo-1555244162-803834f70033?w=600&q=75";
+  
+  return (
+    <Link 
+      href={`/catering/${caterer.slug || caterer.id}`}
+      className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300 border border-gray-100"
+    >
+      {/* Image */}
+      <div className="relative h-48 overflow-hidden bg-gray-100">
+        <img
+          src={caterer.image || fallbackImage}
+          alt={caterer.name}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          loading="lazy"
+        />
+        
+        {/* Badges */}
+        <div className="absolute top-3 left-3 flex gap-2">
+          {caterer.isPureVeg && (
+            <span className="bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded-full flex items-center gap-1">
+              <Leaf className="w-3 h-3" />
+              Pure Veg
+            </span>
+          )}
+          {caterer.isVerified && (
+            <span className="bg-blue-500 text-white text-xs font-semibold px-2 py-1 rounded-full flex items-center gap-1">
+              <CheckCircle className="w-3 h-3" />
+              Verified
+            </span>
+          )}
+        </div>
+
+        {/* Rating */}
+        {caterer.rating && caterer.rating > 0 && (
+          <div className="absolute bottom-3 right-3 bg-green-600 text-white text-sm px-2 py-1 rounded-lg flex items-center gap-1 font-bold">
+            {caterer.rating.toFixed(1)}
+            <Star className="w-3 h-3 fill-current" />
+          </div>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="p-4">
+        <h3 className="font-bold text-gray-900 text-lg truncate group-hover:text-orange-600 transition-colors">
+          {caterer.name}
+        </h3>
+        
+        <div className="flex items-center gap-1 text-gray-500 text-sm mt-1">
+          <MapPin className="w-4 h-4" />
+          <span>{caterer.location}</span>
+        </div>
+
+        {caterer.cuisines && (
+          <p className="text-gray-400 text-sm mt-1 truncate">
+            {caterer.cuisines}
+          </p>
+        )}
+
+        {/* Price */}
+        <div className="mt-3 flex items-center justify-between">
+          <p className="text-orange-600 font-bold">
+            ₹{caterer.price}
+            <span className="text-gray-400 font-normal text-sm"> /plate</span>
+          </p>
+          
+          {caterer.bookingEnabled ? (
+            <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full font-medium">
+              Order Online
+            </span>
+          ) : (
+            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full font-medium flex items-center gap-1">
+              <Phone className="w-3 h-3" />
+              Call
+            </span>
+          )}
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+// Main Homepage Component
 export default function HomePage() {
   useOwnerRedirect();
   const router = useRouter();
   
-  // Search state
+  // State
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedDate, setSelectedDate] = useState("");
-  const [guestCount, setGuestCount] = useState("");
   const [activeTab, setActiveTab] = useState<"venues" | "catering">("venues");
-  
-  // Data state
-  const [featuredVenues, setFeaturedVenues] = useState<FeaturedVenue[]>([]);
-  const [featuredCaterers, setFeaturedCaterers] = useState<FeaturedCaterer[]>([]);
-  const [venuesLoading, setVenuesLoading] = useState(true);
-  const [caterersLoading, setCaterersLoading] = useState(true);
-  const [venueError, setVenueError] = useState<string | null>(null);
-  const [catererError, setCatererError] = useState<string | null>(null);
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [caterers, setCaterers] = useState<Caterer[]>([]);
+  const [stats, setStats] = useState<Stats>({ totalVenues: 500, totalCaterers: 200, completedBookings: 10000 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Stats with animation
-  const venueCount = useCountUp(500, 2500);
-  const happyCustomers = useCountUp(10000, 2500);
-  const citiesCount = useCountUp(12, 2000);
-
-  // Start counter animation when in view
+  // Fetch data on mount - SINGLE API CALL
   useEffect(() => {
-    const timer = setTimeout(() => {
-      venueCount.start();
-      happyCustomers.start();
-      citiesCount.start();
-    }, 500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Fetch featured venues
-  useEffect(() => {
-    const fetchVenues = async () => {
+    const fetchData = async () => {
       try {
-        setVenuesLoading(true);
-        setVenueError(null);
-        const res = await fetch('/api/venues?limit=6&sortBy=newest');
+        setLoading(true);
+        const res = await fetch('/api/featured?venueLimit=6&catererLimit=4');
         
-        if (!res.ok) {
-          throw new Error('Failed to fetch venues');
-        }
+        if (!res.ok) throw new Error('Failed to fetch');
         
         const data = await res.json();
-        
-        if (data.venues && data.venues.length > 0) {
-          const mappedVenues = data.venues.map((v: any) => ({
-            id: v.id,
-            name: v.name,
-            slug: v.slug,
-            location: v.area || v.city || 'Kolkata',
-            city: v.city,
-            area: v.area,
-            price: v.exactPrice || v.primeDayPrice || v.estimatedMinPrice || 50000,
-            rating: v.avgRating || 4.5,
-            reviews: v._count?.reviews || 0,
-            image: (typeof v.images === 'string' && v.images ? v.images.split(',')[0].trim() : '') || 
-                   'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800',
-            capacity: v.maxGuests,
-            isVerified: v.isVerified,
-            isAdminListed: v.isAdminListed
-          }));
-          setFeaturedVenues(mappedVenues);
-        } else {
-          // Use placeholder data if no venues in database
-          setFeaturedVenues(PLACEHOLDER_VENUES);
-        }
-      } catch (error) {
-        console.error('Failed to fetch venues:', error);
-        setVenueError('Failed to load venues');
-        setFeaturedVenues(PLACEHOLDER_VENUES);
+        setVenues(data.venues || []);
+        setCaterers(data.caterers || []);
+        if (data.stats) setStats(data.stats);
+      } catch (err) {
+        console.error('Fetch error:', err);
+        setError('Failed to load data');
       } finally {
-        setVenuesLoading(false);
+        setLoading(false);
       }
     };
-    fetchVenues();
+    
+    fetchData();
   }, []);
 
-  // Fetch featured caterers
-  useEffect(() => {
-    const fetchCaterers = async () => {
-      try {
-        setCaterersLoading(true);
-        setCatererError(null);
-        const res = await fetch('/api/catering?limit=3&sortBy=newest');
-        
-        if (!res.ok) {
-          throw new Error('Failed to fetch caterers');
-        }
-        
-        const data = await res.json();
-        
-        if (data.caterers && data.caterers.length > 0) {
-          const mappedCaterers = data.caterers.map((c: any) => ({
-            id: c.id,
-            name: c.name,
-            slug: c.slug,
-            location: c.area || c.city || 'Kolkata',
-            price: c.minPlatePrice || c.silverPrice || 400,
-            rating: c.rating || 4.5,
-            reviews: c._count?.reviews || 0,
-            image: (typeof c.images === 'string' && c.images ? c.images.split(',')[0].trim() : '') ||
-                   'https://images.unsplash.com/photo-1555244162-803834f70033?w=800',
-            cuisines: c.cuisines,
-            isPureVeg: c.isPureVeg
-          }));
-          setFeaturedCaterers(mappedCaterers);
-        } else {
-          setFeaturedCaterers(PLACEHOLDER_CATERERS);
-        }
-      } catch (error) {
-        console.error('Failed to fetch caterers:', error);
-        setCatererError('Failed to load caterers');
-        setFeaturedCaterers(PLACEHOLDER_CATERERS);
-      } finally {
-        setCaterersLoading(false);
-      }
-    };
-    fetchCaterers();
-  }, []);
-
+  // Search handler
   const handleSearch = useCallback(() => {
     const params = new URLSearchParams();
     if (searchQuery) params.set("search", searchQuery);
-    if (selectedDate) params.set("date", selectedDate);
-    if (guestCount) params.set("guests", guestCount);
-    
     const path = activeTab === "venues" ? "/venues" : "/catering";
     router.push(`${path}?${params.toString()}`);
-  }, [searchQuery, selectedDate, guestCount, activeTab, router]);
+  }, [searchQuery, activeTab, router]);
 
-  // Categories
-  const categories = [
-    { icon: Building2, label: "Banquet Halls", count: "150+", color: "from-violet-500 to-purple-600", href: "/venues?type=banquet" },
-    { icon: PartyPopper, label: "Wedding Lawns", count: "80+", color: "from-pink-500 to-rose-600", href: "/venues?type=lawn" },
-    { icon: Building2, label: "Hotels & Resorts", count: "45+", color: "from-blue-500 to-cyan-600", href: "/venues?type=hotel" },
-    { icon: ChefHat, label: "Catering", count: "200+", color: "from-orange-500 to-amber-600", href: "/catering" },
-  ];
+  // Handle enter key
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleSearch();
+  };
 
-  // Features
-  const features = [
-    { icon: Shield, title: "100% Verified", desc: "All venues personally inspected" },
-    { icon: Clock, title: "Instant Booking", desc: "Confirm in under 2 minutes" },
-    { icon: Zap, title: "Best Prices", desc: "Guaranteed lowest rates" },
-    { icon: Award, title: "Expert Support", desc: "Dedicated wedding planners" },
-  ];
-
-  // Testimonials
-  const testimonials = [
-    { name: "Priya & Rahul", location: "Kolkata", text: "Found our dream venue in just 2 days! The team was incredibly helpful.", rating: 5, image: "https://i.pravatar.cc/100?img=1" },
-    { name: "Sneha & Vikram", location: "Salt Lake", text: "Best platform for wedding planning. Saved us so much time and money!", rating: 5, image: "https://i.pravatar.cc/100?img=2" },
-    { name: "Ananya & Karthik", location: "New Town", text: "Professional service and amazing venue options. Highly recommended!", rating: 5, image: "https://i.pravatar.cc/100?img=3" },
-  ];
+  // Popular areas for quick search
+  const popularAreas = ["Kolkata", "Salt Lake", "New Town", "Rajarhat", "Barasat", "Howrah"];
 
   return (
-    <div className="min-h-screen bg-white overflow-x-hidden">
-      {/* Hero Section */}
-      <section className="relative min-h-[100dvh] flex items-center overflow-hidden">
-        {/* Animated Background */}
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-700" />
-          
-          {/* Animated gradient orbs */}
-          <motion.div 
-            className="absolute top-0 left-0 w-[500px] h-[500px] bg-pink-500/30 rounded-full blur-[100px]"
-            animate={{ 
-              x: [0, 100, 0], 
-              y: [0, 50, 0],
-              scale: [1, 1.2, 1]
-            }}
-            transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-          />
-          <motion.div 
-            className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-violet-500/40 rounded-full blur-[120px]"
-            animate={{ 
-              x: [0, -80, 0], 
-              y: [0, -60, 0],
-              scale: [1, 1.3, 1]
-            }}
-            transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-          />
-          <motion.div 
-            className="absolute top-1/2 left-1/2 w-[400px] h-[400px] bg-fuchsia-500/20 rounded-full blur-[80px]"
-            animate={{ 
-              x: [-200, -100, -200], 
-              y: [-200, -150, -200],
-              scale: [1, 1.1, 1]
-            }}
-            transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-          />
-          
-          {/* Grid pattern overlay */}
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:50px_50px]" />
-        </div>
-
-        <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-16">
-          {/* Hero Content */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-center mb-8 md:mb-12"
-          >
-            {/* Trust Badge */}
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.2, duration: 0.5 }}
-              className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full px-5 py-2.5 mb-6"
-            >
-              <Sparkles className="w-4 h-4 text-yellow-300" />
-              <span className="text-white/95 text-sm font-medium">Trusted by 10,000+ Happy Couples</span>
-              <CheckCircle className="w-4 h-4 text-green-400" />
-            </motion.div>
-            
-            {/* Main Heading */}
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 tracking-tight leading-tight">
-              Your Perfect
-              <span className="block mt-2">
-                <span className="bg-gradient-to-r from-yellow-200 via-pink-200 to-yellow-200 bg-clip-text text-transparent">
-                  Wedding Venue
-                </span>
-              </span>
-              <span className="block text-3xl sm:text-4xl md:text-5xl mt-2 text-white/80 font-medium">
-                Awaits You
-              </span>
+    <div className="min-h-screen bg-gray-50">
+      {/* Hero Section - Clean & Fast */}
+      <section className="bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800 pt-8 pb-16 px-4">
+        <div className="max-w-6xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-3">
+              Find Your Perfect Wedding Venue
             </h1>
-            
-            <p className="text-lg md:text-xl text-white/75 max-w-2xl mx-auto leading-relaxed">
-              Discover stunning venues and premium catering services for your special day. 
-              Book with confidence, celebrate with joy.
+            <p className="text-purple-100 text-lg max-w-xl mx-auto">
+              Compare prices, book venues & caterers with transparent pricing
             </p>
-          </motion.div>
+          </div>
 
           {/* Search Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-            className="max-w-4xl mx-auto"
-          >
-            <div className="bg-white/95 backdrop-blur-xl rounded-2xl md:rounded-3xl shadow-2xl shadow-black/25 p-4 md:p-8 border border-white/50">
-              {/* Tabs */}
-              <div className="flex gap-2 mb-6">
-                {[
-                  { id: 'venues', icon: Building2, label: 'Venues' },
-                  { id: 'catering', icon: ChefHat, label: 'Catering' }
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id as 'venues' | 'catering')}
-                    className={`flex-1 py-3.5 px-4 rounded-xl font-semibold text-sm md:text-base transition-all duration-300 flex items-center justify-center gap-2 ${
-                      activeTab === tab.id
-                        ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-lg shadow-violet-500/30"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
-                  >
-                    <tab.icon className="w-5 h-5" />
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Search Fields */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                {/* Location */}
-                <div className="md:col-span-4">
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 ml-1">Location</label>
-                  <div className="relative">
-                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-violet-500" />
-                    <input
-                      type="text"
-                      placeholder="City or area..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-gray-100 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500 focus:bg-white transition-all text-base"
-                    />
-                  </div>
-                </div>
-
-                {/* Date */}
-                <div className="md:col-span-3">
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 ml-1">Event Date</label>
-                  <div className="relative">
-                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-violet-500" />
-                    <input
-                      type="date"
-                      value={selectedDate}
-                      onChange={(e) => setSelectedDate(e.target.value)}
-                      className="w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-gray-100 rounded-xl text-gray-900 focus:outline-none focus:border-violet-500 focus:bg-white transition-all text-base"
-                    />
-                  </div>
-                </div>
-
-                {/* Guests */}
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 ml-1">Guests</label>
-                  <div className="relative">
-                    <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-violet-500" />
-                    <input
-                      type="number"
-                      placeholder="500"
-                      value={guestCount}
-                      onChange={(e) => setGuestCount(e.target.value)}
-                      className="w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-gray-100 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500 focus:bg-white transition-all text-base"
-                    />
-                  </div>
-                </div>
-
-                {/* Search Button */}
-                <div className="md:col-span-3 flex items-end">
-                  <button
-                    onClick={handleSearch}
-                    className="w-full py-4 px-6 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white font-bold rounded-xl shadow-lg shadow-violet-500/30 hover:shadow-xl hover:shadow-violet-500/40 transition-all flex items-center justify-center gap-2 text-base"
-                  >
-                    <Search className="w-5 h-5" />
-                    Search
-                  </button>
-                </div>
-              </div>
-
-              {/* Popular Searches */}
-              <div className="flex flex-wrap items-center gap-2 mt-6 pt-6 border-t border-gray-100">
-                <span className="text-sm text-gray-500 font-medium">Popular:</span>
-                {["Kolkata", "Salt Lake", "New Town", "Rajarhat", "Barasat"].map((city) => (
-                  <button
-                    key={city}
-                    onClick={() => setSearchQuery(city)}
-                    className="text-sm text-violet-600 hover:text-violet-700 font-semibold hover:bg-violet-50 px-3 py-1.5 rounded-full transition-colors"
-                  >
-                    {city}
-                  </button>
-                ))}
-              </div>
+          <div className="bg-white rounded-2xl shadow-2xl p-4 md:p-6 max-w-4xl mx-auto">
+            {/* Tabs */}
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setActiveTab("venues")}
+                className={`flex-1 py-3 px-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
+                  activeTab === "venues"
+                    ? "bg-purple-600 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                <Building2 className="w-5 h-5" />
+                Venues
+              </button>
+              <button
+                onClick={() => setActiveTab("catering")}
+                className={`flex-1 py-3 px-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
+                  activeTab === "catering"
+                    ? "bg-orange-500 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                <ChefHat className="w-5 h-5" />
+                Catering
+              </button>
             </div>
-          </motion.div>
+
+            {/* Search Bar */}
+            <div className="flex gap-3">
+              <div className="flex-1 relative">
+                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search by area, city or venue name..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={handleKeyPress}
+                  className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-base"
+                />
+              </div>
+              <button
+                onClick={handleSearch}
+                className={`px-8 py-4 font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 ${
+                  activeTab === "venues"
+                    ? "bg-purple-600 hover:bg-purple-700 text-white"
+                    : "bg-orange-500 hover:bg-orange-600 text-white"
+                }`}
+              >
+                <Search className="w-5 h-5" />
+                <span className="hidden sm:inline">Search</span>
+              </button>
+            </div>
+
+            {/* Quick Links */}
+            <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-gray-100">
+              <span className="text-sm text-gray-500">Popular:</span>
+              {popularAreas.map((area) => (
+                <button
+                  key={area}
+                  onClick={() => {
+                    setSearchQuery(area);
+                    handleSearch();
+                  }}
+                  className="text-sm text-purple-600 hover:text-purple-700 font-medium hover:bg-purple-50 px-3 py-1 rounded-full transition-colors"
+                >
+                  {area}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* Stats */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
-            className="flex justify-center gap-8 md:gap-16 mt-10 md:mt-14"
-          >
-            {[
-              { value: venueCount.count, suffix: "+", label: "Venues" },
-              { value: Math.floor(happyCustomers.count / 1000), suffix: "K+", label: "Happy Couples" },
-              { value: citiesCount.count, suffix: "+", label: "Cities" },
-            ].map((stat, i) => (
-              <motion.div 
-                key={i} 
-                className="text-center"
-                whileHover={{ scale: 1.05 }}
-              >
-                <div className="text-3xl md:text-5xl font-bold text-white">
-                  {stat.value}{stat.suffix}
-                </div>
-                <div className="text-sm md:text-base text-white/70 mt-1">{stat.label}</div>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-
-        {/* Scroll Indicator */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1, y: [0, 12, 0] }}
-          transition={{ duration: 2, repeat: Infinity, delay: 1.5 }}
-          className="absolute bottom-6 left-1/2 -translate-x-1/2 hidden md:block"
-        >
-          <div className="w-7 h-12 border-2 border-white/40 rounded-full flex justify-center pt-3">
-            <motion.div 
-              className="w-2 h-3 bg-white/70 rounded-full"
-              animate={{ y: [0, 8, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-            />
-          </div>
-        </motion.div>
-      </section>
-
-      {/* Categories Section */}
-      <section className="py-16 md:py-24 px-4 bg-gray-50">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <span className="text-violet-600 font-semibold text-sm uppercase tracking-wide">Explore</span>
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mt-2 mb-4">
-              Browse by Category
-            </h2>
-            <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-              Find the perfect venue type for your celebration
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-            {categories.map((cat, i) => (
-              <motion.div
-                key={cat.label}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-              >
-                <Link
-                  href={cat.href}
-                  className="group block bg-white rounded-2xl p-6 md:p-8 shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 hover:border-violet-200 relative overflow-hidden"
-                >
-                  <div className={`absolute inset-0 bg-gradient-to-br ${cat.color} opacity-0 group-hover:opacity-5 transition-opacity duration-500`} />
-                  
-                  <div className={`w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br ${cat.color} rounded-2xl flex items-center justify-center mb-4 md:mb-6 group-hover:scale-110 transition-transform duration-500 shadow-lg`}>
-                    <cat.icon className="w-7 h-7 md:w-8 md:h-8 text-white" />
-                  </div>
-                  
-                  <h3 className="font-bold text-gray-900 text-lg md:text-xl mb-1">{cat.label}</h3>
-                  <p className="text-gray-500 font-medium">{cat.count} options</p>
-                  
-                  <div className="flex items-center gap-1 text-violet-600 mt-4 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
-                    Explore <ArrowRight className="w-4 h-4" />
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
+          <div className="flex justify-center gap-8 md:gap-16 mt-10">
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold text-white">{stats.totalVenues}+</div>
+              <div className="text-purple-200 text-sm">Venues</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold text-white">{stats.totalCaterers}+</div>
+              <div className="text-purple-200 text-sm">Caterers</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold text-white">{Math.round(stats.completedBookings/1000)}K+</div>
+              <div className="text-purple-200 text-sm">Happy Couples</div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Featured Venues */}
-      <section className="py-16 md:py-24 px-4">
+      {/* Featured Venues Section */}
+      <section className="py-12 px-4">
         <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10 md:mb-12"
-          >
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <span className="text-violet-600 font-semibold text-sm uppercase tracking-wide">Handpicked</span>
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mt-2 mb-2">
-                Featured Venues
-              </h2>
-              <p className="text-gray-600 text-lg">Loved by thousands of happy couples</p>
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Featured Venues</h2>
+              <p className="text-gray-500 mt-1">Handpicked venues with transparent pricing</p>
             </div>
             <Link 
               href="/venues"
-              className="hidden md:inline-flex items-center gap-2 text-violet-600 hover:text-violet-700 font-semibold text-lg group"
+              className="text-purple-600 hover:text-purple-700 font-semibold flex items-center gap-1"
             >
-              View All Venues 
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              View All <ChevronRight className="w-5 h-5" />
             </Link>
-          </motion.div>
+          </div>
 
-          {venuesLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="bg-gray-100 rounded-2xl h-96 animate-pulse" />
-              ))}
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => <CardSkeleton key={i} />)}
             </div>
-          ) : featuredVenues.length === 0 ? (
-            <div className="text-center py-12">
-              <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-600 mb-2">No venues available yet</h3>
-              <p className="text-gray-500">Check back soon for amazing venues!</p>
+          ) : venues.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {venues.map((venue) => (
+                <VenueCard key={venue.id} venue={venue} />
+              ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-              {featuredVenues.map((venue, i) => (
-                <motion.div
-                  key={venue.id}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                >
-                  <Link
-                    href={`/venues/${venue.slug || venue.id}`}
-                    className="group block bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100"
-                  >
-                    {/* Image Container */}
-                    <div className="relative h-64 overflow-hidden">
-                      <img
-                        src={venue.image}
-                        alt={venue.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800';
-                        }}
-                      />
-                      
-                      {/* Gradient Overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                      
-                      {/* Badges */}
-                      {(venue.isVerified || venue.isAdminListed) && (
-                        <div className={`absolute top-4 left-4 flex items-center gap-1.5 ${venue.isVerified ? 'bg-green-500' : 'bg-violet-500'} text-white text-xs font-bold px-3 py-1.5 rounded-full`}>
-                          <CheckCircle className="w-3.5 h-3.5" />
-                          {venue.isVerified ? 'Verified' : 'Featured'}
-                        </div>
-                      )}
-                      
-                      {/* Wishlist Button */}
-                      <button 
-                        className="absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white hover:scale-110 transition-all shadow-lg"
-                        onClick={(e) => e.preventDefault()}
-                      >
-                        <Heart className="w-5 h-5 text-gray-600 hover:text-red-500 transition-colors" />
-                      </button>
-
-                      {/* Title & Location */}
-                      <div className="absolute bottom-4 left-4 right-4">
-                        <h3 className="text-xl md:text-2xl font-bold text-white mb-1 line-clamp-1">{venue.name}</h3>
-                        <div className="flex items-center gap-1.5 text-white/90">
-                          <MapPin className="w-4 h-4" />
-                          <span className="text-sm font-medium">{venue.location}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Details */}
-                    <div className="p-5">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="text-2xl md:text-3xl font-bold text-gray-900">
-                            ₹{venue.price >= 100000 
-                              ? `${(venue.price / 100000).toFixed(1)}L` 
-                              : `${(venue.price / 1000).toFixed(0)}K`}
-                          </span>
-                          <span className="text-gray-500 text-sm ml-1">onwards</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 bg-amber-50 px-3 py-1.5 rounded-lg">
-                          <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                          <span className="font-bold text-gray-900">{venue.rating.toFixed(1)}</span>
-                          <span className="text-gray-500 text-sm">({venue.reviews})</span>
-                        </div>
-                      </div>
-                      
-                      {venue.capacity && (
-                        <div className="flex items-center gap-1.5 mt-3 text-gray-600">
-                          <Users className="w-4 h-4" />
-                          <span className="text-sm">Up to {venue.capacity} guests</span>
-                        </div>
-                      )}
-                    </div>
-                  </Link>
-                </motion.div>
-              ))}
+            <div className="text-center py-12 bg-white rounded-2xl">
+              <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">No venues available yet</p>
+              <p className="text-gray-400 text-sm">Check back soon!</p>
             </div>
           )}
-
-          {/* Mobile CTA */}
-          <div className="mt-8 text-center md:hidden">
-            <Link 
-              href="/venues"
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white px-8 py-4 rounded-xl font-bold shadow-lg shadow-violet-500/30 hover:shadow-xl transition-all"
-            >
-              View All Venues <ArrowRight className="w-5 h-5" />
-            </Link>
-          </div>
         </div>
       </section>
 
       {/* Featured Caterers Section */}
-      <section className="py-16 md:py-24 px-4 bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50">
+      <section className="py-12 px-4 bg-white">
         <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10 md:mb-12"
-          >
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <span className="text-orange-600 font-semibold text-sm uppercase tracking-wide">Delicious</span>
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mt-2 mb-2">
-                Top Catering Services
-              </h2>
-              <p className="text-gray-600 text-lg">Exquisite cuisines for your special day</p>
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Top Caterers</h2>
+              <p className="text-gray-500 mt-1">Premium catering with per-plate pricing</p>
             </div>
             <Link 
               href="/catering"
-              className="hidden md:inline-flex items-center gap-2 text-orange-600 hover:text-orange-700 font-semibold text-lg group"
+              className="text-orange-600 hover:text-orange-700 font-semibold flex items-center gap-1"
             >
-              View All Caterers 
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              View All <ChevronRight className="w-5 h-5" />
             </Link>
-          </motion.div>
+          </div>
 
-          {caterersLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-white rounded-2xl h-80 animate-pulse" />
-              ))}
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[...Array(4)].map((_, i) => <CardSkeleton key={i} />)}
             </div>
-          ) : featuredCaterers.length === 0 ? (
-            <div className="text-center py-12">
-              <ChefHat className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-600 mb-2">No caterers available yet</h3>
-              <p className="text-gray-500">Check back soon for amazing catering services!</p>
+          ) : caterers.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {caterers.map((caterer) => (
+                <CatererCard key={caterer.id} caterer={caterer} />
+              ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
-              {featuredCaterers.map((caterer, i) => (
-                <motion.div
-                  key={caterer.id}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                >
-                  <Link
-                    href={`/catering/${caterer.slug || caterer.id}`}
-                    className="group block bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100"
-                  >
-                    <div className="relative h-48 overflow-hidden">
-                      <img
-                        src={caterer.image}
-                        alt={caterer.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1555244162-803834f70033?w=800';
-                        }}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                      
-                      {caterer.isPureVeg && (
-                        <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-full">
-                          <Utensils className="w-3.5 h-3.5" />
-                          Pure Veg
-                        </div>
-                      )}
-
-                      <div className="absolute bottom-4 left-4 right-4">
-                        <h3 className="text-xl font-bold text-white mb-1">{caterer.name}</h3>
-                        <div className="flex items-center gap-1.5 text-white/90">
-                          <MapPin className="w-4 h-4" />
-                          <span className="text-sm">{caterer.location}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-5">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="text-2xl font-bold text-gray-900">₹{caterer.price}</span>
-                          <span className="text-gray-500 text-sm ml-1">per plate</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 bg-amber-50 px-3 py-1.5 rounded-lg">
-                          <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                          <span className="font-bold text-gray-900">{caterer.rating.toFixed(1)}</span>
-                        </div>
-                      </div>
-                      {caterer.cuisines && (
-                        <p className="text-gray-500 text-sm mt-2 line-clamp-1">
-                          {caterer.cuisines}
-                        </p>
-                      )}
-                    </div>
-                  </Link>
-                </motion.div>
-              ))}
+            <div className="text-center py-12 bg-gray-50 rounded-2xl">
+              <ChefHat className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">No caterers available yet</p>
+              <p className="text-gray-400 text-sm">Check back soon!</p>
             </div>
           )}
-
-          <div className="mt-8 text-center md:hidden">
-            <Link 
-              href="/catering"
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white px-8 py-4 rounded-xl font-bold shadow-lg shadow-orange-500/30 hover:shadow-xl transition-all"
-            >
-              View All Caterers <ArrowRight className="w-5 h-5" />
-            </Link>
-          </div>
         </div>
       </section>
 
-      {/* Why Choose Us */}
-      <section className="py-16 md:py-24 px-4 bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-700 relative overflow-hidden">
-        {/* Background decoration */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:60px_60px]" />
-        
-        <div className="max-w-7xl mx-auto relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <span className="text-pink-200 font-semibold text-sm uppercase tracking-wide">Why Us</span>
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mt-2 mb-4">
-              Why Choose BookMyVenue?
-            </h2>
-            <p className="text-white/80 text-lg max-w-2xl mx-auto">
-              We make your wedding planning journey seamless and stress-free
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-            {features.map((feature, i) => (
-              <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 md:p-8 text-center hover:bg-white/20 transition-all duration-300 group"
-              >
-                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform">
-                  <feature.icon className="w-8 h-8 text-white" />
+      {/* How It Works Section */}
+      <section className="py-16 px-4 bg-gray-50">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 text-center mb-12">
+            How BookMyVenue Works
+          </h2>
+          
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              { 
+                step: "1", 
+                title: "Browse & Compare", 
+                desc: "Search venues and caterers with transparent pricing. Compare options side by side.",
+                icon: Search
+              },
+              { 
+                step: "2", 
+                title: "Contact or Book", 
+                desc: "Call directly for unverified listings, or book online instantly for verified ones.",
+                icon: Phone
+              },
+              { 
+                step: "3", 
+                title: "Celebrate!", 
+                desc: "Enjoy your event with confidence. Best prices guaranteed.",
+                icon: "🎉"
+              },
+            ].map((item, i) => (
+              <div key={i} className="text-center">
+                <div className="w-16 h-16 bg-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  {typeof item.icon === 'string' ? (
+                    <span className="text-3xl">{item.icon}</span>
+                  ) : (
+                    <item.icon className="w-8 h-8 text-purple-600" />
+                  )}
                 </div>
-                <h3 className="font-bold text-white text-lg mb-2">{feature.title}</h3>
-                <p className="text-white/70">{feature.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-16 md:py-24 px-4 bg-gray-50">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <span className="text-violet-600 font-semibold text-sm uppercase tracking-wide">Testimonials</span>
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mt-2 mb-4">
-              Loved by Couples
-            </h2>
-            <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-              See what our happy couples have to say
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map((testimonial, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100"
-              >
-                <div className="flex items-center gap-1 mb-4">
-                  {[...Array(testimonial.rating)].map((_, j) => (
-                    <Star key={j} className="w-5 h-5 text-amber-400 fill-amber-400" />
-                  ))}
-                </div>
-                <p className="text-gray-700 text-lg mb-6 leading-relaxed">&ldquo;{testimonial.text}&rdquo;</p>
-                <div className="flex items-center gap-4">
-                  <img 
-                    src={testimonial.image} 
-                    alt={testimonial.name}
-                    className="w-12 h-12 rounded-full object-cover"
-                  />
-                  <div>
-                    <p className="font-bold text-gray-900">{testimonial.name}</p>
-                    <p className="text-gray-500 text-sm">{testimonial.location}</p>
-                  </div>
-                </div>
-              </motion.div>
+                <div className="text-purple-600 font-bold text-sm mb-2">Step {item.step}</div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">{item.title}</h3>
+                <p className="text-gray-500">{item.desc}</p>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 md:py-24 px-4">
-        <div className="max-w-4xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-700 rounded-3xl p-8 md:p-12 text-center relative overflow-hidden"
-          >
-            {/* Background decoration */}
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px]" />
-            
-            <div className="relative z-10">
-              <Sparkles className="w-12 h-12 text-yellow-300 mx-auto mb-6" />
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4">
-                Ready to Find Your Perfect Venue?
-              </h2>
-              <p className="text-white/80 text-lg mb-8 max-w-2xl mx-auto">
-                Join thousands of happy couples who found their dream venue with us.
-                Start your wedding journey today!
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link
-                  href="/venues"
-                  className="px-8 py-4 bg-white text-violet-700 font-bold rounded-xl shadow-lg hover:shadow-xl hover:bg-gray-50 transition-all text-lg"
-                >
-                  Browse Venues
-                </Link>
-                <Link
-                  href="/auth/register"
-                  className="px-8 py-4 bg-white/10 backdrop-blur-sm border-2 border-white/30 text-white font-bold rounded-xl hover:bg-white/20 transition-all text-lg"
-                >
-                  Create Free Account
-                </Link>
-              </div>
-            </div>
-          </motion.div>
+      <section className="py-16 px-4 bg-gradient-to-r from-purple-600 to-indigo-700">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
+            Ready to Find Your Perfect Venue?
+          </h2>
+          <p className="text-purple-100 mb-8 max-w-xl mx-auto">
+            Join thousands of happy couples who found their dream wedding venue through BookMyVenue
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link
+              href="/venues"
+              className="bg-white text-purple-600 font-bold px-8 py-4 rounded-xl hover:bg-gray-100 transition-colors flex items-center justify-center gap-2"
+            >
+              <Building2 className="w-5 h-5" />
+              Browse Venues
+            </Link>
+            <Link
+              href="/catering"
+              className="bg-purple-500 text-white font-bold px-8 py-4 rounded-xl hover:bg-purple-400 transition-colors flex items-center justify-center gap-2 border border-purple-400"
+            >
+              <ChefHat className="w-5 h-5" />
+              Browse Catering
+            </Link>
+          </div>
         </div>
       </section>
 
-      {/* Footer Spacing for Mobile Nav */}
-      <div className="h-24 md:h-0" />
+      {/* Footer */}
+      <footer className="bg-gray-900 text-gray-400 py-12 px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            <div className="col-span-2 md:col-span-1">
+              <h3 className="text-white font-bold text-xl mb-4">BookMyVenue</h3>
+              <p className="text-sm">India's leading platform for wedding venues and catering services with transparent pricing.</p>
+            </div>
+            <div>
+              <h4 className="text-white font-semibold mb-4">Quick Links</h4>
+              <ul className="space-y-2 text-sm">
+                <li><Link href="/venues" className="hover:text-white transition-colors">Venues</Link></li>
+                <li><Link href="/catering" className="hover:text-white transition-colors">Catering</Link></li>
+                <li><Link href="/bookings" className="hover:text-white transition-colors">My Bookings</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-white font-semibold mb-4">Popular Cities</h4>
+              <ul className="space-y-2 text-sm">
+                <li><Link href="/venues?search=kolkata" className="hover:text-white transition-colors">Kolkata</Link></li>
+                <li><Link href="/venues?search=salt-lake" className="hover:text-white transition-colors">Salt Lake</Link></li>
+                <li><Link href="/venues?search=new-town" className="hover:text-white transition-colors">New Town</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-white font-semibold mb-4">Support</h4>
+              <ul className="space-y-2 text-sm">
+                <li><a href="tel:+919876543210" className="hover:text-white transition-colors">+91 98765 43210</a></li>
+                <li><a href="mailto:support@bookmyvenue.in" className="hover:text-white transition-colors">support@bookmyvenue.in</a></li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm">
+            <p>© 2024 BookMyVenue. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
+
+      {/* Bottom padding for mobile nav */}
+      <div className="h-20 md:hidden" />
     </div>
   );
 }
