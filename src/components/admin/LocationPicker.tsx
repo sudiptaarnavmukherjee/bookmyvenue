@@ -47,7 +47,7 @@ export default function LocationPicker({ value, onChange, placeholder = "Search 
   
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const debounceRef = useRef<NodeJS.Timeout>();
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // Close dropdown on outside click
   useEffect(() => {
