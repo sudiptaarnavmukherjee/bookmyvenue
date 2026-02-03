@@ -23,6 +23,7 @@ import {
   Award,
 } from "lucide-react";
 import Link from "next/link";
+import ImageUploader from "@/components/upload/ImageUploader";
 
 // Kolkata Areas
 const KOLKATA_AREAS = [
@@ -73,7 +74,7 @@ export default function AdminAddCatererPage() {
     contactNumber: "",
     
     // Media
-    images: "",
+    images: [] as string[],
     coverImage: "",
     
     // Sample Menu Items
@@ -129,8 +130,8 @@ export default function AdminAddCatererPage() {
         contactName: formData.contactName,
         contactNumber: formData.contactNumber,
         phone: formData.contactNumber,
-        images: formData.images,
-        coverImage: formData.coverImage || formData.images.split(",")[0] || "",
+        images: formData.images.join(","),
+        coverImage: formData.images[0] || "",
         // Sample menu items for display
         silverItems: formData.silverItems,
         goldItems: formData.goldItems,
@@ -602,25 +603,18 @@ export default function AdminAddCatererPage() {
                 <ImageIcon className="h-5 w-5 text-indigo-600" />
               </div>
               <h2 className="text-lg font-semibold text-gray-900">Images</h2>
+              <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Upload directly</span>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Image URLs (comma-separated) *
-              </label>
-              <textarea
-                name="images"
-                value={formData.images}
-                onChange={handleInputChange}
-                required
-                rows={3}
-                placeholder="https://example.com/food1.jpg, https://example.com/food2.jpg"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                First image will be used as cover. Add images of food, setup, events.
-              </p>
-            </div>
+            <ImageUploader
+              images={formData.images}
+              onImagesChange={(images) => setFormData(prev => ({ ...prev, images }))}
+              maxImages={10}
+              folder="caterers"
+            />
+            <p className="text-xs text-gray-500 mt-3">
+              📸 Upload up to 10 high-quality images of food, setup, and catering events. First image becomes the cover photo.
+            </p>
           </motion.div>
 
           {/* Submit Button */}

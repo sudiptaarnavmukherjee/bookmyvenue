@@ -21,6 +21,7 @@ import {
   Star,
 } from "lucide-react";
 import Link from "next/link";
+import ImageUploader from "@/components/upload/ImageUploader";
 
 // Kolkata Areas for dropdown
 const KOLKATA_AREAS = [
@@ -87,7 +88,7 @@ export default function AdminAddVenuePage() {
     contactNumber: "",
     
     // Media
-    images: "",
+    images: [] as string[],
     coverImage: "",
     
     // Amenities
@@ -147,8 +148,8 @@ export default function AdminAddVenuePage() {
         primeDays: formData.primeDays.join(","),
         contactName: formData.contactName,
         contactNumber: formData.contactNumber,
-        images: formData.images,
-        coverImage: formData.coverImage || formData.images.split(",")[0] || "",
+        images: formData.images.join(","),
+        coverImage: formData.images[0] || "",
         amenities: formData.amenities.join(","),
         // Fishbowl flags
         isAdminListed: true,
@@ -620,25 +621,18 @@ export default function AdminAddVenuePage() {
                 <ImageIcon className="h-5 w-5 text-indigo-600" />
               </div>
               <h2 className="text-lg font-semibold text-gray-900">Images</h2>
+              <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Upload directly</span>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Image URLs (comma-separated) *
-              </label>
-              <textarea
-                name="images"
-                value={formData.images}
-                onChange={handleInputChange}
-                required
-                rows={3}
-                placeholder="https://example.com/image1.jpg, https://example.com/image2.jpg"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                First image will be used as cover. Use Unsplash, Cloudinary, or any direct image URLs.
-              </p>
-            </div>
+            <ImageUploader
+              images={formData.images}
+              onImagesChange={(images) => setFormData(prev => ({ ...prev, images }))}
+              maxImages={10}
+              folder="venues"
+            />
+            <p className="text-xs text-gray-500 mt-3">
+              📸 Upload up to 10 high-quality images. First image becomes the cover photo. Supported: JPG, PNG, WebP (max 10MB each)
+            </p>
           </motion.div>
 
           {/* Amenities */}

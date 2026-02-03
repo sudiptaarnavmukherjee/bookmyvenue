@@ -89,7 +89,7 @@ export default function HomePage() {
             id: v.id,
             name: v.name,
             slug: v.slug,
-            location: v.area || v.city || 'Hyderabad',
+            location: v.area || v.city || 'Kolkata',
             city: v.city,
             area: v.area,
             price: v.exactPrice || v.primeDayPrice || v.estimatedMinPrice || 50000,
@@ -104,9 +104,9 @@ export default function HomePage() {
         console.error('Failed to fetch venues:', error);
         // Set placeholder data
         setFeaturedVenues([
-          { id: '1', name: 'Grand Palace Banquet', location: 'Banjara Hills', price: 150000, rating: 4.8, reviews: 124, image: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800', isVerified: true },
-          { id: '2', name: 'Royal Gardens', location: 'Jubilee Hills', price: 200000, rating: 4.9, reviews: 89, image: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800', isVerified: true },
-          { id: '3', name: 'Sunset Lawns', location: 'Gachibowli', price: 80000, rating: 4.6, reviews: 67, image: 'https://images.unsplash.com/photo-1478146896981-b80fe463b330?w=800', isVerified: false },
+          { id: '1', name: 'Grand Palace Banquet', location: 'Salt Lake', price: 150000, rating: 4.8, reviews: 124, image: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800', isVerified: true },
+          { id: '2', name: 'Royal Gardens', location: 'New Town', price: 200000, rating: 4.9, reviews: 89, image: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800', isVerified: true },
+          { id: '3', name: 'Sunset Lawns', location: 'Rajarhat', price: 80000, rating: 4.6, reviews: 67, image: 'https://images.unsplash.com/photo-1478146896981-b80fe463b330?w=800', isVerified: false },
         ]);
       } finally {
         setLoading(false);
@@ -143,9 +143,9 @@ export default function HomePage() {
 
   // Testimonials
   const testimonials = [
-    { name: "Priya & Rahul", location: "Hyderabad", text: "Found our dream venue in just 2 days! The team was incredibly helpful.", rating: 5, image: "https://i.pravatar.cc/100?img=1" },
-    { name: "Sneha & Vikram", location: "Secunderabad", text: "Best platform for wedding planning. Saved us so much time and money!", rating: 5, image: "https://i.pravatar.cc/100?img=2" },
-    { name: "Ananya & Karthik", location: "Jubilee Hills", text: "Professional service and amazing venue options. Highly recommended!", rating: 5, image: "https://i.pravatar.cc/100?img=3" },
+    { name: "Priya & Rahul", location: "Kolkata", text: "Found our dream venue in just 2 days! The team was incredibly helpful.", rating: 5, image: "https://i.pravatar.cc/100?img=1" },
+    { name: "Sneha & Vikram", location: "Salt Lake", text: "Best platform for wedding planning. Saved us so much time and money!", rating: 5, image: "https://i.pravatar.cc/100?img=2" },
+    { name: "Ananya & Karthik", location: "New Town", text: "Professional service and amazing venue options. Highly recommended!", rating: 5, image: "https://i.pravatar.cc/100?img=3" },
   ];
 
   return (
@@ -318,7 +318,7 @@ export default function HomePage() {
               {/* Popular Searches */}
               <div className="flex flex-wrap items-center gap-2 mt-6 pt-6 border-t border-gray-100">
                 <span className="text-sm text-gray-500 font-medium">Popular:</span>
-                {["Hyderabad", "Banjara Hills", "Jubilee Hills", "Gachibowli", "Secunderabad"].map((city) => (
+                {["Kolkata", "Salt Lake", "New Town", "Rajarhat", "Barasat"].map((city) => (
                   <button
                     key={city}
                     onClick={() => setSearchQuery(city)}
