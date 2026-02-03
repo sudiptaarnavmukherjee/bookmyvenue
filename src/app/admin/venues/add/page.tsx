@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import ImageUploader from "@/components/upload/ImageUploader";
+import LocationPicker from "@/components/admin/LocationPicker";
 
 // Kolkata Areas for dropdown
 const KOLKATA_AREAS = [
@@ -59,6 +60,8 @@ export default function AdminAddVenuePage() {
     area: "",
     address: "",
     pincode: "",
+    latitude: null as number | null,
+    longitude: null as number | null,
     minGuests: "50",
     maxGuests: "500",
     estimatedMinPrice: "",
@@ -92,6 +95,25 @@ export default function AdminAddVenuePage() {
     }));
   };
 
+  const handleLocationChange = (location: {
+    address: string;
+    area: string;
+    city: string;
+    pincode: string;
+    latitude: number | null;
+    longitude: number | null;
+  }) => {
+    setFormData(prev => ({
+      ...prev,
+      address: location.address,
+      area: location.area,
+      city: location.city || "Kolkata",
+      pincode: location.pincode,
+      latitude: location.latitude,
+      longitude: location.longitude,
+    }));
+  };
+
   const removeImage = (index: number) => {
     setFormData(prev => ({
       ...prev,
@@ -112,6 +134,8 @@ export default function AdminAddVenuePage() {
         area: formData.area,
         address: formData.address,
         pincode: formData.pincode,
+        latitude: formData.latitude,
+        longitude: formData.longitude,
         minGuests: parseInt(formData.minGuests),
         maxGuests: parseInt(formData.maxGuests),
         priceMode: "ESTIMATED",
@@ -248,13 +272,48 @@ export default function AdminAddVenuePage() {
                   ))}
                 </select>
               </div>
+{/* Location */}
+        <div className="bg-white rounded-xl p-5 border">
+          <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-purple-500" />
+            Location (Important for Nearby Search)
+          </h2>
+          
+          <LocationPicker
+            value={{
+              address: formData.address,
+              area: formData.area,
+              city: formData.city,
+              pincode: formData.pincode,
+              latitude: formData.latitude || undefined,
+              longitude: formData.longitude || undefined,
+            }}
+            onChange={handleLocationChange}
+            placeholder="Search venue location on Ola Maps..."
+          />
+
+          {/* Manual Area Selection (fallback) */}
+          <div className="mt-4 pt-4 border-t">
+            <p className="text-xs text-gray-500 mb-3">Or select area manually:</p>
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Area *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                <select
+                  name="city"
+                  value={formData.city}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-rose-500"
+                >
+                  <option value="Kolkata">Kolkata</option>
+                  <option value="Howrah">Howrah</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Area</label>
                 <select
                   name="area"
                   value={formData.area}
                   onChange={handleInputChange}
-                  required
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-rose-500"
                 >
                   <option value="">Select Area</option>
@@ -265,14 +324,15 @@ export default function AdminAddVenuePage() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Full Address</label>
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Pincode</label>
               <input
                 type="text"
-                name="address"
-                value={formData.address}
+                name="pincode"
+                value={formData.pincode}
                 onChange={handleInputChange}
-                placeholder="Street address, building name..."
+                placeholder="700001"
+                maxLength={6}
                 className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-rose-500"
               />
             </div>

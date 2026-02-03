@@ -132,6 +132,8 @@ export async function GET(request: Request) {
           city: true,
           area: true,
           address: true,
+          latitude: true,
+          longitude: true,
           images: true,
           coverImage: true,
           minPlatePrice: true,
@@ -153,10 +155,12 @@ export async function GET(request: Request) {
       // Calculate distances and sort by proximity
       const caterersWithDistance = caterers
         .map((caterer) => {
-          // Estimate coordinates from area
+          // Use caterer coordinates if available, otherwise estimate from area
           let coords: Coordinates | null = null;
           
-          if (caterer.area) {
+          if (caterer.latitude && caterer.longitude) {
+            coords = { lat: caterer.latitude, lng: caterer.longitude };
+          } else if (caterer.area) {
             coords = getAreaCoordinates(caterer.area);
           } else if (caterer.city) {
             coords = getAreaCoordinates(caterer.city);

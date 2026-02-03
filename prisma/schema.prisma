@@ -203,6 +203,8 @@ model Caterer {
   area        String?
   address     String
   phone       String
+  latitude    Float?
+  longitude   Float?
 
   // Pricing
   minPlatePrice Float

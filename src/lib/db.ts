@@ -6,16 +6,19 @@ import { PrismaClient } from '@prisma/client'
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient }
 
+// Use connection pooling for serverless environments
+const prismaClientOptions = {
+  log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL,
+    },
+  },
+} as const
+
 export const prisma =
   globalForPrisma.prisma ||
-  new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-    datasources: {
-      db: {
-        url: process.env.DATABASE_URL,
-      },
-    },
-  })
+  new PrismaClient(prismaClientOptions)
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
