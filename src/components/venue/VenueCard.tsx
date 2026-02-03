@@ -3,10 +3,11 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Users, MapPin, CheckCircle2, Heart, Phone, Calendar, Eye } from "lucide-react";
+import { Users, MapPin, CheckCircle2, Heart, Phone, Calendar, Eye, GitCompare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api-client";
 import { useSession } from "next-auth/react";
+import { useCompare } from "@/components/providers/CompareProvider";
 
 interface VenueCardProps {
   id: string;
@@ -58,11 +59,24 @@ export function VenueCard({
   slug,
 }: VenueCardProps) {
   const { data: session } = useSession();
+  const { isVenueSelected, addVenue, removeVenue } = useCompare();
   const [isInWishlist, setIsInWishlist] = useState(inWishlist);
   const [wishlistLoading, setWishlistLoading] = useState(false);
 
   // Determine if this is a fishbowl listing (admin added, no online booking)
   const isFishbowl = isAdminListed && !bookingEnabled;
+  const isSelected = isVenueSelected(venueId || id);
+
+  const handleCompareToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const targetId = venueId || id;
+    if (isSelected) {
+      removeVenue(targetId);
+    } else {
+      addVenue(targetId, name);
+    }
+  };
 
   const handleWishlistToggle = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -126,19 +140,33 @@ export function VenueCard({
             className="object-cover transition-transform duration-500 hover:scale-105"
           />
           
-          {/* Top Left - Wishlist */}
-          <button
-            onClick={handleWishlistToggle}
-            disabled={wishlistLoading}
-            className="absolute left-3 top-3 rounded-full bg-white/95 p-2 shadow-lg hover:bg-white transition-all disabled:opacity-50 z-10"
-          >
-            <Heart
+          {/* Top Left - Wishlist & Compare */}
+          <div className="absolute left-3 top-3 flex flex-col gap-2 z-10">
+            <button
+              onClick={handleWishlistToggle}
+              disabled={wishlistLoading}
+              className="rounded-full bg-white/95 p-2 shadow-lg hover:bg-white transition-all disabled:opacity-50"
+            >
+              <Heart
+                className={cn(
+                  "h-5 w-5 transition-colors",
+                  isInWishlist ? "fill-rose-500 text-rose-500" : "text-gray-600"
+                )}
+              />
+            </button>
+            <button
+              onClick={handleCompareToggle}
               className={cn(
-                "h-5 w-5 transition-colors",
-                isInWishlist ? "fill-rose-500 text-rose-500" : "text-gray-600"
+                "rounded-full p-2 shadow-lg transition-all",
+                isSelected 
+                  ? "bg-purple-600 text-white" 
+                  : "bg-white/95 text-gray-600 hover:bg-white"
               )}
-            />
-          </button>
+              title={isSelected ? "Remove from compare" : "Add to compare"}
+            >
+              <GitCompare className="h-5 w-5" />
+            </button>
+          </div>
           
           {/* Top Right - Badges */}
           <div className="absolute right-3 top-3 flex flex-col gap-2 z-10">

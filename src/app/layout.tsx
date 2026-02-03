@@ -4,6 +4,8 @@ import "./globals.css";
 import { MobileNav } from "@/components/layout/MobileNav";
 import DesktopNav from "@/components/layout/DesktopNav";
 import { SessionProvider } from "@/components/providers/SessionProvider";
+import { CompareProvider } from "@/components/providers/CompareProvider";
+import { CompareBar } from "@/components/ui/CompareBar";
 import { generateOrganizationSchema, generateSearchActionSchema, JsonLd } from "@/lib/structured-data";
 
 const inter = Inter({ 
@@ -98,11 +100,14 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} overflow-x-hidden antialiased`}>
         <SessionProvider>
-          <DesktopNav />
-          <main className="min-h-screen">
-            {children}
-          </main>
-          <MobileNav />
+          <CompareProvider>
+            <DesktopNav />
+            <main className="min-h-screen pb-16">
+              {children}
+            </main>
+            <CompareBar />
+            <MobileNav />
+          </CompareProvider>
         </SessionProvider>
       </body>
     </html>
