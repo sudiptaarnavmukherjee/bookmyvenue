@@ -4,11 +4,12 @@ import { useState, useEffect, useCallback } from "react";
 import { 
   Search, MapPin, Calendar, Star, 
   Building2, Users, ChefHat, Phone,
-  CheckCircle, ArrowRight, Leaf, ChevronRight, Navigation
+  CheckCircle, ArrowRight, Leaf, ChevronRight, Navigation, Locate
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useOwnerRedirect } from "@/hooks/useOwnerRedirect";
+import { useNearby } from "@/hooks/useLocation";
 import Image from "next/image";
 
 // Types
@@ -251,6 +252,12 @@ export default function HomePage() {
   const [stats, setStats] = useState<Stats>({ totalVenues: 500, totalCaterers: 200, completedBookings: 10000 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Nearby venues using Ola Maps
+  const { data: nearbyVenues, loading: nearbyLoading, userLocation } = useNearby("venues", 4);
+  const [stats, setStats] = useState<Stats>({ totalVenues: 500, totalCaterers: 200, completedBookings: 10000 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Fetch data on mount - SINGLE API CALL
   useEffect(() => {
@@ -468,6 +475,78 @@ export default function HomePage() {
           )}
         </div>
       </section>
+
+      {/* Nearby Venues Section - Powered by Ola Maps */}
+      {nearbyVenues.length > 0 && (
+        <section className="py-12 px-4 bg-gradient-to-br from-blue-50 to-indigo-50">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2">
+                  <Locate className="w-7 h-7 text-blue-600" />
+                  Venues Near You
+                </h2>
+                <p className="text-gray-500 mt-1">
+                  {userLocation ? "Based on your location" : "Popular venues in Kolkata"}
+                </p>
+              </div>
+              <Link 
+                href="/venues?sort=nearby"
+                className="text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1"
+              >
+                View All Nearby <ChevronRight className="w-5 h-5" />
+              </Link>
+            </div>
+
+            {nearbyLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {[...Array(4)].map((_, i) => <CardSkeleton key={i} />)}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {nearbyVenues.slice(0, 4).map((venue: any) => (
+                  <Link 
+                    key={venue.id}
+                    href={`/venues/${venue.slug || venue.id}`}
+                    className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300 border border-gray-100"
+                  >
+                    <div className="relative h-40 overflow-hidden bg-gray-100">
+                      <img
+                        src={venue.coverImage || venue.images?.split(",")[0] || "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=600&q=75"}
+                        alt={venue.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        loading="lazy"
+                      />
+                      {venue.distance && (
+                        <div className="absolute bottom-2 right-2 bg-blue-600 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                          <Navigation className="w-3 h-3" />
+                          {venue.distance < 1 
+                            ? `${(venue.distance * 1000).toFixed(0)}m` 
+                            : `${venue.distance.toFixed(1)}km`}
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-bold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
+                        {venue.name}
+                      </h3>
+                      <div className="flex items-center gap-1 text-gray-500 text-sm mt-1">
+                        <MapPin className="w-4 h-4" />
+                        <span>{venue.area || venue.city}</span>
+                      </div>
+                      <div className="mt-2 text-purple-600 font-bold">
+                        {venue.primeDayPrice ? `₹${(venue.primeDayPrice/1000).toFixed(0)}K` : 
+                         venue.estimatedMinPrice ? `₹${(venue.estimatedMinPrice/1000).toFixed(0)}K - ${(venue.estimatedMaxPrice/1000).toFixed(0)}K` : 
+                         "Call for price"}
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* How It Works Section */}
       <section className="py-16 px-4 bg-gray-50">
