@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { 
@@ -15,7 +15,8 @@ import {
   Plus,
   Minus,
   UtensilsCrossed,
-  Leaf
+  Leaf,
+  Loader2
 } from "lucide-react";
 
 type Caterer = {
@@ -55,7 +56,7 @@ const COMMON_CUISINES = [
   "Desserts"
 ];
 
-export default function CompareCaterersPage() {
+function CompareCaterersContent() {
   const searchParams = useSearchParams();
   const [caterers, setCaterers] = useState<Caterer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -435,5 +436,24 @@ export default function CompareCaterersPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <Loader2 className="h-8 w-8 animate-spin text-purple-600 mx-auto mb-4" />
+        <p className="text-gray-600">Loading comparison...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function CompareCaterersPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <CompareCaterersContent />
+    </Suspense>
   );
 }

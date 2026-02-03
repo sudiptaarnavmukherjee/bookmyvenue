@@ -6,7 +6,7 @@ const SITE_URL = "https://bookmyvenue.in";
 export async function GET() {
   try {
     // Get all active venues and caterers
-    const [venues, caterers, areas] = await Promise.all([
+    const [venues, caterers] = await Promise.all([
       prisma.venue.findMany({
         where: { isActive: true },
         select: { slug: true, updatedAt: true },
@@ -15,11 +15,19 @@ export async function GET() {
         where: { isActive: true },
         select: { slug: true, updatedAt: true },
       }),
-      prisma.area.findMany({
+    ]);
+
+    // Try to get areas, but don't fail if table doesn't exist
+    let areas: { name: string; city: string }[] = [];
+    try {
+      areas = await prisma.area.findMany({
         where: { isPopular: true },
         select: { name: true, city: true },
-      }),
-    ]);
+      });
+    } catch {
+      // Area table may not exist in database yet
+      console.log("Area table not available for sitemap");
+    }
 
     // Static pages
     const staticPages = [
