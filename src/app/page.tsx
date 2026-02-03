@@ -255,9 +255,6 @@ export default function HomePage() {
   
   // Nearby venues using Ola Maps
   const { data: nearbyVenues, loading: nearbyLoading, userLocation } = useNearby("venues", 4);
-  const [stats, setStats] = useState<Stats>({ totalVenues: 500, totalCaterers: 200, completedBookings: 10000 });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Fetch data on mount - SINGLE API CALL
   useEffect(() => {
