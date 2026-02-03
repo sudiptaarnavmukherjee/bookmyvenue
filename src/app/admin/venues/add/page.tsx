@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import {
   ArrowLeft,
   Building2,
@@ -11,14 +10,11 @@ import {
   IndianRupee,
   Users,
   Phone,
-  Image as ImageIcon,
-  Calendar,
-  Sparkles,
   Save,
   Loader2,
   CheckCircle,
-  Info,
-  Star,
+  Camera,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import ImageUploader from "@/components/upload/ImageUploader";
@@ -48,50 +44,30 @@ const AMENITIES_LIST = [
   "Fire Safety", "CCTV", "Security"
 ];
 
-const PRIME_DAYS = [
-  "Saturday", "Sunday", "Auspicious Days", "Wedding Season (Nov-Feb)",
-  "Public Holidays", "Long Weekends"
-];
-
 export default function AdminAddVenuePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [showImageUploader, setShowImageUploader] = useState(false);
   
   const [formData, setFormData] = useState({
-    // Basic Info
     name: "",
     description: "",
     venueType: "Banquet Hall",
-    
-    // Location
     city: "Kolkata",
     area: "",
     address: "",
     pincode: "",
-    
-    // Capacity
     minGuests: "50",
     maxGuests: "500",
-    
-    // Pricing - Fishbowl Model
-    priceMode: "ESTIMATED",
     estimatedMinPrice: "",
     estimatedMaxPrice: "",
     primeDayPrice: "",
     nonPrimeDayPrice: "",
-    primeDays: ["Saturday", "Sunday", "Auspicious Days"],
-    
-    // Contact (Fishbowl - Direct contact)
     contactName: "",
     contactNumber: "",
-    
-    // Media
     images: [] as string[],
-    coverImage: "",
-    
-    // Amenities
     amenities: [] as string[],
   });
 
@@ -116,12 +92,10 @@ export default function AdminAddVenuePage() {
     }));
   };
 
-  const togglePrimeDay = (day: string) => {
+  const removeImage = (index: number) => {
     setFormData(prev => ({
       ...prev,
-      primeDays: prev.primeDays.includes(day)
-        ? prev.primeDays.filter(d => d !== day)
-        : [...prev.primeDays, day]
+      images: prev.images.filter((_, i) => i !== index)
     }));
   };
 
@@ -140,18 +114,16 @@ export default function AdminAddVenuePage() {
         pincode: formData.pincode,
         minGuests: parseInt(formData.minGuests),
         maxGuests: parseInt(formData.maxGuests),
-        priceMode: formData.priceMode,
+        priceMode: "ESTIMATED",
         estimatedMinPrice: parseFloat(formData.estimatedMinPrice) || null,
         estimatedMaxPrice: parseFloat(formData.estimatedMaxPrice) || null,
         primeDayPrice: parseFloat(formData.primeDayPrice) || null,
         nonPrimeDayPrice: parseFloat(formData.nonPrimeDayPrice) || null,
-        primeDays: formData.primeDays.join(","),
         contactName: formData.contactName,
         contactNumber: formData.contactNumber,
         images: formData.images.join(","),
         coverImage: formData.images[0] || "",
         amenities: formData.amenities.join(","),
-        // Fishbowl flags
         isAdminListed: true,
         bookingEnabled: false,
         isVerified: false,
@@ -167,7 +139,7 @@ export default function AdminAddVenuePage() {
         setSuccess(true);
         setTimeout(() => {
           router.push("/admin?tab=venues");
-        }, 2000);
+        }, 1500);
       } else {
         const data = await res.json();
         alert(`Error: ${data.error || "Failed to add venue"}`);
@@ -183,176 +155,107 @@ export default function AdminAddVenuePage() {
   if (status === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-rose-600" />
       </div>
     );
   }
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100">
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="text-center"
-        >
-          <CheckCircle className="h-20 w-20 text-green-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Venue Added Successfully!</h2>
-          <p className="text-gray-600">Redirecting to admin dashboard...</p>
-        </motion.div>
+      <div className="min-h-screen flex items-center justify-center bg-green-50">
+        <div className="text-center">
+          <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Venue Added!</h2>
+          <p className="text-gray-600">Redirecting to admin...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-pink-50 pb-12">
+    <div className="min-h-screen bg-gray-50 pb-12">
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-lg border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 py-4">
+      <div className="sticky top-0 z-40 bg-white border-b">
+        <div className="max-w-3xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Link
-                href="/admin"
-                className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-              >
+              <Link href="/admin" className="p-2 hover:bg-gray-100 rounded-lg">
                 <ArrowLeft className="h-5 w-5" />
               </Link>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Add Fishbowl Venue</h1>
-                <p className="text-sm text-gray-500">Admin-listed venue with approximate pricing</p>
+                <h1 className="font-bold text-gray-900">Add Venue</h1>
+                <p className="text-xs text-gray-500">Fishbowl listing • Call to book</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">
-                🐟 Fishbowl Listing
-              </span>
-            </div>
+            <button
+              type="submit"
+              form="venue-form"
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-2 bg-rose-500 text-white rounded-lg font-medium hover:bg-rose-600 disabled:opacity-50 transition-colors"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Info Banner */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8 p-4 bg-blue-50 border border-blue-200 rounded-2xl"
-        >
-          <div className="flex gap-3">
-            <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+      <form id="venue-form" onSubmit={handleSubmit} className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+        {/* Basic Info */}
+        <div className="bg-white rounded-xl p-5 border">
+          <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Building2 className="h-4 w-4 text-rose-500" />
+            Basic Information
+          </h2>
+          <div className="space-y-4">
             <div>
-              <h3 className="font-semibold text-blue-900">Fishbowl Model</h3>
-              <p className="text-sm text-blue-700 mt-1">
-                This venue will be listed with approximate pricing. Customers will see a &quot;Call for Booking&quot; 
-                button instead of online booking. Once you verify an owner and tag this venue to their account, 
-                online booking will be enabled.
-              </p>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Venue Name *</label>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                required
+                placeholder="e.g., Royal Palace Banquet"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+              />
             </div>
-          </div>
-        </motion.div>
-
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Basic Information */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
-          >
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-purple-100 rounded-xl">
-                <Building2 className="h-5 w-5 text-purple-600" />
-              </div>
-              <h2 className="text-lg font-semibold text-gray-900">Basic Information</h2>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                required
+                rows={3}
+                placeholder="Brief description of the venue..."
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+              />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Venue Name *
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  required
-                  placeholder="e.g., Royal Palace Banquet"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description *
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  required
-                  rows={4}
-                  placeholder="Describe the venue, its ambiance, special features..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Venue Type *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Venue Type</label>
                 <select
                   name="venueType"
                   value={formData.venueType}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-rose-500"
                 >
                   {VENUE_TYPES.map(type => (
                     <option key={type} value={type}>{type}</option>
                   ))}
                 </select>
               </div>
-            </div>
-          </motion.div>
-
-          {/* Location */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
-          >
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-green-100 rounded-xl">
-                <MapPin className="h-5 w-5 text-green-600" />
-              </div>
-              <h2 className="text-lg font-semibold text-gray-900">Location</h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  City *
-                </label>
-                <input
-                  type="text"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Area * <span className="text-purple-600">(Important for search)</span>
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Area *</label>
                 <select
                   name="area"
                   value={formData.area}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-rose-500"
                 >
                   <option value="">Select Area</option>
                   {KOLKATA_AREAS.map(area => (
@@ -360,346 +263,237 @@ export default function AdminAddVenuePage() {
                   ))}
                 </select>
               </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Full Address *
-                </label>
-                <textarea
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  required
-                  rows={2}
-                  placeholder="Enter complete address with landmarks"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Pincode *
-                </label>
-                <input
-                  type="text"
-                  name="pincode"
-                  value={formData.pincode}
-                  onChange={handleInputChange}
-                  required
-                  placeholder="e.g., 700124"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Capacity */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
-          >
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-blue-100 rounded-xl">
-                <Users className="h-5 w-5 text-blue-600" />
-              </div>
-              <h2 className="text-lg font-semibold text-gray-900">Capacity</h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Minimum Guests *
-                </label>
-                <input
-                  type="number"
-                  name="minGuests"
-                  value={formData.minGuests}
-                  onChange={handleInputChange}
-                  required
-                  min="1"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Maximum Guests *
-                </label>
-                <input
-                  type="number"
-                  name="maxGuests"
-                  value={formData.maxGuests}
-                  onChange={handleInputChange}
-                  required
-                  min="1"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Full Address</label>
+              <input
+                type="text"
+                name="address"
+                value={formData.address}
+                onChange={handleInputChange}
+                placeholder="Street address, building name..."
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-rose-500"
+              />
             </div>
-          </motion.div>
+          </div>
+        </div>
 
-          {/* Pricing - Fishbowl Model */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
-          >
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-amber-100 rounded-xl">
-                <IndianRupee className="h-5 w-5 text-amber-600" />
-              </div>
-              <h2 className="text-lg font-semibold text-gray-900">Pricing (Approximate)</h2>
-              <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full">Fishbowl</span>
+        {/* Capacity */}
+        <div className="bg-white rounded-xl p-5 border">
+          <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Users className="h-4 w-4 text-blue-500" />
+            Capacity
+          </h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Min Guests</label>
+              <input
+                type="number"
+                name="minGuests"
+                value={formData.minGuests}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-rose-500"
+              />
             </div>
-
-            <div className="space-y-6">
-              {/* Estimated Price Range */}
-              <div className="p-4 bg-gray-50 rounded-xl">
-                <h3 className="text-sm font-semibold text-gray-900 mb-4">General Price Range</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Minimum Price (₹) *
-                    </label>
-                    <input
-                      type="number"
-                      name="estimatedMinPrice"
-                      value={formData.estimatedMinPrice}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="e.g., 50000"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Maximum Price (₹) *
-                    </label>
-                    <input
-                      type="number"
-                      name="estimatedMaxPrice"
-                      value={formData.estimatedMaxPrice}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="e.g., 150000"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Prime vs Non-Prime Pricing */}
-              <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100">
-                <div className="flex items-center gap-2 mb-4">
-                  <Star className="h-5 w-5 text-purple-600" />
-                  <h3 className="text-sm font-semibold text-gray-900">Prime Day vs Regular Day Pricing</h3>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Prime Day Price (₹)
-                    </label>
-                    <input
-                      type="number"
-                      name="primeDayPrice"
-                      value={formData.primeDayPrice}
-                      onChange={handleInputChange}
-                      placeholder="e.g., 120000"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Wedding season, weekends, auspicious days</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Non-Prime Day Price (₹)
-                    </label>
-                    <input
-                      type="number"
-                      name="nonPrimeDayPrice"
-                      value={formData.nonPrimeDayPrice}
-                      onChange={handleInputChange}
-                      placeholder="e.g., 80000"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Weekdays, off-season</p>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Prime Days (Select all that apply)
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {PRIME_DAYS.map(day => (
-                      <button
-                        key={day}
-                        type="button"
-                        onClick={() => togglePrimeDay(day)}
-                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-                          formData.primeDays.includes(day)
-                            ? "bg-purple-600 text-white"
-                            : "bg-white border border-gray-300 text-gray-700 hover:border-purple-400"
-                        }`}
-                      >
-                        {day}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Max Guests</label>
+              <input
+                type="number"
+                name="maxGuests"
+                value={formData.maxGuests}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-rose-500"
+              />
             </div>
-          </motion.div>
+          </div>
+        </div>
 
-          {/* Contact Information (Fishbowl) */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-            className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
-          >
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-rose-100 rounded-xl">
-                <Phone className="h-5 w-5 text-rose-600" />
-              </div>
-              <h2 className="text-lg font-semibold text-gray-900">Contact Information</h2>
-              <span className="px-2 py-0.5 bg-rose-100 text-rose-700 text-xs rounded-full">For Customers</span>
+        {/* Pricing */}
+        <div className="bg-white rounded-xl p-5 border">
+          <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <IndianRupee className="h-4 w-4 text-green-500" />
+            Pricing (Approximate)
+          </h2>
+          <p className="text-xs text-gray-500 mb-4">Enter estimated price range. Customers will call to confirm exact pricing.</p>
+          
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Min Price (₹)</label>
+              <input
+                type="number"
+                name="estimatedMinPrice"
+                value={formData.estimatedMinPrice}
+                onChange={handleInputChange}
+                placeholder="50000"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-rose-500"
+              />
             </div>
-
-            <div className="p-4 bg-rose-50 rounded-xl mb-6">
-              <p className="text-sm text-rose-700">
-                <strong>Fishbowl Mode:</strong> Since online booking is not enabled, customers will see this 
-                contact information to directly call and book the venue.
-              </p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Max Price (₹)</label>
+              <input
+                type="number"
+                name="estimatedMaxPrice"
+                value={formData.estimatedMaxPrice}
+                onChange={handleInputChange}
+                placeholder="150000"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-rose-500"
+              />
             </div>
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Contact Person Name *
-                </label>
-                <input
-                  type="text"
-                  name="contactName"
-                  value={formData.contactName}
-                  onChange={handleInputChange}
-                  required
-                  placeholder="e.g., Mr. Sharma"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Contact Number *
-                </label>
-                <input
-                  type="tel"
-                  name="contactNumber"
-                  value={formData.contactNumber}
-                  onChange={handleInputChange}
-                  required
-                  placeholder="e.g., 9876543210"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
+          <div className="grid grid-cols-2 gap-4 p-3 bg-amber-50 rounded-lg">
+            <div>
+              <label className="block text-sm font-medium text-amber-700 mb-1">Prime Day Price (₹)</label>
+              <input
+                type="number"
+                name="primeDayPrice"
+                value={formData.primeDayPrice}
+                onChange={handleInputChange}
+                placeholder="Weekend/auspicious days"
+                className="w-full px-3 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500"
+              />
             </div>
-          </motion.div>
-
-          {/* Media */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
-          >
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-indigo-100 rounded-xl">
-                <ImageIcon className="h-5 w-5 text-indigo-600" />
-              </div>
-              <h2 className="text-lg font-semibold text-gray-900">Images</h2>
-              <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Upload directly</span>
+            <div>
+              <label className="block text-sm font-medium text-amber-700 mb-1">Regular Day Price (₹)</label>
+              <input
+                type="number"
+                name="nonPrimeDayPrice"
+                value={formData.nonPrimeDayPrice}
+                onChange={handleInputChange}
+                placeholder="Weekdays"
+                className="w-full px-3 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500"
+              />
             </div>
+          </div>
+        </div>
 
-            <ImageUploader
-              images={formData.images}
-              onImagesChange={(images) => setFormData(prev => ({ ...prev, images }))}
-              maxImages={10}
-              folder="venues"
-            />
-            <p className="text-xs text-gray-500 mt-3">
-              📸 Upload up to 10 high-quality images. First image becomes the cover photo. Supported: JPG, PNG, WebP (max 10MB each)
-            </p>
-          </motion.div>
-
-          {/* Amenities */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 }}
-            className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
-          >
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-teal-100 rounded-xl">
-                <Sparkles className="h-5 w-5 text-teal-600" />
-              </div>
-              <h2 className="text-lg font-semibold text-gray-900">Amenities</h2>
+        {/* Contact */}
+        <div className="bg-white rounded-xl p-5 border">
+          <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Phone className="h-4 w-4 text-purple-500" />
+            Contact Details
+          </h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person</label>
+              <input
+                type="text"
+                name="contactName"
+                value={formData.contactName}
+                onChange={handleInputChange}
+                placeholder="Name"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-rose-500"
+              />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
+              <input
+                type="tel"
+                name="contactNumber"
+                value={formData.contactNumber}
+                onChange={handleInputChange}
+                required
+                placeholder="+91 98XXXXXXXX"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-rose-500"
+              />
+            </div>
+          </div>
+        </div>
 
-            <div className="flex flex-wrap gap-2">
-              {AMENITIES_LIST.map(amenity => (
+        {/* Images */}
+        <div className="bg-white rounded-xl p-5 border">
+          <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Camera className="h-4 w-4 text-indigo-500" />
+            Images
+          </h2>
+          
+          {/* Image Grid */}
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-4">
+            {formData.images.map((img, index) => (
+              <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
+                <img src={img} alt="" className="w-full h-full object-cover" />
                 <button
-                  key={amenity}
                   type="button"
-                  onClick={() => toggleAmenity(amenity)}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                    formData.amenities.includes(amenity)
-                      ? "bg-teal-600 text-white shadow-md"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
+                  onClick={() => removeImage(index)}
+                  className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full"
                 >
-                  {amenity}
+                  <X className="h-3 w-3" />
                 </button>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Submit Button */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="flex gap-4"
-          >
-            <Link
-              href="/admin"
-              className="flex-1 py-4 text-center border-2 border-gray-300 text-gray-700 rounded-2xl font-semibold hover:bg-gray-50 transition-all"
-            >
-              Cancel
-            </Link>
+                {index === 0 && (
+                  <span className="absolute bottom-1 left-1 text-xs bg-black/70 text-white px-2 py-0.5 rounded">
+                    Cover
+                  </span>
+                )}
+              </div>
+            ))}
             <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              type="button"
+              onClick={() => setShowImageUploader(true)}
+              className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-rose-400 hover:text-rose-500 transition-colors"
             >
-              {loading ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Adding Venue...
-                </>
-              ) : (
-                <>
-                  <Save className="h-5 w-5" />
-                  Add Fishbowl Venue
-                </>
-              )}
+              <Camera className="h-6 w-6 mb-1" />
+              <span className="text-xs">Add</span>
             </button>
-          </motion.div>
-        </form>
-      </div>
+          </div>
+        </div>
+
+        {/* Amenities */}
+        <div className="bg-white rounded-xl p-5 border">
+          <h2 className="font-semibold text-gray-900 mb-4">Amenities</h2>
+          <div className="flex flex-wrap gap-2">
+            {AMENITIES_LIST.map(amenity => (
+              <button
+                key={amenity}
+                type="button"
+                onClick={() => toggleAmenity(amenity)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  formData.amenities.includes(amenity)
+                    ? "bg-rose-500 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                {amenity}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Submit Button (Mobile) */}
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-rose-500 text-white rounded-xl font-semibold hover:bg-rose-600 disabled:opacity-50 transition-colors sm:hidden"
+        >
+          {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+          Save Venue
+        </button>
+      </form>
+
+      {/* Image Uploader Modal */}
+      {showImageUploader && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-lg">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-900">Upload Images</h3>
+              <button onClick={() => setShowImageUploader(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <ImageUploader
+              onUpload={(urls) => {
+                setFormData(prev => ({
+                  ...prev,
+                  images: [...prev.images, ...urls]
+                }));
+                setShowImageUploader(false);
+              }}
+              multiple
+              maxFiles={10}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

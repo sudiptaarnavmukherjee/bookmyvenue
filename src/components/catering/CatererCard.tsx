@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { Star, MapPin, Leaf, Heart, Phone, Medal, Award, Crown, CheckCircle2, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api-client";
@@ -19,9 +18,9 @@ interface CatererCardProps {
   silverPrice?: number;
   goldPrice?: number;
   platinumPrice?: number;
-  rating: number;
-  totalReviews: number;
-  isPureVeg: boolean;
+  rating?: number;
+  totalReviews?: number;
+  isPureVeg?: boolean;
   coverImage: string;
   isVerified?: boolean;
   bookingEnabled?: boolean;
@@ -30,6 +29,7 @@ interface CatererCardProps {
   contactName?: string;
   viewCount?: number;
   inWishlist?: boolean;
+  slug?: string;
 }
 
 export function CatererCard({
@@ -42,9 +42,9 @@ export function CatererCard({
   silverPrice,
   goldPrice,
   platinumPrice,
-  rating,
-  totalReviews,
-  isPureVeg,
+  rating = 0,
+  totalReviews = 0,
+  isPureVeg = false,
   coverImage,
   isVerified = false,
   bookingEnabled = false,
@@ -53,6 +53,7 @@ export function CatererCard({
   contactName,
   viewCount,
   inWishlist = false,
+  slug,
 }: CatererCardProps) {
   const { data: session } = useSession();
   const [isInWishlist, setIsInWishlist] = useState(inWishlist);
@@ -101,13 +102,11 @@ export function CatererCard({
     return `₹${price}`;
   };
 
+  const catererUrl = slug ? `/catering/${slug}` : `/catering/${id}`;
+
   return (
-    <motion.div
-      whileHover={{ y: -4, scale: 1.01 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
-      className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100"
-    >
-      <Link href={`/catering/${id}`}>
+    <div className="bg-white rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200 overflow-hidden border border-gray-100">
+      <Link href={catererUrl}>
         {/* Image Section */}
         <div className="relative aspect-[16/10] overflow-hidden">
           <Image
@@ -244,7 +243,7 @@ export function CatererCard({
           )}
         </div>
       </Link>
-    </motion.div>
+    </div>
   );
 }
 

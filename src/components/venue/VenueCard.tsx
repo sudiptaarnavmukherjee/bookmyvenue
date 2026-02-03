@@ -3,8 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { Users, MapPin, CheckCircle2, Heart, Phone, Calendar, Star, Eye } from "lucide-react";
+import { Users, MapPin, CheckCircle2, Heart, Phone, Calendar, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api-client";
 import { useSession } from "next-auth/react";
@@ -15,22 +14,23 @@ interface VenueCardProps {
   name: string;
   city: string;
   area?: string;
-  priceMode: "exact" | "estimated" | "EXACT" | "ESTIMATED";
+  priceMode?: "exact" | "estimated" | "EXACT" | "ESTIMATED";
   exactPrice?: number;
   estimatedMinPrice?: number;
   estimatedMaxPrice?: number;
   primeDayPrice?: number;
   nonPrimeDayPrice?: number;
-  minGuests: number;
-  maxGuests: number;
+  minGuests?: number;
+  maxGuests?: number;
   coverImage: string;
-  isVerified: boolean;
+  isVerified?: boolean;
   bookingEnabled?: boolean;
   isAdminListed?: boolean;
   contactNumber?: string;
   contactName?: string;
   viewCount?: number;
   inWishlist?: boolean;
+  slug?: string;
 }
 
 export function VenueCard({
@@ -39,22 +39,23 @@ export function VenueCard({
   name,
   city,
   area,
-  priceMode,
+  priceMode = "ESTIMATED",
   exactPrice,
   estimatedMinPrice,
   estimatedMaxPrice,
   primeDayPrice,
   nonPrimeDayPrice,
-  minGuests,
-  maxGuests,
+  minGuests = 50,
+  maxGuests = 500,
   coverImage,
-  isVerified,
+  isVerified = false,
   bookingEnabled = false,
   isAdminListed = true,
   contactNumber,
   contactName,
   viewCount,
   inWishlist = false,
+  slug,
 }: VenueCardProps) {
   const { data: session } = useSession();
   const [isInWishlist, setIsInWishlist] = useState(inWishlist);
@@ -111,14 +112,11 @@ export function VenueCard({
   };
 
   const normalizedPriceMode = priceMode?.toUpperCase();
+  const venueUrl = slug ? `/venues/${slug}` : `/venues/${id}`;
 
   return (
-    <motion.div
-      whileHover={{ y: -4, scale: 1.01 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
-      className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100"
-    >
-      <Link href={`/venues/${id}`}>
+    <div className="bg-white rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200 overflow-hidden border border-gray-100">
+      <Link href={venueUrl}>
         {/* Image Section */}
         <div className="relative aspect-[16/10] overflow-hidden">
           <Image
@@ -230,7 +228,7 @@ export function VenueCard({
           )}
         </div>
       </Link>
-    </motion.div>
+    </div>
   );
 }
 
