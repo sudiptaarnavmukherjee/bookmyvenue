@@ -6,6 +6,7 @@ import DesktopNav from "@/components/layout/DesktopNav";
 import { SessionProvider } from "@/components/providers/SessionProvider";
 import { CompareProvider } from "@/components/providers/CompareProvider";
 import { CompareBar } from "@/components/ui/CompareBar";
+import { PWAInstallBanner, OfflineIndicator } from "@/components/pwa/PWAComponents";
 import { generateOrganizationSchema, generateSearchActionSchema, JsonLd } from "@/lib/structured-data";
 
 const inter = Inter({ 
@@ -101,11 +102,13 @@ export default function RootLayout({
       <body className={`${inter.className} overflow-x-hidden antialiased`}>
         <SessionProvider>
           <CompareProvider>
+            <OfflineIndicator />
             <DesktopNav />
             <main className="min-h-screen pb-16">
               {children}
             </main>
             <CompareBar />
+            <PWAInstallBanner />
             <MobileNav />
           </CompareProvider>
         </SessionProvider>
