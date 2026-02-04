@@ -85,18 +85,8 @@ function CatererCardSkeleton() {
   );
 }
 
-// Logo Component - Happily Eated
-function Logo({ className = "" }: { className?: string }) {
-  return (
-    <div className={`font-bold ${className}`}>
-      <span>Happily </span>
-      <span className="relative">
-        <span className="line-through text-gray-400 decoration-red-500 decoration-2">Married</span>
-      </span>
-      <span className="text-purple-600"> Eated</span>
-    </div>
-  );
-}
+// Import the new professional Logo component
+import Logo, { LogoSimple } from "@/components/layout/Logo";
 
 // MakeMyTrip Style Venue Card (Vertical - for grid)
 function MMTVenueCard({ venue }: { venue: Venue }) {
@@ -407,7 +397,7 @@ function HomeContent() {
       <header className="sticky top-0 z-50 bg-white border-b shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <Logo className="text-xl" />
+            <Logo size="md" />
             
             <div className="flex items-center gap-2">
               <Link href="/wishlist" className="p-2 hover:bg-gray-100 rounded-full">
@@ -834,7 +824,7 @@ function HomeContent() {
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="col-span-2 md:col-span-1">
-              <Logo className="text-lg mb-4" />
+              <Logo size="sm" theme="dark" className="mb-4" />
               <p className="text-sm">Your one-stop platform for wedding venues and catering services with transparent pricing.</p>
             </div>
             <div>

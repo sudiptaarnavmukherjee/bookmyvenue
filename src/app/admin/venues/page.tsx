@@ -100,8 +100,8 @@ export default function AdminVenuesPage() {
     try {
       const response = await fetch("/api/admin/users?role=VENUE_OWNER");
       const data = await response.json();
-      if (data.success) {
-        setVenueOwners(data.users || []);
+      if (data.users) {
+        setVenueOwners(data.users);
       }
     } catch (error) {
       console.error("Failed to fetch venue owners:", error);

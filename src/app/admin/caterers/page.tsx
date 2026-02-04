@@ -101,8 +101,8 @@ export default function AdminCaterersPage() {
     try {
       const response = await fetch("/api/admin/users?role=CATERING_OWNER");
       const data = await response.json();
-      if (data.success) {
-        setCateringOwners(data.users || []);
+      if (data.users) {
+        setCateringOwners(data.users);
       }
     } catch (error) {
       console.error("Failed to fetch catering owners:", error);

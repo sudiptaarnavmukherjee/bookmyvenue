@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { api } from "@/lib/api-client";
-import { Calendar, CheckCircle2, Clock, Users, Loader2, Plus, Building, MapPin, X, CalendarDays, Eye, Phone, Mail, IndianRupee, Wallet } from "lucide-react";
+import { Calendar, CheckCircle2, Clock, Users, Loader2, Building, MapPin, X, CalendarDays, Eye, Phone, Mail, IndianRupee, Wallet, ExternalLink } from "lucide-react";
 import AvailabilityCalendar from "@/components/calendar/AvailabilityCalendar";
 import BlockDateModal from "@/components/calendar/BlockDateModal";
 import EarningsDashboard from "@/components/owner/EarningsDashboard";
@@ -52,15 +52,9 @@ export default function VenueOwnerDashboard() {
   const [showBlockModal, setShowBlockModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   
-  const [showAddVenue, setShowAddVenue] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [newVenue, setNewVenue] = useState({
-    name: "", description: "", city: "", area: "", address: "", pincode: "",
-    priceMode: "EXACT", exactPrice: "", estimatedMinPrice: "", estimatedMaxPrice: "",
-    minGuests: "50", maxGuests: "500", venueType: "Banquet Hall",
-    amenities: "Parking,AC,Catering", images: ""
-  });
-
+  // Google Form URL for venue listing requests
+  const VENUE_REQUEST_FORM_URL = "https://forms.gle/yourformid"; // Replace with actual Google Form URL
+  
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -93,42 +87,6 @@ export default function VenueOwnerDashboard() {
     else if (status === "authenticated") fetchData();
   }, [status, router]);
 
-  const handleAddVenue = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const venueData = {
-        name: newVenue.name,
-        description: newVenue.description,
-        city: newVenue.city,
-        area: newVenue.area,
-        address: newVenue.address,
-        pincode: newVenue.pincode,
-        priceMode: newVenue.priceMode,
-        exactPrice: newVenue.priceMode === "EXACT" ? parseFloat(newVenue.exactPrice) || 0 : 0,
-        estimatedMinPrice: newVenue.priceMode === "ESTIMATED" ? parseFloat(newVenue.estimatedMinPrice) || 0 : 0,
-        estimatedMaxPrice: newVenue.priceMode === "ESTIMATED" ? parseFloat(newVenue.estimatedMaxPrice) || 0 : 0,
-        minGuests: newVenue.minGuests,
-        maxGuests: newVenue.maxGuests,
-        venueType: newVenue.venueType,
-        amenities: newVenue.amenities.split(",").map(a => a.trim()),
-        images: newVenue.images ? newVenue.images.split(",").map(i => i.trim()) : [],
-        coverImage: newVenue.images ? newVenue.images.split(",")[0] : "",
-        ownerId: session?.user?.id
-      };
-      
-      const res = await api.createVenue(venueData);
-      if (res.error) alert("Failed: " + res.error);
-      else {
-        alert("Venue created!");
-        setShowAddVenue(false);
-        setNewVenue({ name: "", description: "", city: "", area: "", address: "", pincode: "", priceMode: "EXACT", exactPrice: "", estimatedMinPrice: "", estimatedMaxPrice: "", minGuests: "50", maxGuests: "500", venueType: "Banquet Hall", amenities: "Parking,AC,Catering", images: "" });
-        fetchData();
-      }
-    } catch (err) { alert("Failed to create venue"); }
-    finally { setSaving(false); }
-  };
-
   if (status === "loading" || loading) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-purple-600" /></div>;
   }
@@ -141,9 +99,14 @@ export default function VenueOwnerDashboard() {
             <h1 className="text-3xl font-bold text-gray-900">Venue Owner Dashboard</h1>
             <p className="text-gray-600 mt-1">Welcome, {session?.user?.name}</p>
           </div>
-          <button onClick={() => setShowAddVenue(true)} className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl font-semibold hover:opacity-90">
-            <Plus className="h-5 w-5" /> Add New Venue
-          </button>
+          <a 
+            href={VENUE_REQUEST_FORM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl font-semibold hover:opacity-90"
+          >
+            <ExternalLink className="h-5 w-5" /> Request New Venue Listing
+          </a>
         </div>
 
         {/* Tabs */}
@@ -202,11 +165,16 @@ export default function VenueOwnerDashboard() {
           {venues.length === 0 ? (
             <div className="text-center py-12">
               <Building className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-700 mb-2">No venues yet</h3>
-              <p className="text-gray-500 mb-6">Add your first venue to start receiving bookings</p>
-              <button onClick={() => setShowAddVenue(true)} className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl font-semibold">
-                <Plus className="h-5 w-5" /> Add Your First Venue
-              </button>
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">No venues assigned yet</h3>
+              <p className="text-gray-500 mb-6">Request a venue listing to get started</p>
+              <a 
+                href={VENUE_REQUEST_FORM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl font-semibold"
+              >
+                <ExternalLink className="h-5 w-5" /> Request Venue Listing
+              </a>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -391,113 +359,6 @@ export default function VenueOwnerDashboard() {
               // Calendar will refetch automatically
             }}
           />
-        )}
-        {showAddVenue && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6 border-b flex justify-between items-center sticky top-0 bg-white">
-                <h2 className="text-2xl font-bold">Add New Venue</h2>
-                <button onClick={() => setShowAddVenue(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X className="h-6 w-6" /></button>
-              </div>
-              
-              <form onSubmit={handleAddVenue} className="p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Venue Name *</label>
-                    <input type="text" required value={newVenue.name} onChange={(e) => setNewVenue({...newVenue, name: e.target.value})} className="w-full px-4 py-3 rounded-xl border" placeholder="Grand Palace" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Type</label>
-                    <select value={newVenue.venueType} onChange={(e) => setNewVenue({...newVenue, venueType: e.target.value})} className="w-full px-4 py-3 rounded-xl border">
-                      <option>Banquet Hall</option><option>Resort</option><option>Hotel</option><option>Farmhouse</option><option>Garden/Lawn</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Description *</label>
-                  <textarea required rows={2} value={newVenue.description} onChange={(e) => setNewVenue({...newVenue, description: e.target.value})} className="w-full px-4 py-3 rounded-xl border" placeholder="Describe your venue..." />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">City *</label>
-                    <input type="text" required value={newVenue.city} onChange={(e) => setNewVenue({...newVenue, city: e.target.value})} className="w-full px-4 py-3 rounded-xl border" placeholder="Mumbai" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Area *</label>
-                    <input type="text" required value={newVenue.area} onChange={(e) => setNewVenue({...newVenue, area: e.target.value})} className="w-full px-4 py-3 rounded-xl border" placeholder="Andheri" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Address *</label>
-                    <input type="text" required value={newVenue.address} onChange={(e) => setNewVenue({...newVenue, address: e.target.value})} className="w-full px-4 py-3 rounded-xl border" placeholder="Full address" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Pincode *</label>
-                    <input type="text" required value={newVenue.pincode} onChange={(e) => setNewVenue({...newVenue, pincode: e.target.value})} className="w-full px-4 py-3 rounded-xl border" placeholder="400001" />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Price Type</label>
-                  <div className="flex gap-4">
-                    <label className="flex items-center gap-2"><input type="radio" checked={newVenue.priceMode === "EXACT"} onChange={() => setNewVenue({...newVenue, priceMode: "EXACT"})} /><span>Fixed Price</span></label>
-                    <label className="flex items-center gap-2"><input type="radio" checked={newVenue.priceMode === "ESTIMATED"} onChange={() => setNewVenue({...newVenue, priceMode: "ESTIMATED"})} /><span>Price Range</span></label>
-                  </div>
-                </div>
-
-                {newVenue.priceMode === "EXACT" ? (
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Price (₹) *</label>
-                    <input type="number" required value={newVenue.exactPrice} onChange={(e) => setNewVenue({...newVenue, exactPrice: e.target.value})} className="w-full px-4 py-3 rounded-xl border" placeholder="150000" />
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Min Price *</label>
-                      <input type="number" required value={newVenue.estimatedMinPrice} onChange={(e) => setNewVenue({...newVenue, estimatedMinPrice: e.target.value})} className="w-full px-4 py-3 rounded-xl border" placeholder="100000" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Max Price *</label>
-                      <input type="number" required value={newVenue.estimatedMaxPrice} onChange={(e) => setNewVenue({...newVenue, estimatedMaxPrice: e.target.value})} className="w-full px-4 py-3 rounded-xl border" placeholder="300000" />
-                    </div>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Min Guests</label>
-                    <input type="number" value={newVenue.minGuests} onChange={(e) => setNewVenue({...newVenue, minGuests: e.target.value})} className="w-full px-4 py-3 rounded-xl border" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Max Guests</label>
-                    <input type="number" value={newVenue.maxGuests} onChange={(e) => setNewVenue({...newVenue, maxGuests: e.target.value})} className="w-full px-4 py-3 rounded-xl border" />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Amenities</label>
-                  <input type="text" value={newVenue.amenities} onChange={(e) => setNewVenue({...newVenue, amenities: e.target.value})} className="w-full px-4 py-3 rounded-xl border" placeholder="Parking,AC,Catering" />
-                  <p className="text-xs text-gray-500 mt-1">Comma separated</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Image URLs</label>
-                  <input type="text" value={newVenue.images} onChange={(e) => setNewVenue({...newVenue, images: e.target.value})} className="w-full px-4 py-3 rounded-xl border" placeholder="https://example.com/image.jpg" />
-                </div>
-
-                <div className="flex gap-4 pt-4">
-                  <button type="button" onClick={() => setShowAddVenue(false)} className="flex-1 px-6 py-3 rounded-xl border font-semibold">Cancel</button>
-                  <button type="submit" disabled={saving} className="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold disabled:opacity-50">
-                    {saving ? "Saving..." : "Add Venue"}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
         )}
       </div>
     </div>

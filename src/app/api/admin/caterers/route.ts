@@ -93,10 +93,10 @@ export async function POST(request: Request) {
       coverImage,
     } = body;
 
-    // Validation
-    if (!name || !city || !address) {
+    // Validation - only name and city are truly required
+    if (!name || !city) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Missing required fields: name and city" },
         { status: 400 }
       );
     }
