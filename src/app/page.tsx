@@ -1,18 +1,20 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense, memo } from "react";
 import { 
   Search, MapPin, Star, Building2, Users, ChefHat, Phone,
   CheckCircle, ArrowRight, Leaf, ChevronRight, Navigation, 
-  Locate, Filter, SlidersHorizontal, Heart, Clock, TrendingUp
+  ChevronDown, Heart, TrendingUp, Sparkles
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useOwnerRedirect } from "@/hooks/useOwnerRedirect";
 import { useNearby } from "@/hooks/useLocation";
-import Image from "next/image";
+import Logo from "@/components/layout/Logo";
 
+// ============================================
 // Types
+// ============================================
 interface Venue {
   id: string;
   name: string;
@@ -25,12 +27,10 @@ interface Venue {
   image: string | null;
   capacity?: number;
   isVerified?: boolean;
-  isAdminListed?: boolean;
   bookingEnabled?: boolean;
-  viewCount?: number;
-  reviewCount?: number;
   distanceText?: string;
   distanceMeters?: number;
+  rating?: number;
 }
 
 interface Caterer {
@@ -38,16 +38,13 @@ interface Caterer {
   name: string;
   slug?: string;
   location: string;
-  city?: string;
   price: number;
   image: string | null;
   isPureVeg?: boolean;
   cuisines?: string;
   rating?: number;
   isVerified?: boolean;
-  isAdminListed?: boolean;
   bookingEnabled?: boolean;
-  reviewCount?: number;
   distanceText?: string;
   distanceMeters?: number;
 }
@@ -58,270 +55,400 @@ interface Stats {
   completedBookings: number;
 }
 
-// Skeleton Loaders
-function VenueCardSkeleton() {
-  return (
-    <div className="bg-white rounded-2xl overflow-hidden shadow-sm animate-pulse">
-      <div className="h-48 bg-gray-200" />
-      <div className="p-4 space-y-3">
-        <div className="h-5 bg-gray-200 rounded w-3/4" />
-        <div className="h-4 bg-gray-200 rounded w-1/2" />
-        <div className="h-6 bg-gray-200 rounded w-1/3" />
-      </div>
+// ============================================
+// Skeleton Loaders (Lightweight)
+// ============================================
+const VenueCardSkeleton = memo(() => (
+  <div className="bg-white rounded-xl overflow-hidden border border-gray-100">
+    <div className="h-40 bg-gray-100" />
+    <div className="p-3 space-y-2">
+      <div className="h-4 bg-gray-100 rounded w-3/4" />
+      <div className="h-3 bg-gray-100 rounded w-1/2" />
+      <div className="h-5 bg-gray-100 rounded w-1/3" />
     </div>
-  );
-}
+  </div>
+));
+VenueCardSkeleton.displayName = 'VenueCardSkeleton';
 
-function CatererCardSkeleton() {
-  return (
-    <div className="flex gap-4 p-4 bg-white rounded-xl border animate-pulse">
-      <div className="w-28 h-28 bg-gray-200 rounded-xl flex-shrink-0" />
-      <div className="flex-1 space-y-3">
-        <div className="h-5 bg-gray-200 rounded w-3/4" />
-        <div className="h-4 bg-gray-200 rounded w-1/2" />
-        <div className="h-4 bg-gray-200 rounded w-1/3" />
-      </div>
+const CatererCardSkeleton = memo(() => (
+  <div className="flex gap-3 p-3 bg-white rounded-xl border border-gray-100">
+    <div className="w-24 h-24 bg-gray-100 rounded-lg flex-shrink-0" />
+    <div className="flex-1 space-y-2 py-1">
+      <div className="h-4 bg-gray-100 rounded w-3/4" />
+      <div className="h-3 bg-gray-100 rounded w-1/2" />
+      <div className="h-3 bg-gray-100 rounded w-2/3" />
+      <div className="h-4 bg-gray-100 rounded w-1/4" />
     </div>
-  );
-}
+  </div>
+));
+CatererCardSkeleton.displayName = 'CatererCardSkeleton';
 
-// Import the new professional Logo component
-import Logo, { LogoSimple } from "@/components/layout/Logo";
-
-// MakeMyTrip Style Venue Card (Vertical - for grid)
-function MMTVenueCard({ venue }: { venue: Venue }) {
-  const fallbackImage = "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=600&q=75";
+// ============================================
+// MMT Style Venue Card (Vertical - Clean & Professional)
+// ============================================
+const VenueCard = memo(({ venue }: { venue: Venue }) => {
+  const fallbackImage = "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&q=70";
   
   return (
     <Link 
       href={`/venues/${venue.slug || venue.id}`}
-      className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100"
+      className="block bg-white rounded-xl overflow-hidden border border-gray-100 hover:border-gray-200 hover:shadow-md transition-shadow"
     >
       {/* Image */}
-      <div className="relative h-48 overflow-hidden bg-gray-100">
+      <div className="relative h-40 bg-gray-100">
         <img
           src={venue.image || fallbackImage}
           alt={venue.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          className="w-full h-full object-cover"
           loading="lazy"
         />
         
-        {/* Badges */}
-        <div className="absolute top-3 left-3 flex gap-2">
-          {venue.isVerified && (
-            <span className="bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded-full flex items-center gap-1">
-              <CheckCircle className="w-3 h-3" />
-              Verified
-            </span>
-          )}
-        </div>
+        {/* Top Left - Verified */}
+        {venue.isVerified && (
+          <span className="absolute top-2 left-2 bg-green-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded flex items-center gap-0.5">
+            <CheckCircle className="w-2.5 h-2.5" />
+            Verified
+          </span>
+        )}
 
-        {/* Distance Badge */}
+        {/* Top Right - Booking Type */}
+        <span className={`absolute top-2 right-2 text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+          venue.bookingEnabled 
+            ? "bg-purple-600 text-white" 
+            : "bg-amber-500 text-white"
+        }`}>
+          {venue.bookingEnabled ? "Book Online" : "Call to Book"}
+        </span>
+
+        {/* Bottom Right - Distance */}
         {venue.distanceText && (
-          <div className="absolute bottom-3 right-3 bg-blue-600/90 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 backdrop-blur-sm">
-            <Navigation className="w-3 h-3" />
+          <div className="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5">
+            <Navigation className="w-2.5 h-2.5" />
             {venue.distanceText}
           </div>
         )}
-
-        {/* Booking Type Badge */}
-        <div className="absolute top-3 right-3">
-          {venue.bookingEnabled ? (
-            <span className="bg-green-600 text-white text-xs font-semibold px-2 py-1 rounded-full">
-              Book Online
-            </span>
-          ) : (
-            <span className="bg-amber-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
-              Call to Book
-            </span>
-          )}
-        </div>
       </div>
 
       {/* Content */}
-      <div className="p-4">
-        <h3 className="font-bold text-gray-900 text-lg truncate group-hover:text-purple-600 transition-colors">
+      <div className="p-3">
+        <h3 className="font-semibold text-gray-900 text-sm truncate">
           {venue.name}
         </h3>
         
-        <div className="flex items-center gap-1 text-gray-500 text-sm mt-1">
-          <MapPin className="w-4 h-4" />
-          <span>{venue.location}</span>
+        <div className="flex items-center gap-1 text-gray-500 text-xs mt-1">
+          <MapPin className="w-3 h-3 flex-shrink-0" />
+          <span className="truncate">{venue.location}</span>
         </div>
 
-        {/* Capacity */}
         {venue.capacity && (
-          <div className="flex items-center gap-1 text-gray-400 text-sm mt-1">
-            <Users className="w-4 h-4" />
+          <div className="flex items-center gap-1 text-gray-400 text-xs mt-0.5">
+            <Users className="w-3 h-3" />
             <span>Up to {venue.capacity} guests</span>
           </div>
         )}
 
-        {/* Price & Actions */}
-        <div className="mt-3 flex items-center justify-between">
+        {/* Price */}
+        <div className="mt-2 flex items-center justify-between">
           <div>
-            <p className="text-purple-600 font-bold text-lg">
+            <span className="text-purple-600 font-bold text-base">
               {venue.priceRange || `₹${(venue.price/1000).toFixed(0)}K`}
-            </p>
-            <p className="text-gray-400 text-xs">per function</p>
+            </span>
+            <span className="text-gray-400 text-[10px] ml-1">per function</span>
           </div>
-          
-          <button className="p-2 rounded-full bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors">
-            <Heart className="w-5 h-5" />
-          </button>
+          <ChevronRight className="w-4 h-4 text-gray-400" />
         </div>
       </div>
     </Link>
   );
-}
+});
+VenueCard.displayName = 'VenueCard';
 
-// Horizontal Venue Card (for nearby/best sections)
-function HorizontalVenueCard({ venue }: { venue: Venue }) {
-  const fallbackImage = "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=600&q=75";
+// ============================================
+// Horizontal Venue Card (Best in Town / Featured)
+// ============================================
+const HorizontalVenueCard = memo(({ venue }: { venue: Venue }) => {
+  const fallbackImage = "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=300&q=70";
   
   return (
     <Link 
       href={`/venues/${venue.slug || venue.id}`}
-      className="flex-shrink-0 w-72 bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all group border border-gray-100"
+      className="flex-shrink-0 w-64 bg-white rounded-xl overflow-hidden border border-gray-100 hover:shadow-md transition-shadow"
     >
-      <div className="relative h-36 overflow-hidden">
+      <div className="relative h-32 bg-gray-100">
         <img
           src={venue.image || fallbackImage}
           alt={venue.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+          className="w-full h-full object-cover"
           loading="lazy"
         />
         {venue.distanceText && (
-          <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
-            <Navigation className="w-3 h-3" />
+          <div className="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5">
+            <Navigation className="w-2.5 h-2.5" />
             {venue.distanceText}
           </div>
         )}
       </div>
-      <div className="p-3">
-        <h3 className="font-semibold text-gray-900 truncate">{venue.name}</h3>
-        <p className="text-gray-500 text-sm truncate">{venue.location}</p>
-        <p className="text-purple-600 font-bold mt-1">
+      <div className="p-2.5">
+        <h3 className="font-semibold text-gray-900 text-sm truncate">{venue.name}</h3>
+        <p className="text-gray-500 text-xs truncate">{venue.location}</p>
+        <p className="text-purple-600 font-bold text-sm mt-1">
           {venue.priceRange || `₹${(venue.price/1000).toFixed(0)}K`}
         </p>
       </div>
     </Link>
   );
-}
+});
+HorizontalVenueCard.displayName = 'HorizontalVenueCard';
 
-// Zomato Style Caterer Card (List style)
-function ZomatoCatererCard({ caterer }: { caterer: Caterer }) {
-  const fallbackImage = "https://images.unsplash.com/photo-1555244162-803834f70033?w=600&q=75";
+// ============================================
+// Zomato Style Caterer Card (Clean List Style)
+// ============================================
+const CatererCard = memo(({ caterer }: { caterer: Caterer }) => {
+  const fallbackImage = "https://images.unsplash.com/photo-1555244162-803834f70033?w=200&q=70";
   
   return (
     <Link 
       href={`/catering/${caterer.slug || caterer.id}`}
-      className="flex gap-4 p-4 bg-white rounded-xl border border-gray-100 hover:shadow-lg transition-all group"
+      className="flex gap-3 p-3 bg-white rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-md transition-shadow"
     >
       {/* Image */}
-      <div className="relative w-28 h-28 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100">
+      <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
         <img
           src={caterer.image || fallbackImage}
           alt={caterer.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+          className="w-full h-full object-cover"
           loading="lazy"
         />
         {caterer.isPureVeg && (
-          <div className="absolute top-1 left-1 bg-green-500 p-1 rounded">
-            <Leaf className="w-3 h-3 text-white" />
+          <div className="absolute top-1 left-1 bg-green-500 p-0.5 rounded">
+            <Leaf className="w-2.5 h-2.5 text-white" />
           </div>
         )}
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 py-0.5">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-bold text-gray-900 truncate group-hover:text-orange-600 transition-colors">
-            {caterer.name}
-          </h3>
+          <h3 className="font-semibold text-gray-900 text-sm truncate">{caterer.name}</h3>
           {caterer.rating && caterer.rating > 0 && (
-            <div className="flex items-center gap-1 bg-green-600 text-white px-2 py-0.5 rounded text-sm flex-shrink-0">
-              <Star className="w-3 h-3 fill-current" />
+            <div className="flex items-center gap-0.5 bg-green-600 text-white px-1.5 py-0.5 rounded text-xs flex-shrink-0">
+              <Star className="w-2.5 h-2.5 fill-current" />
               <span>{caterer.rating.toFixed(1)}</span>
             </div>
           )}
         </div>
 
-        <p className="text-gray-500 text-sm truncate mt-1">
+        <p className="text-gray-500 text-xs truncate mt-0.5">
           {caterer.cuisines || "Multi-cuisine"}
         </p>
 
-        <div className="flex items-center gap-1 text-gray-400 text-sm mt-1">
-          <MapPin className="w-3 h-3" />
+        <div className="flex items-center gap-1 text-gray-400 text-xs mt-0.5">
+          <MapPin className="w-2.5 h-2.5 flex-shrink-0" />
           <span className="truncate">{caterer.location}</span>
           {caterer.distanceText && (
             <>
               <span>•</span>
-              <span>{caterer.distanceText}</span>
+              <span className="flex-shrink-0">{caterer.distanceText}</span>
             </>
           )}
         </div>
 
         {/* Price & Status */}
-        <div className="flex items-center justify-between mt-2">
-          <p className="text-orange-600 font-bold">
-            ₹{caterer.price}
-            <span className="text-gray-400 font-normal text-sm">/plate</span>
+        <div className="flex items-center justify-between mt-1.5">
+          <p className="text-orange-600 font-bold text-sm">
+            ₹{caterer.price}<span className="text-gray-400 font-normal text-xs">/plate</span>
           </p>
-          {caterer.bookingEnabled ? (
-            <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full font-medium">
-              Order Online
-            </span>
-          ) : (
-            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full font-medium flex items-center gap-1">
-              <Phone className="w-3 h-3" />
-              Call
-            </span>
-          )}
+          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+            caterer.bookingEnabled 
+              ? "bg-orange-100 text-orange-700" 
+              : "bg-gray-100 text-gray-600"
+          }`}>
+            {caterer.bookingEnabled ? "Order Online" : "Call"}
+          </span>
         </div>
       </div>
     </Link>
   );
-}
+});
+CatererCard.displayName = 'CatererCard';
 
-// Horizontal Caterer Card (for featured section)
-function HorizontalCatererCard({ caterer }: { caterer: Caterer }) {
-  const fallbackImage = "https://images.unsplash.com/photo-1555244162-803834f70033?w=600&q=75";
+// ============================================
+// Horizontal Caterer Card
+// ============================================
+const HorizontalCatererCard = memo(({ caterer }: { caterer: Caterer }) => {
+  const fallbackImage = "https://images.unsplash.com/photo-1555244162-803834f70033?w=200&q=70";
   
   return (
     <Link 
       href={`/catering/${caterer.slug || caterer.id}`}
-      className="flex-shrink-0 w-52 bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all group border border-gray-100"
+      className="flex-shrink-0 w-44 bg-white rounded-xl overflow-hidden border border-gray-100 hover:shadow-md transition-shadow"
     >
-      <div className="relative h-32 overflow-hidden">
+      <div className="relative h-28 bg-gray-100">
         <img
           src={caterer.image || fallbackImage}
           alt={caterer.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+          className="w-full h-full object-cover"
           loading="lazy"
         />
         {caterer.isPureVeg && (
-          <div className="absolute top-2 left-2 bg-green-500 p-1 rounded">
-            <Leaf className="w-3 h-3 text-white" />
+          <div className="absolute top-2 left-2 bg-green-500 p-0.5 rounded">
+            <Leaf className="w-2.5 h-2.5 text-white" />
           </div>
         )}
         {caterer.rating && caterer.rating > 0 && (
-          <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-green-600 text-white px-1.5 py-0.5 rounded text-xs">
-            <Star className="w-3 h-3 fill-current" />
+          <div className="absolute bottom-2 left-2 flex items-center gap-0.5 bg-green-600 text-white px-1 py-0.5 rounded text-[10px]">
+            <Star className="w-2.5 h-2.5 fill-current" />
             {caterer.rating.toFixed(1)}
           </div>
         )}
       </div>
-      <div className="p-3">
-        <h3 className="font-semibold text-gray-900 truncate text-sm">{caterer.name}</h3>
-        <p className="text-gray-400 text-xs truncate">{caterer.cuisines || "Multi-cuisine"}</p>
-        <p className="text-orange-600 font-bold text-sm mt-1">₹{caterer.price}/plate</p>
+      <div className="p-2">
+        <h3 className="font-semibold text-gray-900 text-xs truncate">{caterer.name}</h3>
+        <p className="text-gray-400 text-[10px] truncate">{caterer.cuisines || "Multi-cuisine"}</p>
+        <p className="text-orange-600 font-bold text-xs mt-0.5">₹{caterer.price}/plate</p>
       </div>
     </Link>
   );
+});
+HorizontalCatererCard.displayName = 'HorizontalCatererCard';
+
+// ============================================
+// Location Selector Modal
+// ============================================
+function LocationSelector({ 
+  currentLocation, 
+  onSelect, 
+  isOpen, 
+  onClose 
+}: { 
+  currentLocation: string;
+  onSelect: (location: string) => void;
+  isOpen: boolean;
+  onClose: () => void;
+}) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  
+  const popularLocations = [
+    "Kolkata", "Salt Lake", "New Town", "Rajarhat", "Howrah", 
+    "Barasat", "Dum Dum", "Ballygunge", "Park Street", "Alipore"
+  ];
+  
+  useEffect(() => {
+    if (searchQuery.length > 1) {
+      // Filter popular locations
+      const filtered = popularLocations.filter(loc => 
+        loc.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setSuggestions(filtered);
+    } else {
+      setSuggestions([]);
+    }
+  }, [searchQuery]);
+  
+  if (!isOpen) return null;
+  
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/50" onClick={onClose}>
+      <div 
+        className="absolute top-0 left-0 right-0 bg-white rounded-b-2xl max-h-[70vh] overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="p-4 border-b">
+          <div className="flex items-center gap-3">
+            <MapPin className="w-5 h-5 text-purple-600" />
+            <input
+              type="text"
+              placeholder="Search for area, city..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 text-base outline-none"
+              autoFocus
+            />
+            <button onClick={onClose} className="text-gray-500 text-sm">Cancel</button>
+          </div>
+        </div>
+        
+        <div className="p-4 overflow-auto max-h-[50vh]">
+          {suggestions.length > 0 ? (
+            <div className="space-y-2">
+              {suggestions.map(loc => (
+                <button
+                  key={loc}
+                  onClick={() => { onSelect(loc); onClose(); }}
+                  className="w-full text-left p-3 hover:bg-gray-50 rounded-lg flex items-center gap-3"
+                >
+                  <MapPin className="w-4 h-4 text-gray-400" />
+                  <span>{loc}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <>
+              <p className="text-xs text-gray-500 mb-3">POPULAR LOCATIONS</p>
+              <div className="flex flex-wrap gap-2">
+                {popularLocations.map(loc => (
+                  <button
+                    key={loc}
+                    onClick={() => { onSelect(loc); onClose(); }}
+                    className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-sm text-gray-700"
+                  >
+                    {loc}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
-// Main Home Content Component
+// ============================================
+// Section Header
+// ============================================
+const SectionHeader = memo(({ 
+  title, 
+  subtitle, 
+  icon: Icon, 
+  viewAllHref,
+  accentColor = "purple"
+}: { 
+  title: string; 
+  subtitle?: string;
+  icon?: any;
+  viewAllHref?: string;
+  accentColor?: "purple" | "orange";
+}) => (
+  <div className="flex items-center justify-between mb-3">
+    <div className="flex items-center gap-2">
+      {Icon && (
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+          accentColor === "purple" ? "bg-purple-100" : "bg-orange-100"
+        }`}>
+          <Icon className={`w-4 h-4 ${accentColor === "purple" ? "text-purple-600" : "text-orange-600"}`} />
+        </div>
+      )}
+      <div>
+        <h2 className="font-bold text-gray-900 text-base">{title}</h2>
+        {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
+      </div>
+    </div>
+    {viewAllHref && (
+      <Link href={viewAllHref} className={`text-sm font-medium flex items-center gap-0.5 ${
+        accentColor === "purple" ? "text-purple-600" : "text-orange-600"
+      }`}>
+        View All <ChevronRight className="w-4 h-4" />
+      </Link>
+    )}
+  </div>
+));
+SectionHeader.displayName = 'SectionHeader';
+
+// ============================================
+// Main Home Content
+// ============================================
 function HomeContent() {
   useOwnerRedirect();
   const router = useRouter();
@@ -335,21 +462,20 @@ function HomeContent() {
   const [caterers, setCaterers] = useState<Caterer[]>([]);
   const [stats, setStats] = useState<Stats>({ totalVenues: 500, totalCaterers: 200, completedBookings: 10000 });
   const [loading, setLoading] = useState(true);
-  const [distanceFilter, setDistanceFilter] = useState<number>(10); // km
+  const [selectedLocation, setSelectedLocation] = useState("Kolkata");
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
   
-  // Nearby data using Ola Maps
-  const { data: nearbyVenues, loading: nearbyVenuesLoading, userLocation } = useNearby("venues", 8);
-  const { data: nearbyCaterers, loading: nearbyCaterersLoading } = useNearby("caterers", 8);
+  // Nearby data
+  const { data: nearbyVenues, loading: nearbyVenuesLoading } = useNearby("venues", 12);
+  const { data: nearbyCaterers, loading: nearbyCaterersLoading } = useNearby("caterers", 12);
 
   // Fetch featured data
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const res = await fetch('/api/featured?venueLimit=8&catererLimit=8');
-        
+        const res = await fetch('/api/featured?venueLimit=12&catererLimit=12');
         if (!res.ok) throw new Error('Failed to fetch');
-        
         const data = await res.json();
         setVenues(data.venues || []);
         setCaterers(data.caterers || []);
@@ -360,11 +486,10 @@ function HomeContent() {
         setLoading(false);
       }
     };
-    
     fetchData();
   }, []);
 
-  // Handle tab change - update URL
+  // Tab change
   const handleTabChange = (tab: "venues" | "catering") => {
     setActiveTab(tab);
     const url = new URL(window.location.href);
@@ -372,7 +497,7 @@ function HomeContent() {
     window.history.replaceState({}, "", url.toString());
   };
 
-  // Search handler
+  // Search
   const handleSearch = useCallback(() => {
     const params = new URLSearchParams();
     if (searchQuery) params.set("search", searchQuery);
@@ -380,32 +505,57 @@ function HomeContent() {
     router.push(`${path}?${params.toString()}`);
   }, [searchQuery, activeTab, router]);
 
-  // Filter nearby by distance
-  const filteredNearbyVenues = nearbyVenues.filter((v: any) => 
-    v.distanceMeters <= distanceFilter * 1000
-  );
-  const filteredNearbyCaterers = nearbyCaterers.filter((c: any) => 
-    c.distanceMeters <= distanceFilter * 1000
-  );
+  // Popular areas for quick search
+  const quickAreas = ["Salt Lake", "New Town", "Rajarhat", "Howrah"];
+  
+  // Split venues for mixed layout
+  const nearbyVenuesList = nearbyVenues.slice(0, 4);
+  const bestVenues = venues.slice(0, 6);
+  const featuredVenues = venues.slice(6, 12);
+  const moreNearbyVenues = nearbyVenues.slice(4, 8);
+  
+  // Split caterers
+  const topCaterers = caterers.filter(c => c.rating && c.rating >= 4).slice(0, 6);
+  const allCaterers = caterers;
 
-  // Popular areas
-  const popularAreas = ["Salt Lake", "New Town", "Rajarhat", "Barasat", "Howrah", "Ballygunge"];
+  const accentColor = activeTab === "venues" ? "purple" : "orange";
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header with Logo */}
-      <header className="sticky top-0 z-50 bg-white border-b shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-3">
+      {/* Header with Location */}
+      <header className="sticky top-0 z-50 bg-white border-b">
+        <div className="max-w-7xl mx-auto px-4 py-2.5">
           <div className="flex items-center justify-between">
-            <Logo size="md" />
+            {/* Logo & Location */}
+            <div className="flex items-center gap-3">
+              <Logo size="sm" />
+              <button 
+                onClick={() => setShowLocationPicker(true)}
+                className="flex items-center gap-1 text-left"
+              >
+                <MapPin className="w-4 h-4 text-purple-600" />
+                <div>
+                  <p className="text-[10px] text-gray-400 leading-none">Location</p>
+                  <p className="text-sm font-semibold text-gray-900 flex items-center gap-0.5">
+                    {selectedLocation}
+                    <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                  </p>
+                </div>
+              </button>
+            </div>
             
-            <div className="flex items-center gap-2">
+            {/* Actions */}
+            <div className="flex items-center gap-1">
               <Link href="/wishlist" className="p-2 hover:bg-gray-100 rounded-full">
                 <Heart className="w-5 h-5 text-gray-600" />
               </Link>
               <Link 
                 href="/auth/signin" 
-                className="text-sm font-medium text-purple-600 hover:text-purple-700 px-4 py-2 hover:bg-purple-50 rounded-lg"
+                className={`text-xs font-semibold px-3 py-1.5 rounded-lg ${
+                  activeTab === "venues" 
+                    ? "text-purple-600 bg-purple-50" 
+                    : "text-orange-600 bg-orange-50"
+                }`}
               >
                 Login
               </Link>
@@ -413,452 +563,233 @@ function HomeContent() {
           </div>
         </div>
       </header>
+      
+      {/* Location Picker Modal */}
+      <LocationSelector
+        currentLocation={selectedLocation}
+        onSelect={setSelectedLocation}
+        isOpen={showLocationPicker}
+        onClose={() => setShowLocationPicker(false)}
+      />
 
-      {/* Hero Section */}
-      <section className={`pt-6 pb-8 px-4 ${
-        activeTab === "venues" 
-          ? "bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800" 
-          : "bg-gradient-to-br from-orange-500 via-red-500 to-red-600"
-      }`}>
-        <div className="max-w-4xl mx-auto">
-          {/* Tab Toggle - Prominent */}
-          <div className="flex justify-center mb-6">
-            <div className="bg-white/20 backdrop-blur-sm p-1 rounded-full flex">
-              <button
-                onClick={() => handleTabChange("venues")}
-                className={`px-6 py-2.5 rounded-full font-semibold transition-all flex items-center gap-2 ${
-                  activeTab === "venues"
-                    ? "bg-white text-purple-600 shadow-lg"
-                    : "text-white/90 hover:text-white"
-                }`}
-              >
-                <Building2 className="w-5 h-5" />
-                <span>Venues</span>
-              </button>
-              <button
-                onClick={() => handleTabChange("catering")}
-                className={`px-6 py-2.5 rounded-full font-semibold transition-all flex items-center gap-2 ${
-                  activeTab === "catering"
-                    ? "bg-white text-orange-600 shadow-lg"
-                    : "text-white/90 hover:text-white"
-                }`}
-              >
-                <ChefHat className="w-5 h-5" />
-                <span>Catering</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Headline */}
-          <h1 className="text-2xl md:text-4xl font-bold text-white text-center mb-2">
-            {activeTab === "venues" 
-              ? "Find Your Perfect Wedding Venue" 
-              : "Order Catering for Your Event"}
-          </h1>
-          <p className="text-white/80 text-center mb-6">
-            {activeTab === "venues"
-              ? "Compare prices, book venues with transparent pricing"
-              : "Premium catering services at best prices"}
-          </p>
-
-          {/* Search Bar */}
-          <div className="bg-white rounded-2xl shadow-2xl p-3 md:p-4">
-            <div className="flex gap-2">
-              <div className="flex-1 relative">
-                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder={activeTab === "venues" 
-                    ? "Search venues by area, city or name..." 
-                    : "Search caterers by cuisine, area..."}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-              <button
-                onClick={handleSearch}
-                className={`px-6 py-3.5 font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 ${
-                  activeTab === "venues"
-                    ? "bg-purple-600 hover:bg-purple-700 text-white"
-                    : "bg-orange-500 hover:bg-orange-600 text-white"
-                }`}
-              >
-                <Search className="w-5 h-5" />
-                <span className="hidden sm:inline">Search</span>
-              </button>
-            </div>
-
-            {/* Quick Links */}
-            <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-              <span className="text-sm text-gray-500">Popular:</span>
-              {popularAreas.map((area) => (
-                <button
-                  key={area}
-                  onClick={() => {
-                    setSearchQuery(area);
-                    handleSearch();
-                  }}
-                  className={`text-sm font-medium px-3 py-1 rounded-full transition-colors ${
-                    activeTab === "venues"
-                      ? "text-purple-600 hover:bg-purple-50"
-                      : "text-orange-600 hover:bg-orange-50"
-                  }`}
-                >
-                  {area}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="flex justify-center gap-8 md:gap-16 mt-8">
-            <div className="text-center">
-              <div className="text-2xl md:text-3xl font-bold text-white">
-                {activeTab === "venues" ? `${stats.totalVenues}+` : `${stats.totalCaterers}+`}
-              </div>
-              <div className="text-white/70 text-sm">
-                {activeTab === "venues" ? "Venues" : "Caterers"}
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl md:text-3xl font-bold text-white">{Math.round(stats.completedBookings/1000)}K+</div>
-              <div className="text-white/70 text-sm">Happy Customers</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl md:text-3xl font-bold text-white">100%</div>
-              <div className="text-white/70 text-sm">Transparent Pricing</div>
-            </div>
+      {/* Tab Switcher */}
+      <div className="bg-white border-b sticky top-[52px] z-40">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex">
+            <button
+              onClick={() => handleTabChange("venues")}
+              className={`flex-1 py-3 text-center text-sm font-semibold border-b-2 transition-colors flex items-center justify-center gap-1.5 ${
+                activeTab === "venues"
+                  ? "text-purple-600 border-purple-600"
+                  : "text-gray-500 border-transparent hover:text-gray-700"
+              }`}
+            >
+              <Building2 className="w-4 h-4" />
+              Venues
+            </button>
+            <button
+              onClick={() => handleTabChange("catering")}
+              className={`flex-1 py-3 text-center text-sm font-semibold border-b-2 transition-colors flex items-center justify-center gap-1.5 ${
+                activeTab === "catering"
+                  ? "text-orange-600 border-orange-600"
+                  : "text-gray-500 border-transparent hover:text-gray-700"
+              }`}
+            >
+              <ChefHat className="w-4 h-4" />
+              Catering
+            </button>
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* Distance Filter */}
-      <div className="bg-white border-b sticky top-14 z-40 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center gap-4 overflow-x-auto">
-            <span className="text-sm text-gray-500 flex-shrink-0 flex items-center gap-1">
-              <SlidersHorizontal className="w-4 h-4" />
-              Distance:
-            </span>
-            {[5, 10, 20, 50].map((km) => (
+      {/* Search Section */}
+      <div className={`px-4 py-4 ${activeTab === "venues" ? "bg-purple-600" : "bg-orange-500"}`}>
+        <div className="max-w-3xl mx-auto">
+          <div className="bg-white rounded-xl p-2 flex gap-2">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder={activeTab === "venues" ? "Search venues..." : "Search caterers..."}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                className="w-full pl-9 pr-3 py-2.5 bg-gray-50 rounded-lg text-sm outline-none focus:bg-white focus:ring-1 focus:ring-gray-200"
+              />
+            </div>
+            <button
+              onClick={handleSearch}
+              className={`px-4 py-2.5 font-semibold rounded-lg text-sm text-white ${
+                activeTab === "venues" ? "bg-purple-600" : "bg-orange-500"
+              }`}
+            >
+              Search
+            </button>
+          </div>
+          
+          {/* Quick Area Tags */}
+          <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+            {quickAreas.map(area => (
               <button
-                key={km}
-                onClick={() => setDistanceFilter(km)}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors flex-shrink-0 ${
-                  distanceFilter === km
-                    ? activeTab === "venues"
-                      ? "bg-purple-600 text-white"
-                      : "bg-orange-500 text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
+                key={area}
+                onClick={() => { setSearchQuery(area); handleSearch(); }}
+                className="flex-shrink-0 px-3 py-1 bg-white/20 text-white text-xs rounded-full hover:bg-white/30"
               >
-                {km} km
+                {area}
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Content based on active tab */}
-      {activeTab === "venues" ? (
-        // VENUE MODE - MakeMyTrip Style
-        <>
-          {/* Nearby Venues Section - Horizontal Scroll */}
-          {filteredNearbyVenues.length > 0 && (
-            <section className="py-6 px-4">
-              <div className="max-w-7xl mx-auto">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <Locate className="w-6 h-6 text-blue-600" />
-                    <h2 className="text-xl font-bold text-gray-900">Venues Near You</h2>
-                    <span className="text-sm text-gray-500">({filteredNearbyVenues.length})</span>
-                  </div>
-                  <Link href="/venues?sort=nearby" className="text-purple-600 font-medium text-sm flex items-center gap-1">
-                    View All <ChevronRight className="w-4 h-4" />
-                  </Link>
+      {/* Content */}
+      <div className="px-4 py-4 max-w-7xl mx-auto">
+        {activeTab === "venues" ? (
+          <>
+            {/* Venues Near You - Vertical Grid */}
+            <section className="mb-6">
+              <SectionHeader 
+                title="Venues Near You" 
+                subtitle={`${nearbyVenuesList.length} venues found`}
+                icon={Navigation}
+                viewAllHref="/venues?sort=nearby"
+                accentColor="purple"
+              />
+              {nearbyVenuesLoading ? (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[...Array(4)].map((_, i) => <VenueCardSkeleton key={i} />)}
                 </div>
-                
-                <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-                  {nearbyVenuesLoading ? (
-                    [...Array(4)].map((_, i) => <VenueCardSkeleton key={i} />)
-                  ) : (
-                    filteredNearbyVenues.map((venue: any) => (
-                      <HorizontalVenueCard key={venue.id} venue={venue} />
-                    ))
-                  )}
-                </div>
-              </div>
-            </section>
-          )}
-
-          {/* Featured Venues - Grid */}
-          <section className="py-8 px-4 bg-white">
-            <div className="max-w-7xl mx-auto">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                    <TrendingUp className="w-6 h-6 text-purple-600" />
-                    Featured Venues
-                  </h2>
-                  <p className="text-gray-500 mt-1">Handpicked venues with transparent pricing</p>
-                </div>
-                <Link href="/venues" className="text-purple-600 font-semibold flex items-center gap-1">
-                  View All <ChevronRight className="w-5 h-5" />
-                </Link>
-              </div>
-
-              {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {[...Array(8)].map((_, i) => <VenueCardSkeleton key={i} />)}
-                </div>
-              ) : venues.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {venues.map((venue) => (
-                    <MMTVenueCard key={venue.id} venue={venue} />
+              ) : nearbyVenuesList.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {nearbyVenuesList.map((venue: any) => (
+                    <VenueCard key={venue.id} venue={venue} />
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12 bg-gray-50 rounded-2xl">
-                  <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">No venues available yet</p>
+                <div className="text-center py-8 text-gray-500 text-sm">
+                  Enable location to see nearby venues
                 </div>
               )}
-            </div>
-          </section>
+            </section>
 
-          {/* Best Venues in Town - Horizontal */}
-          <section className="py-8 px-4 bg-purple-50">
-            <div className="max-w-7xl mx-auto">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                  <Star className="w-5 h-5 text-yellow-500 fill-current" />
-                  Best Venues in Town
-                </h2>
-                <Link href="/venues?sort=popular" className="text-purple-600 font-medium text-sm flex items-center gap-1">
-                  See All <ChevronRight className="w-4 h-4" />
-                </Link>
-              </div>
-              
-              <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-                {venues.slice(0, 6).map((venue) => (
-                  <HorizontalVenueCard key={venue.id} venue={venue} />
-                ))}
-              </div>
-            </div>
-          </section>
-        </>
-      ) : (
-        // CATERING MODE - Zomato Style
-        <>
-          {/* Nearby Caterers - Horizontal Cards */}
-          {filteredNearbyCaterers.length > 0 && (
-            <section className="py-6 px-4">
-              <div className="max-w-7xl mx-auto">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <Locate className="w-6 h-6 text-orange-600" />
-                    <h2 className="text-xl font-bold text-gray-900">Caterers Near You</h2>
-                    <span className="text-sm text-gray-500">({filteredNearbyCaterers.length})</span>
-                  </div>
-                  <Link href="/catering?sort=nearby" className="text-orange-600 font-medium text-sm flex items-center gap-1">
-                    View All <ChevronRight className="w-4 h-4" />
-                  </Link>
-                </div>
-                
-                <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-                  {nearbyCaterersLoading ? (
-                    [...Array(4)].map((_, i) => <CatererCardSkeleton key={i} />)
-                  ) : (
-                    filteredNearbyCaterers.map((caterer: any) => (
-                      <HorizontalCatererCard key={caterer.id} caterer={caterer} />
-                    ))
-                  )}
-                </div>
+            {/* Best in Town - Horizontal Scroll */}
+            <section className="mb-6">
+              <SectionHeader 
+                title="Best in Town" 
+                icon={Star}
+                viewAllHref="/venues?sort=popular"
+                accentColor="purple"
+              />
+              <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+                {loading ? (
+                  [...Array(4)].map((_, i) => (
+                    <div key={i} className="flex-shrink-0 w-64 h-48 bg-gray-100 rounded-xl" />
+                  ))
+                ) : (
+                  bestVenues.map(venue => (
+                    <HorizontalVenueCard key={venue.id} venue={venue} />
+                  ))
+                )}
               </div>
             </section>
-          )}
 
-          {/* Top Rated Caterers - Horizontal Scroll */}
-          <section className="py-6 px-4 bg-orange-50">
-            <div className="max-w-7xl mx-auto">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                  <Star className="w-5 h-5 text-yellow-500 fill-current" />
-                  Top Rated Caterers
-                </h2>
-                <Link href="/catering?sort=rating" className="text-orange-600 font-medium text-sm flex items-center gap-1">
-                  See All <ChevronRight className="w-4 h-4" />
-                </Link>
-              </div>
-              
-              <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-                {loading ? (
-                  [...Array(4)].map((_, i) => <CatererCardSkeleton key={i} />)
-                ) : (
-                  caterers.slice(0, 6).map((caterer) => (
-                    <HorizontalCatererCard key={caterer.id} caterer={caterer} />
-                  ))
-                )}
-              </div>
-            </div>
-          </section>
-
-          {/* All Caterers - Zomato List Style */}
-          <section className="py-8 px-4 bg-white">
-            <div className="max-w-3xl mx-auto">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-900">All Caterers</h2>
-                <div className="flex items-center gap-2">
-                  <button className="flex items-center gap-1 px-3 py-1.5 border rounded-lg text-sm hover:bg-gray-50">
-                    <Filter className="w-4 h-4" />
-                    Filter
-                  </button>
+            {/* More Nearby Venues - Vertical */}
+            {moreNearbyVenues.length > 0 && (
+              <section className="mb-6">
+                <SectionHeader 
+                  title="More Nearby" 
+                  icon={MapPin}
+                  viewAllHref="/venues?sort=nearby"
+                  accentColor="purple"
+                />
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {moreNearbyVenues.map((venue: any) => (
+                    <VenueCard key={venue.id} venue={venue} />
+                  ))}
                 </div>
-              </div>
-
-              <div className="space-y-4">
-                {loading ? (
-                  [...Array(5)].map((_, i) => <CatererCardSkeleton key={i} />)
-                ) : caterers.length > 0 ? (
-                  caterers.map((caterer) => (
-                    <ZomatoCatererCard key={caterer.id} caterer={caterer} />
-                  ))
-                ) : (
-                  <div className="text-center py-12 bg-gray-50 rounded-2xl">
-                    <ChefHat className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">No caterers available yet</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
-        </>
-      )}
-
-      {/* How It Works */}
-      <section className="py-12 px-4 bg-gray-100">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl font-bold text-gray-900 text-center mb-10">
-            How It Works
-          </h2>
-          
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              { 
-                step: "1", 
-                title: "Browse & Compare", 
-                desc: "Search venues and caterers with transparent pricing",
-                color: activeTab === "venues" ? "purple" : "orange"
-              },
-              { 
-                step: "2", 
-                title: "Contact or Book", 
-                desc: "Call directly or book online instantly",
-                color: activeTab === "venues" ? "purple" : "orange"
-              },
-              { 
-                step: "3", 
-                title: "Celebrate!", 
-                desc: "Enjoy your event with confidence",
-                color: activeTab === "venues" ? "purple" : "orange"
-              },
-            ].map((item, i) => (
-              <div key={i} className="text-center">
-                <div className={`w-14 h-14 ${
-                  item.color === "purple" ? "bg-purple-100" : "bg-orange-100"
-                } rounded-2xl flex items-center justify-center mx-auto mb-4`}>
-                  <span className={`text-2xl font-bold ${
-                    item.color === "purple" ? "text-purple-600" : "text-orange-600"
-                  }`}>{item.step}</span>
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">{item.title}</h3>
-                <p className="text-gray-500 text-sm">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className={`py-12 px-4 ${
-        activeTab === "venues"
-          ? "bg-gradient-to-r from-purple-600 to-indigo-700"
-          : "bg-gradient-to-r from-orange-500 to-red-600"
-      }`}>
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
-            {activeTab === "venues"
-              ? "Ready to Find Your Perfect Venue?"
-              : "Need Catering for Your Event?"}
-          </h2>
-          <p className="text-white/80 mb-6">
-            {activeTab === "venues"
-              ? "Join thousands of happy couples who found their dream wedding venue"
-              : "Order premium catering with transparent per-plate pricing"}
-          </p>
-          <Link
-            href={activeTab === "venues" ? "/venues" : "/catering"}
-            className="inline-flex items-center gap-2 bg-white px-8 py-4 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all"
-            style={{ color: activeTab === "venues" ? "#7c3aed" : "#ea580c" }}
-          >
-            {activeTab === "venues" ? (
-              <>
-                <Building2 className="w-5 h-5" />
-                Browse All Venues
-              </>
-            ) : (
-              <>
-                <ChefHat className="w-5 h-5" />
-                Browse All Caterers
-              </>
+              </section>
             )}
-            <ArrowRight className="w-5 h-5" />
-          </Link>
-        </div>
-      </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-gray-400 py-12 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <div className="col-span-2 md:col-span-1">
-              <Logo size="sm" theme="dark" className="mb-4" />
-              <p className="text-sm">Your one-stop platform for wedding venues and catering services with transparent pricing.</p>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4">Quick Links</h4>
-              <ul className="space-y-2 text-sm">
-                <li><Link href="/venues" className="hover:text-white transition-colors">Venues</Link></li>
-                <li><Link href="/catering" className="hover:text-white transition-colors">Catering</Link></li>
-                <li><Link href="/bookings" className="hover:text-white transition-colors">My Bookings</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4">Popular Areas</h4>
-              <ul className="space-y-2 text-sm">
-                <li><Link href="/venues?search=kolkata" className="hover:text-white transition-colors">Kolkata</Link></li>
-                <li><Link href="/venues?search=salt-lake" className="hover:text-white transition-colors">Salt Lake</Link></li>
-                <li><Link href="/venues?search=new-town" className="hover:text-white transition-colors">New Town</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4">Support</h4>
-              <ul className="space-y-2 text-sm">
-                <li><a href="tel:+919876543210" className="hover:text-white transition-colors">+91 98765 43210</a></li>
-                <li><a href="mailto:support@happilyeated.com" className="hover:text-white transition-colors">support@happilyeated.com</a></li>
-              </ul>
-            </div>
+            {/* Featured Venues - Horizontal */}
+            {featuredVenues.length > 0 && (
+              <section className="mb-6">
+                <SectionHeader 
+                  title="Featured Venues" 
+                  icon={Sparkles}
+                  viewAllHref="/venues"
+                  accentColor="purple"
+                />
+                <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+                  {featuredVenues.map(venue => (
+                    <HorizontalVenueCard key={venue.id} venue={venue} />
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
+        ) : (
+          <>
+            {/* Top Rated Caterers - Horizontal */}
+            {topCaterers.length > 0 && (
+              <section className="mb-6">
+                <SectionHeader 
+                  title="Top Rated" 
+                  icon={Star}
+                  viewAllHref="/catering?sort=rating"
+                  accentColor="orange"
+                />
+                <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+                  {topCaterers.map(caterer => (
+                    <HorizontalCatererCard key={caterer.id} caterer={caterer} />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* All Caterers - Vertical List */}
+            <section>
+              <SectionHeader 
+                title="All Caterers" 
+                subtitle={`${allCaterers.length} caterers`}
+                icon={ChefHat}
+                viewAllHref="/catering"
+                accentColor="orange"
+              />
+              {loading ? (
+                <div className="space-y-3">
+                  {[...Array(5)].map((_, i) => <CatererCardSkeleton key={i} />)}
+                </div>
+              ) : allCaterers.length > 0 ? (
+                <div className="space-y-3">
+                  {allCaterers.map(caterer => (
+                    <CatererCard key={caterer.id} caterer={caterer} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500 text-sm">
+                  No caterers available
+                </div>
+              )}
+            </section>
+          </>
+        )}
+      </div>
+
+      {/* Simple Footer */}
+      <footer className="bg-white border-t py-6 px-4 mt-8">
+        <div className="max-w-7xl mx-auto text-center">
+          <Logo size="sm" className="mx-auto mb-3" />
+          <p className="text-gray-500 text-xs mb-3">
+            Find the perfect venue and catering for your events
+          </p>
+          <div className="flex justify-center gap-4 text-xs text-gray-400">
+            <Link href="/venues" className="hover:text-gray-600">Venues</Link>
+            <Link href="/catering" className="hover:text-gray-600">Catering</Link>
+            <Link href="/bookings" className="hover:text-gray-600">Bookings</Link>
           </div>
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm">
-            <p>© 2024 Happily Eated. All rights reserved.</p>
-          </div>
+          <p className="text-gray-300 text-[10px] mt-4">© 2024 Happily Eated</p>
         </div>
       </footer>
-
-      {/* Mobile bottom spacing */}
-      <div className="h-20 md:hidden" />
     </div>
   );
 }
@@ -868,14 +799,14 @@ function LoadingFallback() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="text-center">
-        <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-gray-500">Loading...</p>
+        <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-gray-500 text-sm">Loading...</p>
       </div>
     </div>
   );
 }
 
-// Export with Suspense wrapper
+// Export
 export default function HomePage() {
   return (
     <Suspense fallback={<LoadingFallback />}>
