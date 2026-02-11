@@ -1,6 +1,26 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 
+// Haversine formula to calculate distance between two coordinates
+function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLng/2) * Math.sin(dLng/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+function formatDistance(distanceKm: number): string {
+  if (distanceKm < 1) {
+    return `${Math.round(distanceKm * 1000)}m`;
+  }
+  return `${distanceKm.toFixed(1)}km`;
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -8,9 +28,12 @@ export async function GET(request: Request) {
     const area = searchParams.get("area");
     const minGuests = searchParams.get("minGuests");
     const maxPrice = searchParams.get("maxPrice");
-    const sortBy = searchParams.get("sortBy") || "newest";
+    const sortBy = searchParams.get("sortBy") || searchParams.get("sort") || "newest";
     const limit = searchParams.get("limit");
     const search = searchParams.get("search");
+    const lat = searchParams.get("lat");
+    const lng = searchParams.get("lng");
+    const date = searchParams.get("date");
 
     const where: any = {
       isActive: true,
@@ -108,10 +131,38 @@ export async function GET(request: Request) {
 
     // Apply sorting
     let sortedVenues = [...venues];
+    const userLat = lat ? parseFloat(lat) : null;
+    const userLng = lng ? parseFloat(lng) : null;
+    
+    // Calculate distances if lat/lng provided
+    const venuesWithDistance = sortedVenues.map(venue => {
+      let distanceKm: number | null = null;
+      let distanceText: string | null = null;
+      
+      if (userLat && userLng && venue.latitude && venue.longitude) {
+        distanceKm = calculateDistance(userLat, userLng, venue.latitude, venue.longitude);
+        distanceText = formatDistance(distanceKm);
+      }
+      
+      return {
+        ...venue,
+        distanceKm,
+        distanceText,
+      };
+    });
     
     switch (sortBy) {
+      case "nearby":
+        // Sort by distance (closest first)
+        venuesWithDistance.sort((a, b) => {
+          if (a.distanceKm === null && b.distanceKm === null) return 0;
+          if (a.distanceKm === null) return 1;
+          if (b.distanceKm === null) return -1;
+          return a.distanceKm - b.distanceKm;
+        });
+        break;
       case "area":
-        sortedVenues.sort((a, b) => {
+        venuesWithDistance.sort((a, b) => {
           const aPriority = areaPriorityMap.get(a.area?.toLowerCase() || "") || 0;
           const bPriority = areaPriorityMap.get(b.area?.toLowerCase() || "") || 0;
           if (bPriority !== aPriority) return bPriority - aPriority;
@@ -119,32 +170,32 @@ export async function GET(request: Request) {
         });
         break;
       case "price-low":
-        sortedVenues.sort((a, b) => {
+        venuesWithDistance.sort((a, b) => {
           const aPrice = a.exactPrice || a.estimatedMinPrice || a.nonPrimeDayPrice || 0;
           const bPrice = b.exactPrice || b.estimatedMinPrice || b.nonPrimeDayPrice || 0;
           return aPrice - bPrice;
         });
         break;
       case "price-high":
-        sortedVenues.sort((a, b) => {
+        venuesWithDistance.sort((a, b) => {
           const aPrice = a.exactPrice || a.estimatedMaxPrice || a.primeDayPrice || 0;
           const bPrice = b.exactPrice || b.estimatedMaxPrice || b.primeDayPrice || 0;
           return bPrice - aPrice;
         });
         break;
       case "popular":
-        sortedVenues.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
+        venuesWithDistance.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
         break;
       case "newest":
       default:
-        sortedVenues.sort((a, b) => 
+        venuesWithDistance.sort((a, b) => 
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
         break;
     }
 
     return NextResponse.json({ 
-      venues: sortedVenues, 
+      venues: venuesWithDistance, 
       areas,
       total: sortedVenues.length 
     });

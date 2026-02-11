@@ -4,13 +4,14 @@ import { useState, useEffect, useCallback, Suspense, memo } from "react";
 import { 
   Search, MapPin, Star, Building2, Users, ChefHat, Phone,
   CheckCircle, ArrowRight, Leaf, ChevronRight, Navigation, 
-  ChevronDown, Heart, TrendingUp, Sparkles
+  ChevronDown, Heart, TrendingUp, Sparkles, Calendar
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useOwnerRedirect } from "@/hooks/useOwnerRedirect";
 import { useNearby } from "@/hooks/useLocation";
 import Logo from "@/components/layout/Logo";
+import SearchModal from "@/components/home/SearchModal";
 
 // ============================================
 // Types
@@ -464,6 +465,7 @@ function HomeContent() {
   const [loading, setLoading] = useState(true);
   const [selectedLocation, setSelectedLocation] = useState("Kolkata");
   const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
   
   // Nearby data
   const { data: nearbyVenues, loading: nearbyVenuesLoading } = useNearby("venues", 12);
@@ -497,13 +499,35 @@ function HomeContent() {
     window.history.replaceState({}, "", url.toString());
   };
 
-  // Search
-  const handleSearch = useCallback(() => {
+  // Search handler for modal
+  const handleSearchFromModal = useCallback((params: {
+    search: string;
+    date?: string;
+    guests?: number;
+    isNearby?: boolean;
+    lat?: number;
+    lng?: number;
+  }) => {
+    const urlParams = new URLSearchParams();
+    if (params.search) urlParams.set("search", params.search);
+    if (params.date) urlParams.set("date", params.date);
+    if (params.guests) urlParams.set("minGuests", params.guests.toString());
+    if (params.isNearby && params.lat && params.lng) {
+      urlParams.set("lat", params.lat.toString());
+      urlParams.set("lng", params.lng.toString());
+      urlParams.set("sort", "nearby");
+    }
+    const path = activeTab === "venues" ? "/venues" : "/catering";
+    router.push(`${path}?${urlParams.toString()}`);
+  }, [activeTab, router]);
+
+  // Simple search (for quick area tags)
+  const handleQuickSearch = useCallback((area: string) => {
     const params = new URLSearchParams();
-    if (searchQuery) params.set("search", searchQuery);
+    params.set("search", area);
     const path = activeTab === "venues" ? "/venues" : "/catering";
     router.push(`${path}?${params.toString()}`);
-  }, [searchQuery, activeTab, router]);
+  }, [activeTab, router]);
 
   // Popular areas for quick search
   const quickAreas = ["Salt Lake", "New Town", "Rajarhat", "Howrah"];
@@ -571,6 +595,14 @@ function HomeContent() {
         isOpen={showLocationPicker}
         onClose={() => setShowLocationPicker(false)}
       />
+      
+      {/* Search Modal */}
+      <SearchModal
+        isOpen={showSearchModal}
+        onClose={() => setShowSearchModal(false)}
+        onSearch={handleSearchFromModal}
+        activeTab={activeTab}
+      />
 
       {/* Tab Switcher */}
       <div className="bg-white border-b sticky top-[52px] z-40">
@@ -602,42 +634,60 @@ function HomeContent() {
         </div>
       </div>
 
-      {/* Search Section */}
+      {/* Search Section - Airbnb Style */}
       <div className={`px-4 py-4 ${activeTab === "venues" ? "bg-purple-600" : "bg-orange-500"}`}>
         <div className="max-w-3xl mx-auto">
-          <div className="bg-white rounded-xl p-2 flex gap-2">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder={activeTab === "venues" ? "Search venues..." : "Search caterers..."}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                className="w-full pl-9 pr-3 py-2.5 bg-gray-50 rounded-lg text-sm outline-none focus:bg-white focus:ring-1 focus:ring-gray-200"
-              />
+          {/* Clickable Search Bar */}
+          <button
+            onClick={() => setShowSearchModal(true)}
+            className="w-full bg-white rounded-full p-2 pr-4 flex items-center gap-3 shadow-lg hover:shadow-xl transition-shadow"
+          >
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+              activeTab === "venues" ? "bg-purple-600" : "bg-orange-500"
+            }`}>
+              <Search className="w-5 h-5 text-white" />
             </div>
-            <button
-              onClick={handleSearch}
-              className={`px-4 py-2.5 font-semibold rounded-lg text-sm text-white ${
-                activeTab === "venues" ? "bg-purple-600" : "bg-orange-500"
-              }`}
-            >
-              Search
-            </button>
-          </div>
+            <div className="text-left flex-1">
+              <p className="text-sm font-semibold text-gray-900">
+                {activeTab === "venues" ? "Where to celebrate?" : "What's cooking?"}
+              </p>
+              <p className="text-xs text-gray-500">
+                {activeTab === "venues" 
+                  ? "Search venues · Add dates · Add guests"
+                  : "Search caterers · Cuisine · Location"
+                }
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {activeTab === "venues" && (
+                <>
+                  <div className="w-px h-6 bg-gray-200" />
+                  <Calendar className="w-4 h-4 text-gray-400" />
+                  <div className="w-px h-6 bg-gray-200" />
+                  <Users className="w-4 h-4 text-gray-400" />
+                </>
+              )}
+            </div>
+          </button>
           
           {/* Quick Area Tags */}
           <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
             {quickAreas.map(area => (
               <button
                 key={area}
-                onClick={() => { setSearchQuery(area); handleSearch(); }}
-                className="flex-shrink-0 px-3 py-1 bg-white/20 text-white text-xs rounded-full hover:bg-white/30"
+                onClick={() => handleQuickSearch(area)}
+                className="flex-shrink-0 px-3 py-1.5 bg-white/20 text-white text-xs rounded-full hover:bg-white/30 font-medium"
               >
                 {area}
               </button>
             ))}
+            <button
+              onClick={() => setShowSearchModal(true)}
+              className="flex-shrink-0 px-3 py-1.5 bg-white text-gray-700 text-xs rounded-full hover:bg-gray-100 font-medium flex items-center gap-1"
+            >
+              <Search className="w-3 h-3" />
+              More
+            </button>
           </div>
         </div>
       </div>
