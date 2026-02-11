@@ -322,7 +322,7 @@ export default function SearchModal({ isOpen, onClose, onSearch, activeTab }: Se
                   </div>
                   <div className="text-left">
                     <p className="font-semibold text-gray-900">Nearby</p>
-                    <p className="text-xs text-gray-500">Find what's around you</p>
+                    <p className="text-xs text-gray-500">Find what&apos;s around you</p>
                   </div>
                 </button>
                 
