@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Sparkles, Heart, Calendar, User, LogOut, Settings, LayoutDashboard } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useSession, signOut } from "next-auth/react";
 
 export default function DesktopNav() {
@@ -95,13 +94,9 @@ export default function DesktopNav() {
                   <span>{user.name || "User"}</span>
                 </button>
 
-                <AnimatePresence>
-                  {showProfileMenu && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className="absolute right-0 mt-2 w-56 glass-card rounded-2xl shadow-xl overflow-hidden"
+                {showProfileMenu && (
+                    <div
+                      className="absolute right-0 mt-2 w-56 glass-card rounded-2xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
                     >
                       <div className="p-4 border-b border-gray-200">
                         <p className="font-semibold text-gray-900">{user.name || "User"}</p>
@@ -171,9 +166,8 @@ export default function DesktopNav() {
                           <span>Sign Out</span>
                         </button>
                       </div>
-                    </motion.div>
+                    </div>
                   )}
-                </AnimatePresence>
               </div>
             ) : (
               <div className="flex items-center gap-3">

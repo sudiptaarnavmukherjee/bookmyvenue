@@ -1,13 +1,32 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import dynamic from "next/dynamic";
+import { Suspense } from "react";
 import "./globals.css";
-import { MobileNav } from "@/components/layout/MobileNav";
-import DesktopNav from "@/components/layout/DesktopNav";
 import { SessionProvider } from "@/components/providers/SessionProvider";
 import { CompareProvider } from "@/components/providers/CompareProvider";
-import { CompareBar } from "@/components/ui/CompareBar";
-import { PWAInstallBanner, OfflineIndicator } from "@/components/pwa/PWAComponents";
 import { generateOrganizationSchema, generateSearchActionSchema, JsonLd } from "@/lib/structured-data";
+
+// Dynamic imports for UI components - these load AFTER initial paint
+const MobileNav = dynamic(() => import("@/components/layout/MobileNav").then(m => ({ default: m.MobileNav })), {
+  ssr: false, // No SSR = faster initial HTML
+});
+
+const DesktopNav = dynamic(() => import("@/components/layout/DesktopNav"), {
+  ssr: false,
+});
+
+const CompareBar = dynamic(() => import("@/components/ui/CompareBar").then(m => ({ default: m.CompareBar })), {
+  ssr: false,
+});
+
+const PWAInstallBanner = dynamic(() => import("@/components/pwa/PWAComponents").then(m => ({ default: m.PWAInstallBanner })), {
+  ssr: false,
+});
+
+const OfflineIndicator = dynamic(() => import("@/components/pwa/PWAComponents").then(m => ({ default: m.OfflineIndicator })), {
+  ssr: false,
+});
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -102,14 +121,19 @@ export default function RootLayout({
       <body className={`${inter.className} overflow-x-hidden antialiased`}>
         <SessionProvider>
           <CompareProvider>
-            <OfflineIndicator />
-            <DesktopNav />
+            {/* Main content renders IMMEDIATELY - no blocking */}
             <main className="min-h-screen pb-16">
               {children}
             </main>
-            <CompareBar />
-            <PWAInstallBanner />
-            <MobileNav />
+            
+            {/* Non-critical UI loads AFTER content - won't block render */}
+            <Suspense fallback={null}>
+              <OfflineIndicator />
+              <DesktopNav />
+              <CompareBar />
+              <PWAInstallBanner />
+              <MobileNav />
+            </Suspense>
           </CompareProvider>
         </SessionProvider>
       </body>

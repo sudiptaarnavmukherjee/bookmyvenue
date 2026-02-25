@@ -54,13 +54,14 @@ export default withAuth(
 );
 
 export const config = {
+  // ONLY protected routes - NOT homepage or public pages
   matcher: [
     "/dashboard/:path*",
+    "/admin/:path*",
     "/venue-owner/:path*",
     "/catering-owner/:path*",
     "/bookings/:path*",
     "/profile/:path*",
     "/wishlist/:path*",
-    "/((?!api|_next/static|_next/image|favicon.ico).*)",
   ],
 };

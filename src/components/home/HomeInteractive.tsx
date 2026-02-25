@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, memo } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useCallback, memo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Search, MapPin, ChevronDown, Heart, Building2, ChefHat, Calendar, Users } from "lucide-react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -89,11 +89,9 @@ export default function HomeInteractive({
   initialMode?: "venues" | "catering" 
 }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   
-  const [activeTab, setActiveTab] = useState<"venues" | "catering">(
-    searchParams.get("mode") === "catering" ? "catering" : initialMode
-  );
+  // Use initialMode directly - no useSearchParams() which forces dynamic rendering
+  const [activeTab, setActiveTab] = useState<"venues" | "catering">(initialMode);
   const [location, setLocation] = useState("Kolkata");
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);

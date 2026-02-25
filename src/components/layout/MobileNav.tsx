@@ -8,20 +8,27 @@ import { useSession } from "next-auth/react";
 
 export function MobileNav() {
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  
+  // Render immediately with default nav - don't wait for session
   const user = session?.user;
+  const isLoading = status === "loading";
 
-  // Dynamic nav items based on user role
+  // Default nav items for everyone (show immediately)
+  const defaultNavItems = [
+    { href: "/", icon: Home, label: "Home" },
+    { href: "/wishlist", icon: Heart, label: "Wishlist" },
+    { href: "/bookings", icon: Calendar, label: "Bookings" },
+    { href: "/profile", icon: User, label: "Profile" },
+  ];
+
+  // Dynamic nav items based on user role (only update after session loads)
   const getNavItems = () => {
-    // For regular users or not logged in
-    if (!user || user.role === "USER") {
-      return [
-        { href: "/", icon: Home, label: "Home" },
-        { href: "/wishlist", icon: Heart, label: "Wishlist" },
-        { href: "/bookings", icon: Calendar, label: "Bookings" },
-        { href: "/profile", icon: User, label: "Profile" },
-      ];
-    }
+    // Show default while loading
+    if (isLoading || !user) return defaultNavItems;
+
+    // For regular users
+    if (user.role === "USER") return defaultNavItems;
 
     // For venue owners
     if (user.role === "VENUE_OWNER") {
