@@ -29,7 +29,10 @@ class APIClient {
     endpoint: string,
     options: RequestOptions = {}
   ): Promise<APIResponse<T>> {
-    const { method = 'GET', body, headers = {}, cache = 'no-store' } = options;
+    // Use 'default' cache for GET requests (allows browser caching)
+    // Use 'no-store' only for mutations
+    const { method = 'GET', body, headers = {}, cache } = options;
+    const effectiveCache = cache ?? (method === 'GET' ? 'default' : 'no-store');
 
     const config: RequestInit = {
       method,
@@ -37,7 +40,7 @@ class APIClient {
         'Content-Type': 'application/json',
         ...headers,
       },
-      cache,
+      cache: effectiveCache,
     };
 
     if (body && method !== 'GET') {

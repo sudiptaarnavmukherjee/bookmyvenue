@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 
+// Cache headers for caterer detail
+const CACHE_HEADERS = {
+  'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+};
+
 export async function GET(
   request: Request,
   segmentData: { params: Promise<{ id: string }> }
@@ -9,16 +14,19 @@ export async function GET(
     const params = await segmentData.params;
     const idOrSlug = params.id;
 
-    // Try to find by ID first, then by slug
-    let caterer = await prisma.caterer.findUnique({
+    // Use findFirst with OR condition - single query instead of two
+    const caterer = await prisma.caterer.findFirst({
       where: {
-        id: idOrSlug,
+        OR: [
+          { id: idOrSlug },
+          { slug: idOrSlug },
+        ],
+        isActive: true,
       },
       include: {
         owner: {
           select: {
             name: true,
-            email: true,
             phone: true,
           },
         },
@@ -26,13 +34,14 @@ export async function GET(
           orderBy: {
             pricePerPlate: "asc",
           },
+          take: 10, // Limit packages
         },
         reviews: {
+          take: 10, // Limit reviews
           include: {
             user: {
               select: {
                 name: true,
-                email: true,
               },
             },
           },
@@ -40,53 +49,29 @@ export async function GET(
             createdAt: "desc",
           },
         },
+        _count: {
+          select: {
+            reviews: true,
+            bookings: true,
+          },
+        },
       },
     });
-
-    // If not found by ID, try by slug
-    if (!caterer) {
-      caterer = await prisma.caterer.findUnique({
-        where: {
-          slug: idOrSlug,
-        },
-        include: {
-          owner: {
-            select: {
-              name: true,
-              email: true,
-              phone: true,
-            },
-          },
-          packages: {
-            orderBy: {
-              pricePerPlate: "asc",
-            },
-          },
-          reviews: {
-            include: {
-              user: {
-                select: {
-                  name: true,
-                  email: true,
-                },
-              },
-            },
-            orderBy: {
-              createdAt: "desc",
-            },
-          },
-        },
-      });
-    }
 
     if (!caterer) {
       return NextResponse.json(
         { error: "Caterer not found" },
-        { status: 404 }
+        { status: 404, headers: CACHE_HEADERS }
       );
     }
 
-    return NextResponse.json({ caterer });
+    // Increment view count in background - non-blocking
+    prisma.caterer.update({
+      where: { id: caterer.id },
+      data: { viewCount: { increment: 1 } },
+    }).catch(() => {});
+
+    return NextResponse.json({ caterer }, { headers: CACHE_HEADERS });
   } catch (error) {
     console.error("Error fetching caterer:", error);
     return NextResponse.json(

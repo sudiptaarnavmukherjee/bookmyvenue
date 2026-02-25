@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 
+// Cache headers - areas rarely change, cache for 5 minutes
+const CACHE_HEADERS = {
+  'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+};
+
 // GET areas for public use (filtering on venue/catering pages)
 export async function GET(request: Request) {
   try {
@@ -36,7 +41,7 @@ export async function GET(request: Request) {
       ],
     });
 
-    return NextResponse.json({ success: true, areas });
+    return NextResponse.json({ success: true, areas }, { headers: CACHE_HEADERS });
   } catch (error) {
     console.error("Error fetching areas:", error);
     return NextResponse.json(

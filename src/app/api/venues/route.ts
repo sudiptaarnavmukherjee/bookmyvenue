@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 
+// Cache headers - 30 second cache with stale-while-revalidate
+const CACHE_HEADERS = {
+  'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120',
+};
+
 // Haversine formula to calculate distance between two coordinates
 function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371; // Earth's radius in km
@@ -198,7 +203,7 @@ export async function GET(request: Request) {
       venues: venuesWithDistance, 
       areas,
       total: sortedVenues.length 
-    });
+    }, { headers: CACHE_HEADERS });
   } catch (error: any) {
     console.error("Error fetching venues:", error?.message || error);
     return NextResponse.json(
@@ -208,7 +213,7 @@ export async function GET(request: Request) {
         venues: [],
         areas: []
       },
-      { status: 500 }
+      { status: 500, headers: CACHE_HEADERS }
     );
   }
 }

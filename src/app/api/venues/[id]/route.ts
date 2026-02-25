@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 
+// Cache headers for venue detail - cache for 60 seconds
+const CACHE_HEADERS = {
+  'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+};
+
 export async function GET(
   request: Request,
   segmentData: { params: Promise<{ id: string }> }
@@ -9,25 +14,30 @@ export async function GET(
     const params = await segmentData.params;
     const idOrSlug = params.id;
 
-    // Try to find by ID first, then by slug
-    let venue = await prisma.venue.findUnique({
+    // Use findFirst with OR condition - single query instead of two
+    const venue = await prisma.venue.findFirst({
       where: {
-        id: idOrSlug,
+        OR: [
+          { id: idOrSlug },
+          { slug: idOrSlug },
+        ],
+        isActive: true,
+        deletedAt: null,
       },
       include: {
         owner: {
           select: {
             name: true,
-            email: true,
             phone: true,
           },
         },
+        // Limit reviews to most recent 10 for performance
         reviews: {
+          take: 10,
           include: {
             user: {
               select: {
                 name: true,
-                email: true,
               },
             },
           },
@@ -38,71 +48,36 @@ export async function GET(
         bookings: {
           where: {
             status: "CONFIRMED",
+            eventDate: { gte: new Date() }, // Only future bookings
           },
           select: {
             eventDate: true,
           },
+          take: 50,
+        },
+        _count: {
+          select: {
+            reviews: true,
+            bookings: true,
+          },
         },
       },
     });
-
-    // If not found by ID, try by slug
-    if (!venue) {
-      venue = await prisma.venue.findUnique({
-        where: {
-          slug: idOrSlug,
-        },
-        include: {
-          owner: {
-            select: {
-              name: true,
-              email: true,
-              phone: true,
-            },
-          },
-          reviews: {
-            include: {
-              user: {
-                select: {
-                  name: true,
-                  email: true,
-                },
-              },
-            },
-            orderBy: {
-              createdAt: "desc",
-            },
-          },
-          bookings: {
-            where: {
-              status: "CONFIRMED",
-            },
-            select: {
-              eventDate: true,
-            },
-          },
-        },
-      });
-    }
 
     if (!venue) {
       return NextResponse.json(
         { error: "Venue not found" },
-        { status: 404 }
+        { status: 404, headers: CACHE_HEADERS }
       );
     }
 
-    // Increment view count
-    await prisma.venue.update({
+    // Increment view count in background - DON'T AWAIT (non-blocking)
+    prisma.venue.update({
       where: { id: venue.id },
-      data: {
-        viewCount: {
-          increment: 1,
-        },
-      },
-    });
+      data: { viewCount: { increment: 1 } },
+    }).catch(() => {}); // Ignore errors silently
 
-    return NextResponse.json({ venue });
+    return NextResponse.json({ venue }, { headers: CACHE_HEADERS });
   } catch (error) {
     console.error("Error fetching venue:", error);
     return NextResponse.json(
