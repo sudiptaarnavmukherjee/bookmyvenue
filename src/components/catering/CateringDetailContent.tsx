@@ -28,7 +28,6 @@ export type CatererData = {
   images: string[];
   pricePerPlate: number;
   minGuests: number;
-  maxGuests?: number | null;
   cuisines?: string[];
   silverPrice?: number | null;
   goldPrice?: number | null;
@@ -322,9 +321,6 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
                     <Users className="h-6 w-6 text-purple-600 mb-2" />
                     <p className="text-sm text-gray-600">Minimum Order</p>
                     <p className="text-xl font-bold text-gray-900">{caterer.minGuests} guests</p>
-                    {caterer.maxGuests && (
-                      <p className="text-sm text-gray-500">Max: {caterer.maxGuests} guests</p>
-                    )}
                   </div>
 
                   {/* Contact Info Card */}
