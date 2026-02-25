@@ -232,10 +232,8 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
           {/* Left Column - Images & Details */}
           <div className="lg:col-span-2 space-y-6">
             {/* Main Image */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="glass-card rounded-3xl overflow-hidden"
+            <div
+              className="glass-card rounded-3xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300"
             >
               <div className="relative h-96">
                 <img
@@ -267,14 +265,11 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
                   ))}
                 </div>
               )}
-            </motion.div>
+            </div>
 
             {/* Venue Info */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="glass-card rounded-3xl p-8"
+            <div
+              className="glass-card rounded-3xl p-8 animate-in fade-in slide-in-from-bottom-4 duration-300 delay-100"
             >
               <div className="mb-6">
                 <h1 className="text-4xl font-bold text-gradient mb-2">{venue.name}</h1>
@@ -332,16 +327,13 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
                 <p className="text-sm text-gray-600">Hosted by</p>
                 <p className="text-lg font-semibold text-gray-900">{venue.owner?.name || "Venue Owner"}</p>
               </div>
-            </motion.div>
+            </div>
           </div>
 
           {/* Right Column - Booking Card */}
           <div className="lg:col-span-1">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="glass-card rounded-3xl p-6 sticky top-8"
+            <div
+              className="glass-card rounded-3xl p-6 sticky top-8 animate-in fade-in slide-in-from-bottom-4 duration-300 delay-200"
             >
               {/* View Counter */}
               {venue.viewCount !== undefined && venue.viewCount > 0 && (
@@ -537,7 +529,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
                   Share
                 </button>
               </div>
-            </motion.div>
+            </div>
           </div>
         </div>
       </div>
