@@ -57,7 +57,9 @@ export default function VenuesPage() {
         params.set("sortBy", sortBy);
         if (selectedArea) params.set("area", selectedArea);
         
-        const response = await fetch(`/api/venues?${params.toString()}`);
+        const response = await fetch(`/api/venues?${params.toString()}`, {
+          next: { revalidate: 30 }, // Cache for 30 seconds
+        });
         const data = await response.json();
         
         if (data.error) {
@@ -79,7 +81,9 @@ export default function VenuesPage() {
   useEffect(() => {
     const fetchAreas = async () => {
       try {
-        const response = await fetch("/api/areas");
+        const response = await fetch("/api/areas", {
+          next: { revalidate: 300 }, // Cache areas for 5 minutes
+        });
         const data = await response.json();
         if (data.success) setAreas(data.areas || []);
       } catch (error) {

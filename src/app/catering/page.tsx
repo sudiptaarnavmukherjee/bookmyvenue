@@ -52,7 +52,9 @@ export default function CateringPage() {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch("/api/caterers");
+        const response = await fetch("/api/catering", {
+          next: { revalidate: 30 }, // Cache for 30 seconds
+        });
         const data = await response.json();
         
         if (data.error) {
