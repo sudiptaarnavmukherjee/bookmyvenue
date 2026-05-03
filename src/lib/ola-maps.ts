@@ -14,7 +14,66 @@
 
 // Ola Maps API Configuration
 const OLA_MAPS_API_KEY = process.env.NEXT_PUBLIC_OLA_MAPS_API_KEY || "";
+const OLA_MAPS_CLIENT_ID = process.env.OLA_MAPS_CLIENT_ID || "";
+const OLA_MAPS_CLIENT_SECRET = process.env.OLA_MAPS_CLIENT_SECRET || "";
 const OLA_MAPS_BASE_URL = "https://api.olamaps.io";
+
+// OAuth token cache (server-side only)
+let _oauthToken: string | null = null;
+let _oauthTokenExpiry: number = 0;
+
+/**
+ * Get an OAuth access token for Ola Maps (server-side only).
+ * Falls back to API key auth if OAuth credentials are not configured.
+ */
+async function getOAuthToken(): Promise<string | null> {
+  // Only use OAuth server-side
+  if (typeof window !== "undefined") return null;
+  if (!OLA_MAPS_CLIENT_ID || !OLA_MAPS_CLIENT_SECRET) return null;
+
+  // Return cached token if still valid (with 60s buffer)
+  if (_oauthToken && Date.now() < _oauthTokenExpiry - 60_000) {
+    return _oauthToken;
+  }
+
+  try {
+    const res = await fetch("https://account.olamaps.io/realms/olamaps/protocol/openid-connect/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "client_credentials",
+        client_id: OLA_MAPS_CLIENT_ID,
+        client_secret: OLA_MAPS_CLIENT_SECRET,
+        scope: "openid",
+      }),
+    });
+
+    if (!res.ok) {
+      console.warn("Ola Maps OAuth token fetch failed:", res.status);
+      return null;
+    }
+
+    const json = await res.json();
+    _oauthToken = json.access_token;
+    _oauthTokenExpiry = Date.now() + (json.expires_in ?? 3600) * 1000;
+    return _oauthToken;
+  } catch (err) {
+    console.error("Ola Maps OAuth error:", err);
+    return null;
+  }
+}
+
+/**
+ * Build fetch options: use Bearer token if available, else fall back to api_key query param.
+ */
+async function olaMapsRequest(url: string): Promise<Response> {
+  const token = await getOAuthToken();
+  if (token) {
+    return fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  }
+  // API key already appended in url by callers
+  return fetch(url);
+}
 
 export interface Coordinates {
   lat: number;
@@ -72,13 +131,13 @@ export async function getCurrentLocation(): Promise<Coordinates | null> {
  * Geocode an address to coordinates using Ola Maps
  */
 export async function geocodeAddress(address: string): Promise<Coordinates | null> {
-  if (!OLA_MAPS_API_KEY) {
+  if (!OLA_MAPS_API_KEY && !OLA_MAPS_CLIENT_ID) {
     console.warn('Ola Maps API key not configured');
     return null;
   }
 
   try {
-    const response = await fetch(
+    const response = await olaMapsRequest(
       `${OLA_MAPS_BASE_URL}/places/v1/geocode?address=${encodeURIComponent(address)}&api_key=${OLA_MAPS_API_KEY}`
     );
 
@@ -107,13 +166,13 @@ export async function geocodeAddress(address: string): Promise<Coordinates | nul
  * Reverse geocode coordinates to address using Ola Maps
  */
 export async function reverseGeocode(coords: Coordinates): Promise<string | null> {
-  if (!OLA_MAPS_API_KEY) {
+  if (!OLA_MAPS_API_KEY && !OLA_MAPS_CLIENT_ID) {
     console.warn('Ola Maps API key not configured');
     return null;
   }
 
   try {
-    const response = await fetch(
+    const response = await olaMapsRequest(
       `${OLA_MAPS_BASE_URL}/places/v1/reverse-geocode?latlng=${coords.lat},${coords.lng}&api_key=${OLA_MAPS_API_KEY}`
     );
 
@@ -141,7 +200,7 @@ export async function searchPlaces(
   query: string, 
   nearCoords?: Coordinates
 ): Promise<PlaceResult[]> {
-  if (!OLA_MAPS_API_KEY) {
+  if (!OLA_MAPS_API_KEY && !OLA_MAPS_CLIENT_ID) {
     console.warn('Ola Maps API key not configured');
     return [];
   }
@@ -153,7 +212,7 @@ export async function searchPlaces(
       url += `&location=${nearCoords.lat},${nearCoords.lng}`;
     }
 
-    const response = await fetch(url);
+    const response = await olaMapsRequest(url);
 
     if (!response.ok) {
       throw new Error(`Places search failed: ${response.status}`);
@@ -182,10 +241,10 @@ export async function searchPlaces(
  * Use after autocomplete to get precise lat/lng instead of geocoding by address text.
  */
 export async function getPlaceDetails(placeId: string): Promise<{ coordinates: Coordinates; address: string } | null> {
-  if (!OLA_MAPS_API_KEY || !placeId) return null;
+  if ((!OLA_MAPS_API_KEY && !OLA_MAPS_CLIENT_ID) || !placeId) return null;
 
   try {
-    const response = await fetch(
+    const response = await olaMapsRequest(
       `${OLA_MAPS_BASE_URL}/places/v1/details?place_id=${encodeURIComponent(placeId)}&api_key=${OLA_MAPS_API_KEY}`
     );
 
@@ -219,7 +278,7 @@ export async function getDistance(
   origin: Coordinates,
   destination: Coordinates
 ): Promise<DistanceResult | null> {
-  if (!OLA_MAPS_API_KEY) {
+  if (!OLA_MAPS_API_KEY && !OLA_MAPS_CLIENT_ID) {
     console.warn('Ola Maps API key not configured');
     // Fallback to Haversine formula
     return {
@@ -233,7 +292,7 @@ export async function getDistance(
   }
 
   try {
-    const response = await fetch(
+    const response = await olaMapsRequest(
       `${OLA_MAPS_BASE_URL}/routing/v1/distanceMatrix?origins=${origin.lat},${origin.lng}&destinations=${destination.lat},${destination.lng}&api_key=${OLA_MAPS_API_KEY}`
     );
 
