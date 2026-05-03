@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Search, Filter, MapPin, X, Loader2, AlertCircle } from "lucide-react";
+import { Search, Filter, MapPin, X, Loader2, AlertCircle, Navigation } from "lucide-react";
 import { VenueCard } from "@/components/venue/VenueCard";
+import { useLocation } from "@/hooks/useLocation";
 
 type Venue = {
   id: string;
@@ -18,6 +19,9 @@ type Venue = {
   primeDayPrice?: number | null;
   nonPrimeDayPrice?: number | null;
   priceMode?: string;
+  marriagePrice?: number | null;
+  birthdayPrice?: number | null;
+  otherEventPrice?: number | null;
   isVerified: boolean;
   isAdminListed?: boolean;
   bookingEnabled?: boolean;
@@ -26,6 +30,10 @@ type Venue = {
   coverImage?: string;
   contactNumber?: string;
   contactName?: string;
+  distanceText?: string | null;
+  distanceKm?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 type Area = {
@@ -44,11 +52,13 @@ export default function VenuesPage() {
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"area" | "price-low" | "price-high" | "popular" | "newest">("area");
+  const [sortBy, setSortBy] = useState<"area" | "price-low" | "price-high" | "popular" | "newest" | "nearby">("area");
+  const { location, loading: locationLoading, isPermissionDenied } = useLocation();
   const [selectedArea, setSelectedArea] = useState<string>("");
   const [verifiedOnly, setVerifiedOnly] = useState(false);
 
   useEffect(() => {
+    if (locationLoading) return; // Wait for location to resolve before first fetch
     const fetchData = async () => {
       setLoading(true);
       setError(null);
@@ -56,10 +66,12 @@ export default function VenuesPage() {
         const params = new URLSearchParams();
         params.set("sortBy", sortBy);
         if (selectedArea) params.set("area", selectedArea);
+        if (location) {
+          params.set("lat", location.lat.toString());
+          params.set("lng", location.lng.toString());
+        }
         
-        const response = await fetch(`/api/venues?${params.toString()}`, {
-          next: { revalidate: 30 }, // Cache for 30 seconds
-        });
+        const response = await fetch(`/api/venues?${params.toString()}`);
         const data = await response.json();
         
         if (data.error) {
@@ -75,7 +87,7 @@ export default function VenuesPage() {
       }
     };
     fetchData();
-  }, [sortBy, selectedArea]);
+  }, [sortBy, selectedArea, location, locationLoading]);
 
   // Fetch areas for filter
   useEffect(() => {
@@ -166,6 +178,7 @@ export default function VenuesPage() {
               className="bg-gray-100 rounded-xl px-4 py-2.5 text-sm font-medium outline-none cursor-pointer hidden sm:block"
             >
               <option value="area">📍 By Area</option>
+              <option value="nearby">🧭 Nearest First</option>
               <option value="popular">🔥 Popular</option>
               <option value="price-low">💰 Low to High</option>
               <option value="price-high">💰 High to Low</option>
@@ -186,6 +199,14 @@ export default function VenuesPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* Location Status Banner */}
+        {isPermissionDenied && (
+          <div className="mb-4 flex items-center gap-2 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
+            <Navigation className="h-4 w-4 flex-shrink-0" />
+            <span>Location access denied — distances shown from Kolkata centre. <button onClick={() => window.location.reload()} className="underline font-medium">Allow location</button> for accurate results.</span>
+          </div>
+        )}
+
         {/* Quick Area Filter Pills */}
         {popularAreas.length > 0 && (
           <div className="mb-6 overflow-x-auto pb-2 -mx-4 px-4">
@@ -251,6 +272,7 @@ export default function VenuesPage() {
                   className="w-full bg-gray-100 rounded-xl px-4 py-2.5 text-sm font-medium outline-none"
                 >
                   <option value="area">📍 Sort by Area</option>
+                  <option value="nearby">🧭 Nearest First</option>
                   <option value="popular">🔥 Most Popular</option>
                   <option value="price-low">💰 Price: Low to High</option>
                   <option value="price-high">💰 Price: High to Low</option>
@@ -329,6 +351,10 @@ export default function VenuesPage() {
                 contactNumber={venue.contactNumber}
                 contactName={venue.contactName}
                 viewCount={venue.viewCount}
+                distanceText={venue.distanceText || undefined}
+                marriagePrice={venue.marriagePrice || undefined}
+                birthdayPrice={venue.birthdayPrice || undefined}
+                otherEventPrice={venue.otherEventPrice || undefined}
               />
             ))}
           </div>

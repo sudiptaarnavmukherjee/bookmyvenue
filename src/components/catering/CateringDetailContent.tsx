@@ -6,14 +6,19 @@ import { useSession } from "next-auth/react";
 import { api } from "@/lib/api-client";
 import { 
   MapPin, Star, Leaf, ArrowLeft, Heart, Share2,
-  Check, Users, Loader2, Phone, Eye
+  Check, Users, Loader2, Phone, Eye,
+  ChevronDown, ChevronUp, Drumstick, Sparkles
 } from "lucide-react";
+import MapEmbed from "@/components/venue/MapEmbed";
 
 export type MenuPackageData = {
   id: string;
+  name?: string | null;
   tier: "SILVER" | "GOLD" | "DIAMOND" | "PLATINUM";
+  variant?: "NON_VEG" | "VEG" | "JAIN" | null;
   pricePerPlate: number;
-  items: string[];
+  itemCount?: number | null;
+  items: Record<string, string[]> | string[];
   description?: string | null;
 };
 
@@ -42,6 +47,10 @@ export type CatererData = {
   reviewCount?: number;
   bookingCount?: number;
   bookedDates?: string[];
+  latitude?: number | null;
+  longitude?: number | null;
+  googleMapsUrl?: string | null;
+  address?: string | null;
 };
 
 const TIER_COLORS = {
@@ -50,6 +59,69 @@ const TIER_COLORS = {
   DIAMOND: "from-blue-400 to-blue-600",
   PLATINUM: "from-purple-500 to-pink-600"
 };
+
+const VARIANT_LABELS: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+  NON_VEG: { label: "Non-Veg", color: "bg-red-100 text-red-700", icon: <Drumstick className="h-3 w-3" /> },
+  VEG:     { label: "Veg",     color: "bg-green-100 text-green-700", icon: <Leaf className="h-3 w-3" /> },
+  JAIN:    { label: "Jain",    color: "bg-amber-100 text-amber-700", icon: <Sparkles className="h-3 w-3" /> },
+};
+
+function MenuItemList({ items }: { items: Record<string, string[]> | string[] }) {
+  const [openSection, setOpenSection] = useState<string | null>(null);
+
+  if (Array.isArray(items)) {
+    return (
+      <ul className="space-y-1.5 mt-3">
+        {items.map((item, idx) => (
+          <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
+            <Check className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  // Category-grouped accordion
+  const entries = Object.entries(items);
+  const totalItems = entries.reduce((acc, [, dishes]) => acc + dishes.length, 0);
+
+  return (
+    <div className="mt-3 space-y-1">
+      <p className="text-xs text-gray-400 mb-2">{totalItems} items across {entries.length} categories</p>
+      {entries.map(([section, dishes]) => (
+        <div key={section} className="border rounded-xl overflow-hidden">
+          <button
+            className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 hover:bg-gray-100 transition-colors text-sm"
+            onClick={() => setOpenSection(openSection === section ? null : section)}
+          >
+            <span className="font-medium text-gray-700">{section}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-400">{dishes.length}</span>
+              {openSection === section ? (
+                <ChevronUp className="h-3.5 w-3.5 text-gray-400" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
+              )}
+            </div>
+          </button>
+          {openSection === section && (
+            <div className="px-4 py-3 bg-white flex flex-wrap gap-1.5">
+              {dishes.map((dish) => (
+                <span
+                  key={dish}
+                  className="text-xs bg-purple-50 text-purple-700 px-2.5 py-1 rounded-full border border-purple-100"
+                >
+                  {dish}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function CateringDetailContent({ caterer }: { caterer: CatererData }) {
   const router = useRouter();
@@ -213,6 +285,20 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
                 <p className="text-sm text-gray-600">Catered by</p>
                 <p className="text-lg font-semibold text-gray-900">{caterer.ownerName || "Caterer Owner"}</p>
               </div>
+
+              {/* Map */}
+              {(caterer.latitude || caterer.googleMapsUrl) && (
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <h3 className="text-lg font-semibold mb-4">Location</h3>
+                  <MapEmbed
+                    latitude={caterer.latitude}
+                    longitude={caterer.longitude}
+                    googleMapsUrl={caterer.googleMapsUrl}
+                    address={caterer.address}
+                    name={caterer.name}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Menu Packages */}
@@ -220,35 +306,38 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
               <h2 className="text-2xl font-bold text-gradient mb-6">Menu Packages</h2>
               {caterer.menuPackages.length > 0 ? (
                 <div className="grid gap-4 sm:grid-cols-2">
-                  {caterer.menuPackages.map((pkg) => (
-                    <button
-                      key={pkg.id}
-                      onClick={() => setSelectedPackage(pkg)}
-                      className={`text-left rounded-2xl p-6 transition-all ${
-                        selectedPackage?.id === pkg.id
-                          ? "ring-2 ring-purple-600 bg-white shadow-xl"
-                          : "bg-white/60 hover:bg-white/80"
-                      }`}
-                    >
-                      <div className={`inline-block rounded-full bg-gradient-to-r ${TIER_COLORS[pkg.tier]} px-4 py-1.5 mb-3`}>
-                        <span className="text-sm font-bold text-white">{pkg.tier}</span>
-                      </div>
-                      <p className="text-3xl font-bold text-gradient mb-4">
-                        ₹{pkg.pricePerPlate}/plate
-                      </p>
-                      {pkg.description && (
-                        <p className="text-sm text-gray-600 mb-3">{pkg.description}</p>
-                      )}
-                      <ul className="space-y-2">
-                        {pkg.items.map((item, idx) => (
-                          <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
-                            <Check className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </button>
-                  ))}
+                  {caterer.menuPackages.map((pkg) => {
+                    const variantInfo = pkg.variant ? VARIANT_LABELS[pkg.variant] : null;
+                    return (
+                      <button
+                        key={pkg.id}
+                        onClick={() => setSelectedPackage(pkg)}
+                        className={`text-left rounded-2xl p-6 transition-all ${
+                          selectedPackage?.id === pkg.id
+                            ? "ring-2 ring-purple-600 bg-white shadow-xl"
+                            : "bg-white/60 hover:bg-white/80"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 mb-3 flex-wrap">
+                          <div className={`inline-block rounded-full bg-gradient-to-r ${TIER_COLORS[pkg.tier]} px-4 py-1.5`}>
+                            <span className="text-sm font-bold text-white">{pkg.name || pkg.tier}</span>
+                          </div>
+                          {variantInfo && (
+                            <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${variantInfo.color}`}>
+                              {variantInfo.icon} {variantInfo.label}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-3xl font-bold text-gradient mb-2">
+                          ₹{pkg.pricePerPlate}/plate
+                        </p>
+                        {pkg.description && (
+                          <p className="text-sm text-gray-600 mb-3">{pkg.description}</p>
+                        )}
+                        <MenuItemList items={pkg.items} />
+                      </button>
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-gray-500">No menu packages available</p>

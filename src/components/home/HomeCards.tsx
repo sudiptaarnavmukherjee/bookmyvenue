@@ -60,10 +60,26 @@ export function VenueCardServer({ venue }: { venue: VenueCard }) {
 
         <div className="mt-2 flex items-center justify-between">
           <div>
-            <span className="text-purple-600 font-bold text-base">
-              {venue.priceRange || `₹${(venue.price/1000).toFixed(0)}K`}
-            </span>
-            <span className="text-gray-400 text-[10px] ml-1">per function</span>
+            {venue.marriagePrice || venue.birthdayPrice || venue.otherEventPrice ? (
+              <div className="flex gap-1 flex-wrap">
+                {venue.marriagePrice && (
+                  <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded">💍 ₹{(venue.marriagePrice/1000).toFixed(0)}K</span>
+                )}
+                {venue.birthdayPrice && (
+                  <span className="text-[10px] font-bold text-yellow-600 bg-yellow-50 px-1.5 py-0.5 rounded">🎂 ₹{(venue.birthdayPrice/1000).toFixed(0)}K</span>
+                )}
+                {venue.otherEventPrice && (
+                  <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">🙏 ₹{(venue.otherEventPrice/1000).toFixed(0)}K</span>
+                )}
+              </div>
+            ) : (
+              <div>
+                <span className="text-purple-600 font-bold text-base">
+                  {venue.priceRange || `₹${(venue.price/1000).toFixed(0)}K`}
+                </span>
+                <span className="text-gray-400 text-[10px] ml-1">per function</span>
+              </div>
+            )}
           </div>
           <ChevronRight className="w-4 h-4 text-gray-400" />
         </div>
@@ -97,9 +113,17 @@ export function HorizontalVenueCardServer({ venue }: { venue: VenueCard }) {
       <div className="p-2.5">
         <h3 className="font-semibold text-gray-900 text-sm truncate">{venue.name}</h3>
         <p className="text-gray-500 text-xs truncate">{venue.location}</p>
-        <p className="text-purple-600 font-bold text-sm mt-1">
-          {venue.priceRange || `₹${(venue.price/1000).toFixed(0)}K`}
-        </p>
+        {venue.marriagePrice || venue.birthdayPrice || venue.otherEventPrice ? (
+          <div className="flex gap-1 flex-wrap mt-1">
+            {venue.marriagePrice && <span className="text-[9px] font-bold text-rose-600">💍 ₹{(venue.marriagePrice/1000).toFixed(0)}K</span>}
+            {venue.birthdayPrice && <span className="text-[9px] font-bold text-yellow-600">🎂 ₹{(venue.birthdayPrice/1000).toFixed(0)}K</span>}
+            {venue.otherEventPrice && <span className="text-[9px] font-bold text-purple-600">🙏 ₹{(venue.otherEventPrice/1000).toFixed(0)}K</span>}
+          </div>
+        ) : (
+          <p className="text-purple-600 font-bold text-sm mt-1">
+            {venue.priceRange || `₹${(venue.price/1000).toFixed(0)}K`}
+          </p>
+        )}
       </div>
     </Link>
   );

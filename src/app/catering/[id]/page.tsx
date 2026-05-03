@@ -75,6 +75,10 @@ async function getCaterer(idOrSlug: string): Promise<CatererData | null> {
         contactNumber: true,
         contactName: true,
         viewCount: true,
+        latitude: true,
+        longitude: true,
+        googleMapsUrl: true,
+        address: true,
         owner: { select: { name: true } },
         packages: {
           select: {
@@ -137,6 +141,10 @@ async function getCaterer(idOrSlug: string): Promise<CatererData | null> {
       contactName: caterer.contactName,
       viewCount: caterer.viewCount || 0,
       menuPackages,
+      latitude: caterer.latitude,
+      longitude: caterer.longitude,
+      googleMapsUrl: caterer.googleMapsUrl,
+      address: caterer.address,
       ownerName: caterer.owner?.name,
       reviewCount: caterer._count.reviews,
       bookingCount: caterer._count.bookings,

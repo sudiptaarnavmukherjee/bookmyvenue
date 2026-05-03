@@ -15,6 +15,9 @@ export interface VenueCard {
   capacity: number | null;
   isVerified: boolean;
   bookingEnabled: boolean;
+  marriagePrice: number | null;
+  birthdayPrice: number | null;
+  otherEventPrice: number | null;
 }
 
 export interface CatererCard {
@@ -64,6 +67,9 @@ export const getFeaturedVenues = unstable_cache(
         primeDayPrice: true,
         estimatedMinPrice: true,
         estimatedMaxPrice: true,
+        marriagePrice: true,
+        birthdayPrice: true,
+        otherEventPrice: true,
         maxGuests: true,
         isVerified: true,
         bookingEnabled: true,
@@ -86,6 +92,9 @@ export const getFeaturedVenues = unstable_cache(
       capacity: v.maxGuests,
       isVerified: v.isVerified || false,
       bookingEnabled: v.bookingEnabled || false,
+      marriagePrice: v.marriagePrice || null,
+      birthdayPrice: v.birthdayPrice || null,
+      otherEventPrice: v.otherEventPrice || null,
     }));
   },
   ["featured-venues"],

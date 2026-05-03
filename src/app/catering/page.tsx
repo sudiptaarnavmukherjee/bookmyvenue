@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Search, Filter, MapPin, X, Loader2, AlertCircle, Leaf, UtensilsCrossed } from "lucide-react";
+import { Search, Filter, MapPin, X, Loader2, AlertCircle, Leaf, UtensilsCrossed, Navigation } from "lucide-react";
 import { CatererCard } from "@/components/catering/CatererCard";
+import { useLocation } from "@/hooks/useLocation";
 
 type Caterer = {
   id: string;
@@ -25,6 +26,8 @@ type Caterer = {
   contactNumber?: string;
   contactName?: string;
   rating?: number;
+  distanceText?: string | null;
+  distanceKm?: number | null;
   _count?: {
     reviews: number;
     bookings: number;
@@ -43,18 +46,24 @@ export default function CateringPage() {
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"default" | "price-low" | "price-high" | "veg-first">("default");
+  const [sortBy, setSortBy] = useState<"default" | "price-low" | "price-high" | "veg-first" | "nearby">("default");
+  const { location, loading: locationLoading, isPermissionDenied } = useLocation();
   const [selectedArea, setSelectedArea] = useState<string>("");
   const [pureVegOnly, setPureVegOnly] = useState(false);
 
   useEffect(() => {
+    if (locationLoading) return;
     const fetchCaterers = async () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch("/api/catering", {
-          next: { revalidate: 30 }, // Cache for 30 seconds
-        });
+        const params = new URLSearchParams();
+        if (location) {
+          params.set("lat", location.lat.toString());
+          params.set("lng", location.lng.toString());
+        }
+        if (sortBy === "nearby") params.set("sortBy", "nearby");
+        const response = await fetch(`/api/catering?${params.toString()}`);
         const data = await response.json();
         
         if (data.error) {
@@ -75,7 +84,7 @@ export default function CateringPage() {
       }
     };
     fetchCaterers();
-  }, []);
+  }, [location, locationLoading, sortBy]);
 
   // Get unique areas from caterers
   const availableAreas = useMemo(() => {
@@ -104,6 +113,9 @@ export default function CateringPage() {
 
     // Sorting
     switch (sortBy) {
+      case "nearby":
+        result.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
+        break;
       case "price-low":
         result.sort((a, b) => (a.minPlatePrice || 0) - (b.minPlatePrice || 0));
         break;
@@ -176,6 +188,7 @@ export default function CateringPage() {
               className="bg-gray-100 rounded-xl px-4 py-2.5 text-sm font-medium outline-none cursor-pointer hidden sm:block"
             >
               <option value="default">🍽️ Featured</option>
+              <option value="nearby">🧭 Nearest First</option>
               <option value="price-low">💰 Low to High</option>
               <option value="price-high">💰 High to Low</option>
               <option value="veg-first">🥬 Veg First</option>
@@ -195,7 +208,15 @@ export default function CateringPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Quick Area Filter Pills */}
+        {/* Location Status Banner */}
+        {isPermissionDenied && (
+          <div className="mb-4 flex items-center gap-2 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
+            <Navigation className="h-4 w-4 flex-shrink-0" />
+            <span>Location access denied — distances shown from Kolkata centre. <button onClick={() => window.location.reload()} className="underline font-medium">Allow location</button> for accurate results.</span>
+          </div>
+        )}
+
+        {/* Quick Area Filter Pills */}}
         <div className="mb-6 overflow-x-auto pb-2 -mx-4 px-4">
           <div className="flex gap-2 min-w-max">
             <button
@@ -268,6 +289,7 @@ export default function CateringPage() {
                   className="w-full bg-gray-100 rounded-xl px-4 py-2.5 text-sm font-medium outline-none"
                 >
                   <option value="default">🍽️ Featured</option>
+                  <option value="nearby">🧭 Nearest First</option>
                   <option value="price-low">💰 Price: Low to High</option>
                   <option value="price-high">💰 Price: High to Low</option>
                   <option value="veg-first">🥬 Vegetarian First</option>
@@ -358,6 +380,7 @@ export default function CateringPage() {
                 contactNumber={caterer.contactNumber}
                 contactName={caterer.contactName}
                 viewCount={caterer.viewCount}
+                distanceText={caterer.distanceText || undefined}
               />
             ))}
           </div>

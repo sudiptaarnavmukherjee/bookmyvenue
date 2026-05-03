@@ -31,6 +31,7 @@ interface CatererCardProps {
   viewCount?: number;
   inWishlist?: boolean;
   slug?: string;
+  distanceText?: string;
 }
 
 export function CatererCard({
@@ -55,6 +56,7 @@ export function CatererCard({
   viewCount,
   inWishlist = false,
   slug,
+  distanceText,
 }: CatererCardProps) {
   const { data: session } = useSession();
   const { isCatererSelected, addCaterer, removeCaterer } = useCompare();
@@ -214,11 +216,18 @@ export function CatererCard({
         <div className="p-4">
           <h3 className="text-lg font-bold text-gray-900 mb-1.5 line-clamp-1">{name}</h3>
 
-          <div className="flex items-center gap-1.5 text-gray-600 mb-2">
-            <MapPin className="h-4 w-4 text-orange-500 flex-shrink-0" />
-            <span className="text-sm font-medium truncate">
-              {area ? `${area}, ${city}` : city}
-            </span>
+          <div className="flex items-center justify-between gap-2 text-gray-600 mb-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <MapPin className="h-4 w-4 text-orange-500 flex-shrink-0" />
+              <span className="text-sm font-medium truncate">
+                {area ? `${area}, ${city}` : city}
+              </span>
+            </div>
+            {distanceText && (
+              <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">
+                {distanceText}
+              </span>
+            )}
           </div>
 
           <div className="flex items-center justify-between mb-3">

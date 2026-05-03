@@ -91,6 +91,7 @@ export async function POST(request: Request) {
       phone,
       images,
       coverImage,
+      googleMapsUrl,
     } = body;
 
     // Validation - only name and city are truly required
@@ -132,6 +133,7 @@ export async function POST(request: Request) {
         contactNumber: contactNumber || "",
         images: images || "",
         coverImage: coverImage || (images ? images.split(",")[0].trim() : ""),
+        googleMapsUrl: googleMapsUrl || null,
         // Fishbowl flags
         isAdminListed: true,
         bookingEnabled: false,

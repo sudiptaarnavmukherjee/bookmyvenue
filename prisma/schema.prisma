@@ -38,6 +38,40 @@ enum PackageTier {
   PLATINUM
 }
 
+enum MenuVariant {
+  NON_VEG   // Full Bengali non-veg (default)
+  VEG       // No fish/meat
+  JAIN      // No onion/garlic (for Shradh, Jain guests)
+}
+
+// Master library of menu categories (e.g. "Starters", "Fish Dishes")
+model MenuCategory {
+  id        String  @id @default(cuid())
+  name      String  @unique
+  sortOrder Int     @default(0)
+  icon      String? // emoji or icon name
+
+  items MenuItemTemplate[]
+
+  @@index([sortOrder])
+}
+
+// Master library of Bengali dishes
+model MenuItemTemplate {
+  id          String  @id @default(cuid())
+  name        String
+  isVeg       Boolean @default(true)
+  isPopular   Boolean @default(false)
+  description String?
+  sortOrder   Int     @default(0)
+
+  categoryId String
+  category   MenuCategory @relation(fields: [categoryId], references: [id])
+
+  @@index([categoryId])
+  @@index([isVeg])
+}
+
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
@@ -45,6 +79,11 @@ model User {
   name          String?
   phone         String?
   phoneVerified DateTime?
+
+  // Phone OTP (stored temporarily during verification)
+  phoneOtpCode   String?   // 6-digit OTP
+  phoneOtpExpiry DateTime? // expires 10 min after send
+
   role          UserRole  @default(USER)
   password      String
   image         String?
@@ -131,6 +170,11 @@ model Venue {
   estimatedMinPrice Float?
   estimatedMaxPrice Float?
 
+  // Event-Type Pricing (USP: 3 visible tiers everywhere)
+  marriagePrice     Float?    // Wedding / Biye / Engagement ceremonies
+  birthdayPrice     Float?    // Birthday, Anniversary, Baby Shower
+  otherEventPrice   Float?    // Shradh, Annaprasan, Corporate, others
+
   // Fishbowl Model - Prime/Non-Prime Pricing
   primeDayPrice     Float?    // Wedding season / auspicious days price
   nonPrimeDayPrice  Float?    // Off-season / regular days price
@@ -164,6 +208,9 @@ model Venue {
 
   // Offline bookings (for Calendar OS)
   offlineBookings String // Comma-separated ISO dates
+
+  // Maps & Location
+  googleMapsUrl String? // Google Maps share link (e.g. https://maps.app.goo.gl/xxx)
 
   // Analytics
   viewCount    Int @default(0)
@@ -237,6 +284,13 @@ model Caterer {
   isActive   Boolean @default(true)
   isVerified Boolean @default(false)
 
+  // Verification Flow
+  verificationRequestedAt DateTime? // Set when owner clicks "Request Verification"
+  verificationNotes       String?   // Admin notes when approving / rejecting
+
+  // Maps & Location
+  googleMapsUrl String? // Google Maps share link
+
   // Analytics
   viewCount    Int @default(0)
   inquiryCount Int @default(0)
@@ -264,20 +318,24 @@ model Caterer {
 model MenuPackage {
   id            String      @id @default(cuid())
   tier          PackageTier
+  variant       MenuVariant @default(NON_VEG)
   name          String
   description   String?
   pricePerPlate Float
   itemCount     Int
-  items         Json // Array of {category: string, items: string[]}
+  items         Json // Legacy flat list + structured: [{category, items[]}]
+  isTemplate    Boolean @default(false) // true = global template, can be cloned
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
 
   // Relations
-  catererId String
-  caterer   Caterer @relation(fields: [catererId], references: [id])
+  catererId String?  // null when isTemplate=true (global template)
+  caterer   Caterer? @relation(fields: [catererId], references: [id])
 
   @@index([catererId])
+  @@index([tier])
+  @@index([isTemplate])
 }
 
 model Booking {

@@ -18,6 +18,8 @@ import {
   Plus,
   MapPin,
   Leaf,
+  ShieldCheck,
+  Bell,
 } from "lucide-react";
 
 type Caterer = {
@@ -48,6 +50,7 @@ type Caterer = {
     email: string;
   };
   createdAt: string;
+  verificationRequestedAt?: string | null;
 };
 
 type CateringOwner = {
@@ -63,11 +66,12 @@ export default function AdminCaterersPage() {
   const [cateringOwners, setCateringOwners] = useState<CateringOwner[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterType, setFilterType] = useState<"all" | "fishbowl" | "verified">("all");
+  const [filterType, setFilterType] = useState<"all" | "fishbowl" | "verified" | "requested">("all");
   const [tagModalOpen, setTagModalOpen] = useState(false);
   const [selectedCaterer, setSelectedCaterer] = useState<Caterer | null>(null);
   const [selectedOwnerId, setSelectedOwnerId] = useState("");
   const [tagLoading, setTagLoading] = useState(false);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -155,6 +159,29 @@ export default function AdminCaterersPage() {
     }
   };
 
+  const handleApproveVerification = async (caterer: Caterer) => {
+    setApprovingId(caterer.id);
+    try {
+      const res = await fetch(`/api/admin/caterers/${caterer.id}/approve-verification`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: "Approved by admin" }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchCaterers();
+      } else {
+        alert(data.error || "Failed to approve");
+      }
+    } catch {
+      alert("Failed to approve");
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
+  const verificationRequestCount = caterers.filter(c => c.verificationRequestedAt && !c.bookingEnabled).length;
+
   const filteredCaterers = caterers.filter((caterer) => {
     const matchesSearch =
       caterer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -165,6 +192,9 @@ export default function AdminCaterersPage() {
     }
     if (filterType === "verified") {
       return matchesSearch && caterer.bookingEnabled;
+    }
+    if (filterType === "requested") {
+      return matchesSearch && !!caterer.verificationRequestedAt && !caterer.bookingEnabled;
     }
     return matchesSearch;
   });
@@ -216,12 +246,12 @@ export default function AdminCaterersPage() {
                 className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-600 outline-none"
               />
             </div>
-            <div className="flex gap-2">
-              {(["all", "fishbowl", "verified"] as const).map((type) => (
+            <div className="flex gap-2 flex-wrap">
+              {(["all", "fishbowl", "requested", "verified"] as const).map((type) => (
                 <button
                   key={type}
                   onClick={() => setFilterType(type)}
-                  className={`px-4 py-3 rounded-xl font-medium transition-all ${
+                  className={`px-4 py-3 rounded-xl font-medium transition-all relative ${
                     filterType === type
                       ? "bg-purple-600 text-white"
                       : "bg-white/60 text-gray-700 hover:bg-white"
@@ -229,6 +259,17 @@ export default function AdminCaterersPage() {
                 >
                   {type === "all" && "All"}
                   {type === "fishbowl" && "🐟 Fishbowl"}
+                  {type === "requested" && (
+                    <span className="flex items-center gap-1.5">
+                      <Bell className="h-4 w-4" />
+                      Requested
+                      {verificationRequestCount > 0 && (
+                        <span className="ml-1 bg-orange-500 text-white text-xs font-bold rounded-full px-1.5 py-0.5 leading-none">
+                          {verificationRequestCount}
+                        </span>
+                      )}
+                    </span>
+                  )}
                   {type === "verified" && "✓ Verified"}
                 </button>
               ))}
@@ -288,6 +329,12 @@ export default function AdminCaterersPage() {
                     {caterer.bookingEnabled && (
                       <span className="px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
                         ✓ Online Booking
+                      </span>
+                    )}
+                    {caterer.verificationRequestedAt && !caterer.bookingEnabled && (
+                      <span className="px-2 py-1 rounded-full bg-orange-100 text-orange-700 text-xs font-semibold flex items-center gap-1 animate-pulse">
+                        <Bell className="h-3 w-3" />
+                        Verification Requested
                       </span>
                     )}
                   </div>
@@ -361,6 +408,22 @@ export default function AdminCaterersPage() {
                     <Tag className="h-4 w-4" />
                     {caterer.taggedToOwner || caterer.owner ? "Change Owner" : "Tag Owner"}
                   </button>
+
+                  {/* One-click Approve Verification */}
+                  {caterer.verificationRequestedAt && !caterer.bookingEnabled && (
+                    <button
+                      onClick={() => handleApproveVerification(caterer)}
+                      disabled={approvingId === caterer.id}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500 text-white hover:bg-orange-600 transition-colors disabled:opacity-50 font-semibold"
+                    >
+                      {approvingId === caterer.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <ShieldCheck className="h-4 w-4" />
+                      )}
+                      Approve
+                    </button>
+                  )}
 
                   {/* Toggle Booking */}
                   <button

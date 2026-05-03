@@ -53,12 +53,25 @@ export async function PATCH(request: Request) {
     const body = await request.json();
     const { name, phone, image } = body;
 
+    // If phone number is changing, clear phoneVerified
+    let phoneVerifiedReset = {};
+    if (phone !== undefined) {
+      const current = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { phone: true },
+      });
+      if (current?.phone !== phone) {
+        phoneVerifiedReset = { phoneVerified: null, phoneOtpCode: null, phoneOtpExpiry: null };
+      }
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id: user.id },
       data: {
         ...(name && { name }),
-        ...(phone && { phone }),
+        ...(phone !== undefined && phone !== null && { phone }),
         ...(image && { image }),
+        ...phoneVerifiedReset,
       },
       select: {
         id: true,
@@ -67,6 +80,7 @@ export async function PATCH(request: Request) {
         phone: true,
         role: true,
         image: true,
+        phoneVerified: true,
       },
     });
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { MapPin, Search, Loader2, X, Navigation, Check } from "lucide-react";
-import { searchPlaces, geocodeAddress, getCurrentLocation, type Coordinates, type PlaceResult } from "@/lib/ola-maps";
+import { searchPlaces, geocodeAddress, getPlaceDetails, getCurrentLocation, type Coordinates, type PlaceResult } from "@/lib/ola-maps";
 
 interface LocationPickerProps {
   value?: {
@@ -196,12 +196,18 @@ export default function LocationPicker({ value, onChange, placeholder = "Search 
     setLoading(true);
 
     try {
-      // Get coordinates if not available
       let coords = place.coordinates;
+      // If autocomplete didn't return geometry, try Place Details first (precise), then geocode as fallback
       if (!coords || (coords.lat === 0 && coords.lng === 0)) {
-        const geocoded = await geocodeAddress(place.address);
-        if (geocoded) {
-          coords = geocoded;
+        if (place.placeId) {
+          const details = await getPlaceDetails(place.placeId);
+          if (details) {
+            coords = details.coordinates;
+          }
+        }
+        if (!coords || (coords.lat === 0 && coords.lng === 0)) {
+          const geocoded = await geocodeAddress(place.address);
+          if (geocoded) coords = geocoded;
         }
       }
 
@@ -229,33 +235,45 @@ export default function LocationPicker({ value, onChange, placeholder = "Search 
     setLoading(true);
     try {
       const coords = await getCurrentLocation();
-      if (coords) {
-        // Reverse geocode to get address
-        const response = await fetch(
-          `https://api.olamaps.io/places/v1/reverse-geocode?latlng=${coords.lat},${coords.lng}&api_key=${process.env.NEXT_PUBLIC_OLA_MAPS_API_KEY}`
-        );
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.results && data.results.length > 0) {
-            const address = data.results[0].formatted_address;
-            const parsed = parseAddress(address);
-            
-            const location = {
-              address,
-              area: parsed.area,
-              city: parsed.city,
-              pincode: parsed.pincode,
-              latitude: coords.lat,
-              longitude: coords.lng,
-            };
+      if (!coords) {
+        alert("Could not get your current location. Please search manually.");
+        return;
+      }
 
-            setQuery(address);
-            setSelectedLocation(location);
-            onChange(location);
+      // Use the reverseGeocode helper from ola-maps (handles missing API key gracefully)
+      const apiKey = process.env.NEXT_PUBLIC_OLA_MAPS_API_KEY;
+      let address = `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`;
+      let parsed = { area: "", city: "Kolkata", pincode: "" };
+
+      if (apiKey) {
+        try {
+          const response = await fetch(
+            `https://api.olamaps.io/places/v1/reverse-geocode?latlng=${coords.lat},${coords.lng}&api_key=${apiKey}`
+          );
+          if (response.ok) {
+            const data = await response.json();
+            if (data.results?.[0]?.formatted_address) {
+              address = data.results[0].formatted_address;
+              parsed = parseAddress(address);
+            }
           }
+        } catch {
+          // keep coordinate fallback
         }
       }
+
+      const location = {
+        address,
+        area: parsed.area,
+        city: parsed.city,
+        pincode: parsed.pincode,
+        latitude: coords.lat,
+        longitude: coords.lng,
+      };
+
+      setQuery(address);
+      setSelectedLocation(location);
+      onChange(location);
     } catch (error) {
       console.error("Current location error:", error);
       alert("Could not get your current location. Please search manually.");

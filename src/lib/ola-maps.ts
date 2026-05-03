@@ -178,6 +178,41 @@ export async function searchPlaces(
 }
 
 /**
+ * Get exact coordinates and full details for a place using its place_id.
+ * Use after autocomplete to get precise lat/lng instead of geocoding by address text.
+ */
+export async function getPlaceDetails(placeId: string): Promise<{ coordinates: Coordinates; address: string } | null> {
+  if (!OLA_MAPS_API_KEY || !placeId) return null;
+
+  try {
+    const response = await fetch(
+      `${OLA_MAPS_BASE_URL}/places/v1/details?place_id=${encodeURIComponent(placeId)}&api_key=${OLA_MAPS_API_KEY}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`Place details failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const result = data.result;
+
+    if (result?.geometry?.location) {
+      return {
+        coordinates: {
+          lat: result.geometry.location.lat,
+          lng: result.geometry.location.lng,
+        },
+        address: result.formatted_address || result.name || "",
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error("Place details error:", error);
+    return null;
+  }
+}
+
+/**
  * Calculate distance between two points using Ola Maps Distance Matrix
  */
 export async function getDistance(

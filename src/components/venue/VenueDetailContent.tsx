@@ -9,6 +9,7 @@ import {
   Heart, Share2, ArrowLeft, Loader2,
   Wifi, Car, Music, Utensils, Phone, Eye, IndianRupee
 } from "lucide-react";
+import MapEmbed from "@/components/venue/MapEmbed";
 
 export type VenueData = {
   id: string;
@@ -28,6 +29,9 @@ export type VenueData = {
   primeDayPrice?: number | null;
   nonPrimeDayPrice?: number | null;
   primeDays?: string | null;
+  marriagePrice?: number | null;
+  birthdayPrice?: number | null;
+  otherEventPrice?: number | null;
   isVerified: boolean;
   bookingEnabled?: boolean;
   isAdminListed?: boolean;
@@ -41,6 +45,9 @@ export type VenueData = {
   reviewCount?: number;
   bookingCount?: number;
   bookedDates?: string[];
+  latitude?: number | null;
+  longitude?: number | null;
+  googleMapsUrl?: string | null;
 };
 
 const AMENITY_ICONS: Record<string, any> = {
@@ -228,6 +235,20 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
                 <p className="text-sm text-gray-600">Hosted by</p>
                 <p className="text-lg font-semibold text-gray-900">{venue.ownerName || "Venue Owner"}</p>
               </div>
+
+              {/* Map */}
+              {(venue.latitude || venue.googleMapsUrl) && (
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <h3 className="text-lg font-semibold mb-4">Location</h3>
+                  <MapEmbed
+                    latitude={venue.latitude}
+                    longitude={venue.longitude}
+                    googleMapsUrl={venue.googleMapsUrl}
+                    address={venue.address}
+                    name={venue.name}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -247,7 +268,39 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
                 <>
                   {/* Price Display for Fishbowl */}
                   <div className="mb-6">
-                    {venue.primeDayPrice || venue.nonPrimeDayPrice ? (
+                    {(venue.marriagePrice || venue.birthdayPrice || venue.otherEventPrice) ? (
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Event-Type Pricing</p>
+                        {venue.marriagePrice && (
+                          <div className="flex items-center justify-between bg-rose-50 rounded-xl px-4 py-3 border border-rose-200">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">💍</span>
+                              <span className="text-sm font-semibold text-rose-700">Marriage / Wedding</span>
+                            </div>
+                            <span className="text-lg font-bold text-rose-800">₹{venue.marriagePrice.toLocaleString('en-IN')}</span>
+                          </div>
+                        )}
+                        {venue.birthdayPrice && (
+                          <div className="flex items-center justify-between bg-yellow-50 rounded-xl px-4 py-3 border border-yellow-200">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">🎂</span>
+                              <span className="text-sm font-semibold text-yellow-700">Birthday / Anniversary</span>
+                            </div>
+                            <span className="text-lg font-bold text-yellow-800">₹{venue.birthdayPrice.toLocaleString('en-IN')}</span>
+                          </div>
+                        )}
+                        {venue.otherEventPrice && (
+                          <div className="flex items-center justify-between bg-purple-50 rounded-xl px-4 py-3 border border-purple-200">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">🙏</span>
+                              <span className="text-sm font-semibold text-purple-700">Others (Shradh, Corporate…)</span>
+                            </div>
+                            <span className="text-lg font-bold text-purple-800">₹{venue.otherEventPrice.toLocaleString('en-IN')}</span>
+                          </div>
+                        )}
+                        <p className="text-xs text-gray-400 mt-1">*Approximate. Call to confirm exact pricing.</p>
+                      </div>
+                    ) : venue.primeDayPrice || venue.nonPrimeDayPrice ? (
                       <div className="space-y-3">
                         {venue.primeDayPrice && (
                           <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-4 border border-amber-200">

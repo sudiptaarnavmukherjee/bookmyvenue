@@ -34,8 +34,9 @@ type Venue = {
   viewCount: number;
   exactPrice?: number;
   estimatedMinPrice?: number;
-  primeDayPrice?: number;
-  nonPrimeDayPrice?: number;
+  marriagePrice?: number;
+  birthdayPrice?: number;
+  otherEventPrice?: number;
   taggedToOwner?: {
     id: string;
     name: string;
@@ -303,21 +304,18 @@ export default function AdminVenuesPage() {
                   </div>
 
                   {/* Price Info */}
-                  <div className="mt-2 text-sm">
-                    {venue.primeDayPrice && (
-                      <span className="text-amber-600 mr-4">
-                        Prime: ₹{venue.primeDayPrice.toLocaleString()}
-                      </span>
+                  <div className="mt-2 text-sm flex flex-wrap gap-3">
+                    {venue.marriagePrice && (
+                      <span className="text-rose-600">💍 ₹{venue.marriagePrice.toLocaleString()}</span>
                     )}
-                    {venue.nonPrimeDayPrice && (
-                      <span className="text-green-600">
-                        Regular: ₹{venue.nonPrimeDayPrice.toLocaleString()}
-                      </span>
+                    {venue.birthdayPrice && (
+                      <span className="text-yellow-600">🎂 ₹{venue.birthdayPrice.toLocaleString()}</span>
                     )}
-                    {!venue.primeDayPrice && !venue.nonPrimeDayPrice && venue.exactPrice && (
-                      <span className="text-purple-600">
-                        Price: ₹{venue.exactPrice.toLocaleString()}
-                      </span>
+                    {venue.otherEventPrice && (
+                      <span className="text-purple-600">🙏 ₹{venue.otherEventPrice.toLocaleString()}</span>
+                    )}
+                    {!venue.marriagePrice && !venue.birthdayPrice && !venue.otherEventPrice && venue.exactPrice && (
+                      <span className="text-gray-600">₹{venue.exactPrice.toLocaleString()}</span>
                     )}
                   </div>
 

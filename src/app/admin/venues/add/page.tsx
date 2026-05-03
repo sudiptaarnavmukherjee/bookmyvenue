@@ -19,6 +19,7 @@ import {
 import Link from "next/link";
 import ImageUploader from "@/components/upload/ImageUploader";
 import LocationPicker from "@/components/admin/LocationPicker";
+import { parseGoogleMapsUrl } from "@/lib/utils";
 
 // Kolkata Areas for dropdown
 const KOLKATA_AREAS = [
@@ -62,12 +63,14 @@ export default function AdminAddVenuePage() {
     pincode: "",
     latitude: null as number | null,
     longitude: null as number | null,
+    googleMapsUrl: "",
     minGuests: "50",
     maxGuests: "500",
     estimatedMinPrice: "",
     estimatedMaxPrice: "",
-    primeDayPrice: "",
-    nonPrimeDayPrice: "",
+    marriagePrice: "",
+    birthdayPrice: "",
+    otherEventPrice: "",
     contactName: "",
     contactNumber: "",
     images: [] as string[],
@@ -84,6 +87,18 @@ export default function AdminAddVenuePage() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleGoogleMapsUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const url = e.target.value;
+    setFormData(prev => {
+      const coords = parseGoogleMapsUrl(url);
+      return {
+        ...prev,
+        googleMapsUrl: url,
+        ...(coords ? { latitude: coords.latitude, longitude: coords.longitude } : {}),
+      };
+    });
   };
 
   const toggleAmenity = (amenity: string) => {
@@ -141,10 +156,12 @@ export default function AdminAddVenuePage() {
         priceMode: "ESTIMATED",
         estimatedMinPrice: parseFloat(formData.estimatedMinPrice) || null,
         estimatedMaxPrice: parseFloat(formData.estimatedMaxPrice) || null,
-        primeDayPrice: parseFloat(formData.primeDayPrice) || null,
-        nonPrimeDayPrice: parseFloat(formData.nonPrimeDayPrice) || null,
+        marriagePrice: parseFloat(formData.marriagePrice) || null,
+        birthdayPrice: parseFloat(formData.birthdayPrice) || null,
+        otherEventPrice: parseFloat(formData.otherEventPrice) || null,
         contactName: formData.contactName,
         contactNumber: formData.contactNumber,
+        googleMapsUrl: formData.googleMapsUrl.trim() || null,
         images: formData.images.join(","),
         coverImage: formData.images[0] || "",
         amenities: formData.amenities.join(","),
@@ -356,15 +373,18 @@ export default function AdminAddVenuePage() {
 
         {/* Pricing */}
         <div className="bg-white rounded-xl p-5 border">
-          <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <h2 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
             <IndianRupee className="h-4 w-4 text-green-500" />
-            Pricing (Approximate)
+            Event-Type Pricing
           </h2>
-          <p className="text-xs text-gray-500 mb-4">Enter estimated price range. Customers will call to confirm exact pricing.</p>
-          
+          <p className="text-xs text-gray-500 mb-4">
+            These 3 prices are the USP — visible on every card. Enter approximate per-event pricing.
+          </p>
+
+          {/* Range (fallback) */}
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Min Price (Γé╣)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Min Price (₹)</label>
               <input
                 type="number"
                 name="estimatedMinPrice"
@@ -375,7 +395,7 @@ export default function AdminAddVenuePage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Max Price (Γé╣)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Max Price (₹)</label>
               <input
                 type="number"
                 name="estimatedMaxPrice"
@@ -387,27 +407,45 @@ export default function AdminAddVenuePage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 p-3 bg-amber-50 rounded-lg">
-            <div>
-              <label className="block text-sm font-medium text-amber-700 mb-1">Prime Day Price (Γé╣)</label>
+          {/* 3 Event-Type Prices */}
+          <div className="space-y-3">
+            <div className="p-3 bg-rose-50 rounded-lg border border-rose-200">
+              <label className="block text-sm font-semibold text-rose-700 mb-1">
+                💍 Marriage / Wedding / Engagement (₹)
+              </label>
               <input
                 type="number"
-                name="primeDayPrice"
-                value={formData.primeDayPrice}
+                name="marriagePrice"
+                value={formData.marriagePrice}
                 onChange={handleInputChange}
-                placeholder="Weekend/auspicious days"
-                className="w-full px-3 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500"
+                placeholder="e.g. 150000"
+                className="w-full px-3 py-2 border border-rose-200 rounded-lg focus:ring-2 focus:ring-rose-500"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-amber-700 mb-1">Regular Day Price (Γé╣)</label>
+            <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+              <label className="block text-sm font-semibold text-yellow-700 mb-1">
+                🎂 Birthday / Anniversary / Baby Shower (₹)
+              </label>
               <input
                 type="number"
-                name="nonPrimeDayPrice"
-                value={formData.nonPrimeDayPrice}
+                name="birthdayPrice"
+                value={formData.birthdayPrice}
                 onChange={handleInputChange}
-                placeholder="Weekdays"
-                className="w-full px-3 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500"
+                placeholder="e.g. 80000"
+                className="w-full px-3 py-2 border border-yellow-200 rounded-lg focus:ring-2 focus:ring-yellow-500"
+              />
+            </div>
+            <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+              <label className="block text-sm font-semibold text-purple-700 mb-1">
+                🙏 Others — Shradh / Annaprasan / Corporate / etc. (₹)
+              </label>
+              <input
+                type="number"
+                name="otherEventPrice"
+                value={formData.otherEventPrice}
+                onChange={handleInputChange}
+                placeholder="e.g. 60000"
+                className="w-full px-3 py-2 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500"
               />
             </div>
           </div>
@@ -443,6 +481,34 @@ export default function AdminAddVenuePage() {
                 className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-rose-500"
               />
             </div>
+          </div>
+
+          {/* Google Maps URL */}
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Google Maps URL <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <input
+              type="url"
+              name="googleMapsUrl"
+              value={formData.googleMapsUrl}
+              onChange={handleGoogleMapsUrlChange}
+              placeholder="https://maps.app.goo.gl/... or https://www.google.com/maps/place/..."
+              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-rose-500 text-sm"
+            />
+            {formData.googleMapsUrl && parseGoogleMapsUrl(formData.googleMapsUrl) ? (
+              <p className="text-xs text-green-600 mt-1 font-medium">
+                ✓ Coordinates auto-extracted: {formData.latitude?.toFixed(5)}, {formData.longitude?.toFixed(5)}
+              </p>
+            ) : formData.googleMapsUrl ? (
+              <p className="text-xs text-gray-400 mt-1">
+                Could not extract coordinates from this URL — coordinates can still be set via Location search above.
+              </p>
+            ) : (
+              <p className="text-xs text-gray-400 mt-1">
+                Paste a Google Maps share link — coordinates will be auto-filled if the URL contains them.
+              </p>
+            )}
           </div>
         </div>
 
