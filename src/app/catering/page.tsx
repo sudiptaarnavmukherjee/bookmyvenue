@@ -216,7 +216,7 @@ export default function CateringPage() {
           </div>
         )}
 
-        {/* Quick Area Filter Pills */}}
+        {/* Quick Area Filter Pills */}
         <div className="mb-6 overflow-x-auto pb-2 -mx-4 px-4">
           <div className="flex gap-2 min-w-max">
             <button
