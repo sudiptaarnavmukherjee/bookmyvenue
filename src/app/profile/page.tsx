@@ -311,7 +311,7 @@ export default function ProfilePage() {
                           </button>
                           <button
                             onClick={handleSendOtp}
-                            disabled={otpStep === "sending" || otpStep === "verifying"}
+                            disabled={otpStep === "verifying"}
                             className="rounded-lg border border-orange-300 px-3 py-2 text-xs text-orange-600 hover:bg-orange-100 disabled:opacity-50 transition-colors"
                           >
                             Resend
