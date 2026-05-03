@@ -248,7 +248,7 @@ export default function CateringOwnerDashboard() {
       body: JSON.stringify({ fromTemplateId: templateId }),
     });
     if (res.ok) {
-      await fetchMenus(selectedCatererId);
+      if (selectedCatererId) await fetchMenus(selectedCatererId);
     } else {
       alert("Failed to clone template");
     }
