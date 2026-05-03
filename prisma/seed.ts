@@ -612,17 +612,3 @@ main()
     await prisma.$disconnect();
     process.exit(1);
   });
-  console.log('Admin: admin@shubhspace.com / admin123');
-  console.log('Venue Owner: venue@shubhspace.com / owner123');
-  console.log('Catering Owner: caterer@shubhspace.com / caterer123');
-  console.log('User: user@example.com / user123');
-}
-
-main()
-  .catch((e) => {
-    console.error('❌ Error seeding database:', e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
