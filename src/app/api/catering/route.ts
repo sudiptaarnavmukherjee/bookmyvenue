@@ -144,11 +144,16 @@ export async function GET(request: Request) {
         distanceText,
       };
     });
+
+    // Apply radius filter (only keep caterers that have coords AND are within radius)
+    const radius = searchParams.get("radius");
+    const radiusFiltered = (radius && userLat && userLng)
+      ? caterersWithDistance.filter(c => c.distanceKm !== null && c.distanceKm <= parseFloat(radius))
+      : caterersWithDistance;
     
     switch (sortBy) {
       case "nearby":
-        // Sort by distance (closest first)
-        caterersWithDistance.sort((a, b) => {
+        radiusFiltered.sort((a, b) => {
           if (a.distanceKm === null && b.distanceKm === null) return 0;
           if (a.distanceKm === null) return 1;
           if (b.distanceKm === null) return -1;
@@ -156,7 +161,7 @@ export async function GET(request: Request) {
         });
         break;
       case "area":
-        caterersWithDistance.sort((a, b) => {
+        radiusFiltered.sort((a, b) => {
           const aPriority = areaPriorityMap.get(a.area?.toLowerCase() || "") || 0;
           const bPriority = areaPriorityMap.get(b.area?.toLowerCase() || "") || 0;
           if (bPriority !== aPriority) return bPriority - aPriority;
@@ -164,37 +169,37 @@ export async function GET(request: Request) {
         });
         break;
       case "price-low":
-        caterersWithDistance.sort((a, b) => {
+        radiusFiltered.sort((a, b) => {
           const aPrice = a.silverPrice || a.minPlatePrice || 0;
           const bPrice = b.silverPrice || b.minPlatePrice || 0;
           return aPrice - bPrice;
         });
         break;
       case "price-high":
-        caterersWithDistance.sort((a, b) => {
+        radiusFiltered.sort((a, b) => {
           const aPrice = a.platinumPrice || a.minPlatePrice || 0;
           const bPrice = b.platinumPrice || b.minPlatePrice || 0;
           return bPrice - aPrice;
         });
         break;
       case "popular":
-        caterersWithDistance.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
+        radiusFiltered.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
         break;
       case "rating":
-        caterersWithDistance.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        radiusFiltered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
         break;
       case "newest":
       default:
-        caterersWithDistance.sort((a, b) => 
+        radiusFiltered.sort((a, b) => 
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
         break;
     }
 
     return NextResponse.json({ 
-      caterers: caterersWithDistance, 
+      caterers: radiusFiltered, 
       areas,
-      total: sortedCaterers.length 
+      total: radiusFiltered.length 
     }, { headers: CACHE_HEADERS });
   } catch (error: any) {
     console.error("Error fetching caterers:", error?.message || error);

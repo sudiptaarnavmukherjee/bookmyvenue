@@ -155,11 +155,16 @@ export async function GET(request: Request) {
         distanceText,
       };
     });
+
+    // Apply radius filter (only keep venues that have coords AND are within radius)
+    const radius = searchParams.get("radius");
+    const radiusFiltered = (radius && userLat && userLng)
+      ? venuesWithDistance.filter(v => v.distanceKm !== null && v.distanceKm <= parseFloat(radius))
+      : venuesWithDistance;
     
     switch (sortBy) {
       case "nearby":
-        // Sort by distance (closest first)
-        venuesWithDistance.sort((a, b) => {
+        radiusFiltered.sort((a, b) => {
           if (a.distanceKm === null && b.distanceKm === null) return 0;
           if (a.distanceKm === null) return 1;
           if (b.distanceKm === null) return -1;
@@ -167,7 +172,7 @@ export async function GET(request: Request) {
         });
         break;
       case "area":
-        venuesWithDistance.sort((a, b) => {
+        radiusFiltered.sort((a, b) => {
           const aPriority = areaPriorityMap.get(a.area?.toLowerCase() || "") || 0;
           const bPriority = areaPriorityMap.get(b.area?.toLowerCase() || "") || 0;
           if (bPriority !== aPriority) return bPriority - aPriority;
@@ -175,34 +180,34 @@ export async function GET(request: Request) {
         });
         break;
       case "price-low":
-        venuesWithDistance.sort((a, b) => {
+        radiusFiltered.sort((a, b) => {
           const aPrice = a.exactPrice || a.estimatedMinPrice || a.nonPrimeDayPrice || 0;
           const bPrice = b.exactPrice || b.estimatedMinPrice || b.nonPrimeDayPrice || 0;
           return aPrice - bPrice;
         });
         break;
       case "price-high":
-        venuesWithDistance.sort((a, b) => {
+        radiusFiltered.sort((a, b) => {
           const aPrice = a.exactPrice || a.estimatedMaxPrice || a.primeDayPrice || 0;
           const bPrice = b.exactPrice || b.estimatedMaxPrice || b.primeDayPrice || 0;
           return bPrice - aPrice;
         });
         break;
       case "popular":
-        venuesWithDistance.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
+        radiusFiltered.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
         break;
       case "newest":
       default:
-        venuesWithDistance.sort((a, b) => 
+        radiusFiltered.sort((a, b) => 
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
         break;
     }
 
     return NextResponse.json({ 
-      venues: venuesWithDistance, 
+      venues: radiusFiltered, 
       areas,
-      total: sortedVenues.length 
+      total: radiusFiltered.length 
     }, { headers: CACHE_HEADERS });
   } catch (error: any) {
     console.error("Error fetching venues:", error?.message || error);
