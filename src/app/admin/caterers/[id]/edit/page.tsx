@@ -352,7 +352,7 @@ export default function EditCatererPage({
             <IndianRupee className="h-4 w-4 text-green-500" />
             Package Pricing (per plate)
           </h2>
-          <p className="text-xs text-gray-500 mb-4">Leave empty what doesn't apply.</p>
+          <p className="text-xs text-gray-500 mb-4">Leave empty what doesn&apos;t apply.</p>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">🥈 Silver (₹/plate)</label>
