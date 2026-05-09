@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { Star, Navigation, Sparkles, ChefHat } from "lucide-react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { getFeaturedVenues, getFeaturedCaterers } from "@/lib/home-data";
 import HomeInteractive from "@/components/home/HomeInteractive";
 import {
@@ -13,6 +14,12 @@ import {
   CatererCardSkeleton,
 } from "@/components/home/HomeCards";
 import Logo from "@/components/layout/Logo";
+
+// Lazy-load NearbySection client component (requires localStorage)
+const NearbySection = dynamic(
+  () => import("@/components/home/NearbySection"),
+  { ssr: false, loading: () => null }
+);
 
 // ============================================
 // ISR Configuration - Revalidate every 5 minutes
@@ -218,6 +225,9 @@ export default async function HomePage({
       <Suspense fallback={<div className="h-[52px] bg-white border-b" />}>
         <HomeInteractive initialMode={mode as "venues" | "catering"} />
       </Suspense>
+
+      {/* Nearby Section - Client-side, reads GPS from localStorage */}
+      <NearbySection />
 
       {/* Content - Server Rendered with Suspense */}
       <TabContent mode={mode} />

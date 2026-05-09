@@ -6,6 +6,7 @@ import { Search, MapPin, ChevronDown, Heart, Building2, ChefHat, Calendar, Users
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import Logo from "@/components/layout/Logo";
+import { getBmvLocation } from "@/components/home/LocationPermissionModal";
 
 // Dynamically import SearchModal to reduce initial bundle
 const SearchModal = dynamic(() => import("@/components/home/SearchModal"), {
@@ -13,72 +14,11 @@ const SearchModal = dynamic(() => import("@/components/home/SearchModal"), {
   loading: () => null,
 });
 
-// ============================================
-// Location Selector (Lightweight)
-// ============================================
-const POPULAR_LOCATIONS = [
-  "Kolkata", "Salt Lake", "New Town", "Rajarhat", "Howrah",
-  "Barasat", "Dum Dum", "Ballygunge", "Park Street", "Alipore"
-];
-
-function LocationPicker({ 
-  current, 
-  onSelect, 
-  isOpen, 
-  onClose 
-}: { 
-  current: string;
-  onSelect: (loc: string) => void;
-  isOpen: boolean;
-  onClose: () => void;
-}) {
-  const [query, setQuery] = useState("");
-  
-  if (!isOpen) return null;
-  
-  const filtered = query 
-    ? POPULAR_LOCATIONS.filter(l => l.toLowerCase().includes(query.toLowerCase()))
-    : POPULAR_LOCATIONS;
-  
-  return (
-    <div className="fixed inset-0 z-[100] bg-black/50" onClick={onClose}>
-      <div 
-        className="absolute top-0 left-0 right-0 bg-white rounded-b-2xl max-h-[60vh] overflow-hidden"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="p-4 border-b">
-          <div className="flex items-center gap-3">
-            <MapPin className="w-5 h-5 text-purple-600" />
-            <input
-              type="text"
-              placeholder="Search area..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="flex-1 text-base outline-none"
-              autoFocus
-            />
-            <button onClick={onClose} className="text-gray-500 text-sm">Cancel</button>
-          </div>
-        </div>
-        <div className="p-4 flex flex-wrap gap-2">
-          {filtered.map(loc => (
-            <button
-              key={loc}
-              onClick={() => { onSelect(loc); onClose(); setQuery(""); }}
-              className={`px-3 py-1.5 rounded-full text-sm ${
-                loc === current 
-                  ? "bg-purple-600 text-white" 
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              {loc}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
+// Dynamically import LocationPermissionModal (GPS + Ola Maps)
+const LocationModal = dynamic(
+  () => import("@/components/home/LocationPermissionModal"),
+  { ssr: false, loading: () => null }
+);
 
 // ============================================
 // Main Interactive Header & Search
@@ -93,8 +33,34 @@ export default function HomeInteractive({
   // Use initialMode directly - no useSearchParams() which forces dynamic rendering
   const [activeTab, setActiveTab] = useState<"venues" | "catering">(initialMode);
   const [location, setLocation] = useState("Kolkata");
-  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
+
+  // On mount: read stored location + auto-show modal for first-time visitors
+  useEffect(() => {
+    const stored = getBmvLocation();
+    if (stored) {
+      setLocation(stored.label);
+    } else {
+      // Only auto-show once per session
+      const prompted = sessionStorage.getItem("bmv_loc_prompted");
+      if (!prompted) {
+        const timer = setTimeout(() => {
+          setShowLocationModal(true);
+          sessionStorage.setItem("bmv_loc_prompted", "1");
+        }, 800);
+        return () => clearTimeout(timer);
+      }
+    }
+
+    // Keep header in sync when location is set from NearbySection or elsewhere
+    const handler = (e: Event) => {
+      const d = (e as CustomEvent<{ label: string }>).detail;
+      if (d?.label) setLocation(d.label);
+    };
+    window.addEventListener("bmv:locationUpdated", handler);
+    return () => window.removeEventListener("bmv:locationUpdated", handler);
+  }, []);
 
   // Tab change handler
   const handleTabChange = useCallback((tab: "venues" | "catering") => {
@@ -143,7 +109,7 @@ export default function HomeInteractive({
             <div className="flex items-center gap-3">
               <Logo size="sm" />
               <button 
-                onClick={() => setShowLocationPicker(true)}
+                onClick={() => setShowLocationModal(true)}
                 className="flex items-center gap-1 text-left"
               >
                 <MapPin className="w-4 h-4 text-purple-600" />
@@ -256,13 +222,16 @@ export default function HomeInteractive({
         </div>
       </div>
 
-      {/* Modals */}
-      <LocationPicker
-        current={location}
-        onSelect={setLocation}
-        isOpen={showLocationPicker}
-        onClose={() => setShowLocationPicker(false)}
-      />
+      {/* Location Modal - GPS + Ola Maps search */}
+      {showLocationModal && (
+        <LocationModal
+          onLocationSet={(lat, lng, label) => {
+            setLocation(label);
+            setShowLocationModal(false);
+          }}
+          onDismiss={() => setShowLocationModal(false)}
+        />
+      )}
       
       {showSearchModal && (
         <SearchModal
@@ -276,5 +245,4 @@ export default function HomeInteractive({
   );
 }
 
-// Export tab state for use by other components
-export { type HomeInteractive };
+
