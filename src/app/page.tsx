@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 import { Star, Navigation, Sparkles, ChefHat } from "lucide-react";
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { getFeaturedVenues, getFeaturedCaterers } from "@/lib/home-data";
 import HomeInteractive from "@/components/home/HomeInteractive";
+import NearbySection from "@/components/home/NearbySection";
 import {
   VenueCardServer,
   HorizontalVenueCardServer,
@@ -14,12 +14,6 @@ import {
   CatererCardSkeleton,
 } from "@/components/home/HomeCards";
 import Logo from "@/components/layout/Logo";
-
-// Lazy-load NearbySection client component (requires localStorage)
-const NearbySection = dynamic(
-  () => import("@/components/home/NearbySection"),
-  { ssr: false, loading: () => null }
-);
 
 // ============================================
 // ISR Configuration - Revalidate every 5 minutes
