@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, Building2, MapPin, IndianRupee, Users,
-  Phone, Save, Loader2, CheckCircle, Camera, X,
+  Phone, Save, Loader2, CheckCircle,
 } from "lucide-react";
 import Link from "next/link";
 import ImageUploader from "@/components/upload/ImageUploader";
@@ -71,7 +71,6 @@ export default function EditVenuePage({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [showImageUploader, setShowImageUploader] = useState(false);
   const [notFound, setNotFound] = useState(false);
 
   const [formData, setFormData] = useState<FormData>({
@@ -190,10 +189,7 @@ export default function EditVenuePage({
   };
 
   const removeImage = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index),
-    }));
+    setFormData((prev) => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -477,46 +473,15 @@ export default function EditVenuePage({
 
         {/* Images */}
         <div className="bg-white rounded-xl p-5 border">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2">
-              <Camera className="h-4 w-4 text-pink-500" />
-              Photos ({formData.images.length})
-            </h2>
-            <button type="button" onClick={() => setShowImageUploader(!showImageUploader)}
-              className="text-sm px-3 py-1.5 bg-pink-50 text-pink-600 rounded-lg hover:bg-pink-100 transition-colors">
-              {showImageUploader ? "Done" : "Add Photos"}
-            </button>
-          </div>
-          {showImageUploader && (
-            <div className="mb-4">
-              <ImageUploader
-                onUploadComplete={(urls: string[]) =>
-                  setFormData((prev) => ({ ...prev, images: [...prev.images, ...urls] }))
-                }
-                maxFiles={10}
-                folder="venues"
-              />
-            </div>
-          )}
-          {formData.images.length > 0 && (
-            <div className="grid grid-cols-3 gap-3">
-              {formData.images.map((url, i) => (
-                <div key={i} className="relative group aspect-video bg-gray-100 rounded-lg overflow-hidden">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
-                  {i === 0 && (
-                    <span className="absolute top-1 left-1 bg-purple-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
-                      Cover
-                    </span>
-                  )}
-                  <button type="button" onClick={() => removeImage(i)}
-                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+          <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            Photos
+          </h2>
+          <ImageUploader
+            images={formData.images}
+            onImagesChange={(imgs) => setFormData((prev) => ({ ...prev, images: imgs }))}
+            maxImages={10}
+            folder="venues"
+          />
         </div>
 
         {/* Amenities */}
