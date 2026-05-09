@@ -20,6 +20,8 @@ import {
   Leaf,
   ShieldCheck,
   Bell,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 
 type Caterer = {
@@ -72,6 +74,7 @@ export default function AdminCaterersPage() {
   const [selectedOwnerId, setSelectedOwnerId] = useState("");
   const [tagLoading, setTagLoading] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -181,6 +184,24 @@ export default function AdminCaterersPage() {
   };
 
   const verificationRequestCount = caterers.filter(c => c.verificationRequestedAt && !c.bookingEnabled).length;
+
+  const handleDelete = async (caterer: Caterer) => {
+    if (!confirm(`Delete "${caterer.name}"? This cannot be undone.`)) return;
+    try {
+      setDeletingId(caterer.id);
+      const res = await fetch(`/api/admin/caterers/${caterer.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        setCaterers((prev) => prev.filter((c) => c.id !== caterer.id));
+      } else {
+        alert(data.error || "Failed to delete caterer");
+      }
+    } catch {
+      alert("Failed to delete caterer");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const filteredCaterers = caterers.filter((caterer) => {
     const matchesSearch =
@@ -447,6 +468,15 @@ export default function AdminCaterersPage() {
                     )}
                   </button>
 
+                  {/* Edit */}
+                  <button
+                    onClick={() => router.push(`/admin/caterers/${caterer.id}/edit`)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit
+                  </button>
+
                   {/* View */}
                   <button
                     onClick={() => router.push(`/catering/${caterer.slug}`)}
@@ -454,6 +484,20 @@ export default function AdminCaterersPage() {
                   >
                     <Eye className="h-4 w-4" />
                     View
+                  </button>
+
+                  {/* Delete */}
+                  <button
+                    onClick={() => handleDelete(caterer)}
+                    disabled={deletingId === caterer.id}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 transition-colors disabled:opacity-50"
+                  >
+                    {deletingId === caterer.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                    Delete
                   </button>
                 </div>
               </div>

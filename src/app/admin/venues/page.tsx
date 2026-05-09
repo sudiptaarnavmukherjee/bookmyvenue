@@ -7,7 +7,6 @@ import { motion } from "framer-motion";
 import {
   Building2,
   Search,
-  Filter,
   Eye,
   Phone,
   CheckCircle2,
@@ -18,6 +17,8 @@ import {
   ArrowLeft,
   Plus,
   MapPin,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 
 type Venue = {
@@ -68,6 +69,7 @@ export default function AdminVenuesPage() {
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
   const [selectedOwnerId, setSelectedOwnerId] = useState("");
   const [tagLoading, setTagLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -133,6 +135,24 @@ export default function AdminVenuesPage() {
       alert("Failed to tag owner");
     } finally {
       setTagLoading(false);
+    }
+  };
+
+  const handleDelete = async (venue: Venue) => {
+    if (!confirm(`Delete "${venue.name}"? This cannot be undone.`)) return;
+    try {
+      setDeletingId(venue.id);
+      const res = await fetch(`/api/admin/venues/${venue.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        setVenues((prev) => prev.filter((v) => v.id !== venue.id));
+      } else {
+        alert(data.error || "Failed to delete venue");
+      }
+    } catch {
+      alert("Failed to delete venue");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -370,6 +390,15 @@ export default function AdminVenuesPage() {
                     )}
                   </button>
 
+                  {/* Edit */}
+                  <button
+                    onClick={() => router.push(`/admin/venues/${venue.id}/edit`)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit
+                  </button>
+
                   {/* View */}
                   <button
                     onClick={() => router.push(`/venues/${venue.slug}`)}
@@ -377,6 +406,20 @@ export default function AdminVenuesPage() {
                   >
                     <Eye className="h-4 w-4" />
                     View
+                  </button>
+
+                  {/* Delete */}
+                  <button
+                    onClick={() => handleDelete(venue)}
+                    disabled={deletingId === venue.id}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 transition-colors disabled:opacity-50"
+                  >
+                    {deletingId === venue.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                    Delete
                   </button>
                 </div>
               </div>
