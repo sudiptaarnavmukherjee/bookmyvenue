@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { MapPin, Navigation, Search, X, Loader2 } from "lucide-react";
-import { searchPlaces, getPlaceDetails, type PlaceResult } from "@/lib/ola-maps";
+import { searchPlaces, getPlaceDetails, geocodeAddress, getAreaCoordinates, type PlaceResult } from "@/lib/ola-maps";
 
 // ── Shared location storage ──────────────────────────────────────────────────
 const STORAGE_KEY = "bmv_location";
@@ -111,8 +111,9 @@ export default function LocationPermissionModal({ onLocationSet, onDismiss }: Pr
     debounceRef.current = setTimeout(async () => {
       setSearching(true);
       try {
-        const places = await searchPlaces(val + " Kolkata");
-        setResults(places.slice(0, 6));
+        // Try with "Kolkata" bias first, fallback to raw query
+        const places = await searchPlaces(val + ", Kolkata, West Bengal");
+        setResults(places.length > 0 ? places.slice(0, 6) : (await searchPlaces(val)).slice(0, 6));
       } catch {
         setResults([]);
       } finally {
@@ -123,13 +124,27 @@ export default function LocationPermissionModal({ onLocationSet, onDismiss }: Pr
 
   const handleSelectPlace = useCallback(async (place: PlaceResult) => {
     let { lat, lng } = place.coordinates;
-    // Autocomplete sometimes returns 0,0 — fetch details for precise coords
-    if ((lat === 0 && lng === 0) && place.placeId) {
+    const label = place.name || place.address;
+
+    // 1. Try place details API for precise coords
+    if ((lat === 0 || lng === 0) && place.placeId) {
       const details = await getPlaceDetails(place.placeId);
       if (details) { lat = details.coordinates.lat; lng = details.coordinates.lng; }
     }
-    if (lat === 0 && lng === 0) return; // unusable
-    const label = place.name || place.address;
+
+    // 2. Fallback: geocode the address text
+    if ((lat === 0 || lng === 0) && (place.address || place.name)) {
+      const geocoded = await geocodeAddress(place.address || place.name);
+      if (geocoded) { lat = geocoded.lat; lng = geocoded.lng; }
+    }
+
+    // 3. Last resort: fuzzy match against known Kolkata areas
+    if (lat === 0 || lng === 0) {
+      const areaCoords = getAreaCoordinates(label);
+      lat = areaCoords.lat;
+      lng = areaCoords.lng;
+    }
+
     storeBmvLocation(lat, lng, label);
     onLocationSet(lat, lng, label);
   }, [onLocationSet]);
