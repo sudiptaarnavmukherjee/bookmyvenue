@@ -204,6 +204,7 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
   const totalPrice = selectedPackage && guests ? selectedPackage.pricePerPlate * parseInt(guests || "0") : 0;
 
   return (
+    <>
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 pb-24 pt-8">
       <div className="mx-auto max-w-7xl px-4">
         {/* Back Button */}
@@ -676,6 +677,6 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
         </div>
       </div>
     )}
-  </div>
+    </>
   );
 }
