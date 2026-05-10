@@ -65,10 +65,8 @@ export default function HomeInteractive({
   // Tab change handler
   const handleTabChange = useCallback((tab: "venues" | "catering") => {
     setActiveTab(tab);
-    const url = new URL(window.location.href);
-    url.searchParams.set("mode", tab);
-    window.history.replaceState({}, "", url.toString());
-  }, []);
+    router.replace(`/?mode=${tab}`, { scroll: false });
+  }, [router]);
 
   // Search handler
   const handleSearch = useCallback((params: {
