@@ -322,7 +322,7 @@ export default function AdminCaterersPage() {
             <p className="text-sm text-gray-600">Online Booking</p>
           </div>
           <div className="glass-card rounded-xl p-4">
-            <p className="text-3xl font-bold text-blue-600">{cateringOwners.length}</p>
+            <p className="text-3xl font-bold text-blue-600">{caterers.filter(c => c.taggedToOwner || c.owner).length}</p>
             <p className="text-sm text-gray-600">Catering Owners</p>
           </div>
         </div>
