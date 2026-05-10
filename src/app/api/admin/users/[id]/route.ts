@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/db";
 import { PaymentStatus } from "@prisma/client";
 import { z } from "zod";
-import bcrypt from "bcryptjs";
+import { hash } from "bcryptjs";
 
 // Validation schema
 const updateUserSchema = z.object({
   action: z.enum(["ban", "unban", "verify_kyc", "change_role", "update"]),
   role: z.enum(["USER", "VENUE_OWNER", "CATERING_OWNER", "ADMIN"]).optional(),
+  newRole: z.enum(["USER", "VENUE_OWNER", "CATERING_OWNER", "ADMIN"]).optional(),
   reason: z.string().optional(),
 });
 
@@ -312,7 +313,7 @@ export async function PATCH(
     if (name !== undefined) updateData.name = name.trim() || null;
     if (email !== undefined) updateData.email = email.trim().toLowerCase();
     if (phone !== undefined) updateData.phone = phone.trim() || null;
-    if (password !== undefined) updateData.password = await bcrypt.hash(password, 12);
+    if (password !== undefined) updateData.password = await hash(password, 12);
 
     const updated = await prisma.user.update({
       where: { id },
