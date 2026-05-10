@@ -4,7 +4,7 @@ import "./globals.css";
 import { SessionProvider } from "@/components/providers/SessionProvider";
 import { CompareProvider } from "@/components/providers/CompareProvider";
 import { generateOrganizationSchema, generateSearchActionSchema, JsonLd } from "@/lib/structured-data";
-import { LayoutShell } from "@/components/layout/LayoutShell";
+import { LayoutShell, FooterShell } from "@/components/layout/LayoutShell";
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -106,6 +106,7 @@ export default function RootLayout({
             
             {/* Non-critical UI loads AFTER content via client component */}
             <LayoutShell />
+            <FooterShell />
           </CompareProvider>
         </SessionProvider>
       </body>

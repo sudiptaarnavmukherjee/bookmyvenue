@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
+import Footer from "@/components/layout/Footer";
 
 // Dynamic imports with ssr: false - only allowed in client components
 const MobileNav = dynamic(
@@ -43,4 +44,11 @@ export function LayoutShell() {
       <MobileNav />
     </Suspense>
   );
+}
+
+/**
+ * Server-safe footer wrapper
+ */
+export function FooterShell() {
+  return <Footer />;
 }

@@ -1,13 +1,14 @@
-"use client";
+﻿"use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { api } from "@/lib/api-client";
 import { 
   MapPin, Star, Leaf, ArrowLeft, Heart, Share2,
   Check, Users, Loader2, Phone, Eye,
-  ChevronDown, ChevronUp, Drumstick, Sparkles, X, UtensilsCrossed
+  ChevronDown, ChevronUp, Drumstick, Sparkles, X, UtensilsCrossed,
+  Grid3x3, BadgeCheck, ChevronLeft, ChevronRight
 } from "lucide-react";
 import MapEmbed from "@/components/venue/MapEmbed";
 
@@ -131,20 +132,54 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
     caterer.menuPackages[0] || null
   );
   const [selectedImage, setSelectedImage] = useState(0);
+  const [showLightbox, setShowLightbox] = useState(false);
   const [bookingDate, setBookingDate] = useState("");
   const [guests, setGuests] = useState("");
   const [message, setMessage] = useState("");
-  // Menu modal for tier pricing cards
   const [menuModal, setMenuModal] = useState<{ tier: "SILVER" | "GOLD" | "PLATINUM"; label: string; gradient: string } | null>(null);
+  const [stickyNav, setStickyNav] = useState(false);
+
+  const heroRef = useRef<HTMLDivElement>(null);
+  const overviewRef = useRef<HTMLDivElement>(null);
+  const packagesRef = useRef<HTMLDivElement>(null);
+  const locationRef = useRef<HTMLDivElement>(null);
+  const bookingCardRef = useRef<HTMLDivElement>(null);
 
   const menuModalPkg = menuModal
     ? caterer.menuPackages.find((p) => p.tier === menuModal.tier) ?? null
     : null;
 
-  // Track view on mount
-  useState(() => {
-    fetch(`/api/catering/${caterer.id}/views`, { method: 'POST' }).catch(() => {});
-  });
+  useEffect(() => {
+    fetch(`/api/catering/${caterer.id}/views`, { method: "POST" }).catch(() => {});
+  }, [caterer.id]);
+
+  useEffect(() => {
+    const hero = heroRef.current;
+    if (!hero) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setStickyNav(!entry.isIntersecting),
+      { threshold: 0 }
+    );
+    observer.observe(hero);
+    return () => observer.disconnect();
+  }, []);
+
+  const scrollTo = (ref: React.RefObject<HTMLDivElement | null>) => {
+    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      await navigator.share({ title: caterer.name, url: window.location.href });
+    } else {
+      await navigator.clipboard.writeText(window.location.href);
+    }
+  };
+
+  const prevImage = () =>
+    setSelectedImage((i) => (i - 1 + caterer.images.length) % caterer.images.length);
+  const nextImage = () =>
+    setSelectedImage((i) => (i + 1) % caterer.images.length);
 
   const handleBooking = async () => {
     if (!session?.user) {
@@ -202,101 +237,291 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
   };
 
   const totalPrice = selectedPackage && guests ? selectedPackage.pricePerPlate * parseInt(guests || "0") : 0;
+  const isFishbowl = caterer.isAdminListed && !caterer.bookingEnabled;
 
   return (
     <>
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 pb-24 pt-8">
-      <div className="mx-auto max-w-7xl px-4">
-        {/* Back Button */}
-        <button
-          onClick={() => router.back()}
-          className="mb-6 flex items-center gap-2 text-gray-700 hover:text-purple-600 transition-colors"
-        >
-          <ArrowLeft className="h-5 w-5" />
-          Back to Catering
-        </button>
+      {/* ── Lightbox ─────────────────────────────────────────────── */}
+      {showLightbox && caterer.images.length > 0 && (
+        <div className="fixed inset-0 z-[60] bg-black/95 flex items-center justify-center">
+          <button
+            onClick={() => setShowLightbox(false)}
+            className="absolute top-4 right-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors"
+          >
+            <X className="h-6 w-6" />
+          </button>
+          {caterer.images.length > 1 && (
+            <>
+              <button onClick={prevImage} className="absolute left-4 rounded-full bg-white/10 p-3 text-white hover:bg-white/20 transition-colors">
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+              <button onClick={nextImage} className="absolute right-4 rounded-full bg-white/10 p-3 text-white hover:bg-white/20 transition-colors">
+                <ChevronRight className="h-6 w-6" />
+              </button>
+            </>
+          )}
+          <img src={caterer.images[selectedImage]} alt={caterer.name} className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg" />
+          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-4 py-1.5 text-sm text-white">
+            {selectedImage + 1} / {caterer.images.length}
+          </div>
+        </div>
+      )}
 
-        <div className="grid gap-8 lg:grid-cols-3">
-          {/* Left Column - Images & Details */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Main Image */}
-            <div className="glass-card rounded-3xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
-              <div className="relative h-96">
-                <img
-                  src={caterer.images[selectedImage] || "https://images.unsplash.com/photo-1555244162-803834f70033?w=800"}
-                  alt={caterer.name}
-                  className="h-full w-full object-cover"
-                />
-                {caterer.isPureVeg && (
-                  <div className="absolute top-4 right-4 rounded-full bg-green-600 px-4 py-2 shadow-lg">
-                    <Leaf className="inline h-5 w-5 text-white mr-2" />
-                    <span className="text-sm font-semibold text-white">Pure Veg</span>
+      <div className="min-h-screen bg-gray-50">
+        {/* ── Breadcrumb ───────────────────────────────────────────── */}
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 pt-4 pb-2">
+          <button
+            onClick={() => router.back()}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-purple-700 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Catering
+          </button>
+        </div>
+
+        {/* ── Hero Gallery ─────────────────────────────────────────── */}
+        <div ref={heroRef} className="mx-auto max-w-7xl px-4 sm:px-6">
+          {caterer.images.length === 0 ? (
+            <div className="h-[420px] w-full rounded-2xl bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center">
+              <Grid3x3 className="h-16 w-16 text-green-300" />
+            </div>
+          ) : caterer.images.length === 1 ? (
+            <div
+              className="relative h-[420px] w-full rounded-2xl overflow-hidden cursor-pointer group"
+              onClick={() => setShowLightbox(true)}
+            >
+              <img src={caterer.images[0]} alt={caterer.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-4 grid-rows-2 gap-2 h-[420px] rounded-2xl overflow-hidden">
+              <div
+                className="col-span-2 row-span-2 relative cursor-pointer group overflow-hidden"
+                onClick={() => { setSelectedImage(0); setShowLightbox(true); }}
+              >
+                <img src={caterer.images[0]} alt={caterer.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+              </div>
+              {caterer.images.slice(1, 5).map((img, idx) => (
+                <div
+                  key={idx}
+                  className="relative cursor-pointer group overflow-hidden"
+                  onClick={() => { setSelectedImage(idx + 1); setShowLightbox(true); }}
+                >
+                  <img src={img} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                  {idx === 3 && caterer.images.length > 5 && (
+                    <div className="absolute inset-0 bg-black/55 flex flex-col items-center justify-center">
+                      <Grid3x3 className="h-6 w-6 text-white mb-1" />
+                      <span className="text-white font-bold text-sm">+{caterer.images.length - 5} more</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between mt-3 mb-1">
+            <div className="flex gap-2 flex-wrap">
+              {caterer.isPureVeg && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700 border border-green-200">
+                  <Leaf className="h-3.5 w-3.5" /> Pure Vegetarian
+                </span>
+              )}
+              {caterer.viewCount !== undefined && caterer.viewCount > 0 && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500">
+                  <Eye className="h-3.5 w-3.5" /> {caterer.viewCount.toLocaleString()} views
+                </span>
+              )}
+            </div>
+            {caterer.images.length > 1 && (
+              <button
+                onClick={() => setShowLightbox(true)}
+                className="text-xs font-medium text-purple-700 hover:text-purple-900 underline underline-offset-2"
+              >
+                View all {caterer.images.length} photos
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* ── Sticky Sub-nav ───────────────────────────────────────── */}
+        <div
+          className={`sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm transition-all duration-300 ${
+            stickyNav ? "translate-y-0 opacity-100" : "opacity-0 -translate-y-4 pointer-events-none"
+          }`}
+        >
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 flex items-center justify-between h-14">
+            <h2 className="text-base font-bold text-gray-900 truncate max-w-xs">{caterer.name}</h2>
+            <div className="flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-1 text-sm">
+                {[
+                  { label: "Overview", ref: overviewRef },
+                  { label: "Packages", ref: packagesRef },
+                  { label: "Location", ref: locationRef },
+                ].map(({ label, ref }) => (
+                  <button
+                    key={label}
+                    onClick={() => scrollTo(ref)}
+                    className="px-3 py-1.5 rounded-lg text-gray-600 hover:bg-purple-50 hover:text-purple-700 font-medium transition-colors"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => scrollTo(bookingCardRef)}
+                className="rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-1.5 text-sm font-bold text-white shadow hover:shadow-md transition-all"
+              >
+                {isFishbowl ? "Contact" : "Book Now"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Main Grid ────────────────────────────────────────────── */}
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 grid gap-8 lg:grid-cols-3 py-8">
+          {/* ── LEFT ────────────────────────────────────────────────── */}
+          <div className="lg:col-span-2 space-y-10">
+
+            {/* Overview */}
+            <div ref={overviewRef} className="scroll-mt-20">
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div>
+                  <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 leading-tight">{caterer.name}</h1>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-gray-500 text-sm">
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="h-4 w-4 text-purple-500" />
+                      {caterer.area ? `${caterer.area}, ${caterer.city}` : caterer.city}
+                    </span>
+                    {caterer.reviewCount !== undefined && caterer.reviewCount > 0 && (
+                      <span className="flex items-center gap-1">
+                        <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                        <span className="font-medium text-gray-700">{caterer.reviewCount}</span> review{caterer.reviewCount !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                    {caterer.bookingCount !== undefined && caterer.bookingCount > 0 && (
+                      <span>{caterer.bookingCount} bookings</span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button onClick={handleShare} className="rounded-xl border border-gray-200 p-2.5 hover:bg-gray-50 transition-colors" title="Share">
+                    <Share2 className="h-5 w-5 text-gray-600" />
+                  </button>
+                  <button className="rounded-xl border border-gray-200 p-2.5 hover:bg-gray-50 transition-colors" title="Save">
+                    <Heart className="h-5 w-5 text-gray-600" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Quick stats */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+                <div className="flex items-center gap-3 rounded-2xl bg-white border border-gray-100 shadow-sm p-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-100">
+                    <Users className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Min. Guests</p>
+                    <p className="font-bold text-gray-900">{caterer.minGuests}+</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-2xl bg-white border border-gray-100 shadow-sm p-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100">
+                    <BadgeCheck className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Packages</p>
+                    <p className="font-bold text-gray-900">{caterer.menuPackages.length}</p>
+                  </div>
+                </div>
+                {caterer.cuisines && caterer.cuisines.length > 0 && (
+                  <div className="flex items-center gap-3 rounded-2xl bg-white border border-gray-100 shadow-sm p-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100">
+                      <UtensilsCrossed className="h-5 w-5 text-orange-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Cuisines</p>
+                      <p className="font-bold text-gray-900 text-sm">{caterer.cuisines.slice(0, 2).join(", ")}</p>
+                    </div>
                   </div>
                 )}
               </div>
 
-              {/* Thumbnails */}
-              {caterer.images.length > 1 && (
-                <div className="flex gap-2 p-4 overflow-x-auto">
-                  {caterer.images.map((img, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setSelectedImage(idx)}
-                      className={`flex-shrink-0 h-20 w-20 rounded-lg overflow-hidden border-2 transition-all ${
-                        selectedImage === idx ? "border-purple-600" : "border-transparent"
-                      }`}
-                    >
-                      <img src={img} alt="" className="h-full w-full object-cover" />
-                    </button>
-                  ))}
+              <hr className="border-gray-100 mb-6" />
+
+              {/* Catered by */}
+              <div className="flex items-center gap-3 mb-6">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-emerald-500 text-white font-bold text-lg">
+                  {(caterer.ownerName || caterer.contactName || "C")[0].toUpperCase()}
                 </div>
-              )}
+                <div>
+                  <p className="text-xs text-gray-500">Catered by</p>
+                  <p className="font-semibold text-gray-900">{caterer.ownerName || caterer.contactName || "Caterer"}</p>
+                </div>
+              </div>
+
+              {/* About */}
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-3">About</h2>
+                <p className="text-gray-600 leading-relaxed">{caterer.description}</p>
+              </div>
             </div>
 
-            {/* Caterer Info */}
-            <div className="glass-card rounded-3xl p-8 animate-in fade-in slide-in-from-bottom-4 duration-300 delay-100">
-              <div className="mb-6">
-                <h1 className="text-4xl font-bold text-gradient mb-2">{caterer.name}</h1>
-                <div className="flex items-center gap-4 text-gray-600">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-5 w-5 text-purple-600" />
-                    <span>{caterer.city}</span>
-                  </div>
-                  {caterer.reviewCount !== undefined && caterer.reviewCount > 0 && (
-                    <div className="flex items-center gap-1">
-                      <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm">({caterer.reviewCount} reviews)</span>
-                    </div>
-                  )}
-                  {caterer.bookingCount !== undefined && caterer.bookingCount > 0 && (
-                    <div className="flex items-center gap-1">
-                      <Users className="h-5 w-5 text-purple-600" />
-                      <span className="text-sm">{caterer.bookingCount} bookings</span>
-                    </div>
-                  )}
+            {/* Menu Packages */}
+            {caterer.menuPackages.length > 0 && (
+              <div ref={packagesRef} className="scroll-mt-20">
+                <h2 className="text-xl font-bold text-gray-900 mb-5">Menu Packages</h2>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {caterer.menuPackages.map((pkg) => {
+                    const variantInfo = pkg.variant ? VARIANT_LABELS[pkg.variant] : null;
+                    return (
+                      <button
+                        key={pkg.id}
+                        onClick={() => setSelectedPackage(pkg)}
+                        className={`text-left rounded-2xl border-2 p-5 transition-all hover:shadow-md ${
+                          selectedPackage?.id === pkg.id
+                            ? "border-purple-500 bg-purple-50 shadow-lg"
+                            : "border-gray-100 bg-white shadow-sm hover:border-purple-200"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 mb-3 flex-wrap">
+                          <div className={`inline-block rounded-full bg-gradient-to-r ${TIER_COLORS[pkg.tier]} px-3 py-1`}>
+                            <span className="text-xs font-bold text-white">{pkg.name || pkg.tier}</span>
+                          </div>
+                          {variantInfo && (
+                            <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${variantInfo.color}`}>
+                              {variantInfo.icon} {variantInfo.label}
+                            </span>
+                          )}
+                          {selectedPackage?.id === pkg.id && (
+                            <span className="ml-auto text-xs font-semibold text-purple-600">Selected ✓</span>
+                          )}
+                        </div>
+                        <p className="text-2xl font-extrabold text-gray-900 mb-1">
+                          ₹{pkg.pricePerPlate}<span className="text-sm font-medium text-gray-500">/plate</span>
+                        </p>
+                        {pkg.description && (
+                          <p className="text-xs text-gray-500 mb-3">{pkg.description}</p>
+                        )}
+                        <MenuItemList items={pkg.items} />
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
+            )}
 
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-2">About</h3>
-                <p className="text-gray-700 leading-relaxed">{caterer.description}</p>
-              </div>
-
-              <div className="mb-6 rounded-2xl bg-white/60 p-4">
-                <Users className="h-6 w-6 text-purple-600 mb-2" />
-                <p className="text-sm text-gray-600">Minimum Guests</p>
-                <p className="text-xl font-bold text-gray-900">{caterer.minGuests} guests</p>
-              </div>
-
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <p className="text-sm text-gray-600">Catered by</p>
-                <p className="text-lg font-semibold text-gray-900">{caterer.ownerName || "Caterer Owner"}</p>
-              </div>
-
-              {/* Map */}
-              {(caterer.latitude || caterer.googleMapsUrl) && (
-                <div className="mt-6 pt-6 border-t border-gray-200">
-                  <h3 className="text-lg font-semibold mb-4">Location</h3>
+            {/* Location */}
+            {(caterer.latitude || caterer.googleMapsUrl) && (
+              <div ref={locationRef} className="scroll-mt-20">
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Location</h2>
+                {caterer.address && (
+                  <p className="flex items-start gap-1.5 text-sm text-gray-500 mb-4">
+                    <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-purple-500" />
+                    {caterer.address}
+                  </p>
+                )}
+                <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
                   <MapEmbed
                     latitude={caterer.latitude}
                     longitude={caterer.longitude}
@@ -305,394 +530,314 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
                     name={caterer.name}
                   />
                 </div>
-              )}
-            </div>
-
-            {/* Menu Packages */}
-            <div className="glass-card rounded-3xl p-8 animate-in fade-in slide-in-from-bottom-4 duration-300 delay-200">
-              <h2 className="text-2xl font-bold text-gradient mb-6">Menu Packages</h2>
-              {caterer.menuPackages.length > 0 ? (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {caterer.menuPackages.map((pkg) => {
-                    const variantInfo = pkg.variant ? VARIANT_LABELS[pkg.variant] : null;
-                    return (
-                      <button
-                        key={pkg.id}
-                        onClick={() => setSelectedPackage(pkg)}
-                        className={`text-left rounded-2xl p-6 transition-all ${
-                          selectedPackage?.id === pkg.id
-                            ? "ring-2 ring-purple-600 bg-white shadow-xl"
-                            : "bg-white/60 hover:bg-white/80"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 mb-3 flex-wrap">
-                          <div className={`inline-block rounded-full bg-gradient-to-r ${TIER_COLORS[pkg.tier]} px-4 py-1.5`}>
-                            <span className="text-sm font-bold text-white">{pkg.name || pkg.tier}</span>
-                          </div>
-                          {variantInfo && (
-                            <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${variantInfo.color}`}>
-                              {variantInfo.icon} {variantInfo.label}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-3xl font-bold text-gradient mb-2">
-                          ₹{pkg.pricePerPlate}/plate
-                        </p>
-                        {pkg.description && (
-                          <p className="text-sm text-gray-600 mb-3">{pkg.description}</p>
-                        )}
-                        <MenuItemList items={pkg.items} />
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-gray-500">No menu packages available</p>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
-          {/* Right Column - Booking Card */}
+          {/* ── RIGHT: Booking Card ───────────────────────────────── */}
           <div className="lg:col-span-1">
-            <div className="glass-card rounded-3xl p-6 sticky top-8 animate-in fade-in slide-in-from-bottom-4 duration-300 delay-300">
-              {/* View Counter */}
-              {caterer.viewCount !== undefined && caterer.viewCount > 0 && (
-                <div className="flex items-center gap-2 text-gray-500 text-sm mb-4">
-                  <Eye className="h-4 w-4" />
-                  <span>{caterer.viewCount.toLocaleString()} views</span>
-                </div>
-              )}
-
-              {/* Fishbowl Mode - Call to Book */}
-              {caterer.isAdminListed && !caterer.bookingEnabled ? (
-                <>
-                  {/* Tier Pricing Display */}
-                  <div className="mb-6">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Package Pricing</h3>
-                    <div className="space-y-3">
-                      {caterer.silverPrice && (
-                        <button
-                          onClick={() => setMenuModal({ tier: "SILVER", label: "Silver", gradient: "from-gray-400 to-gray-600" })}
-                          className="w-full flex items-center justify-between bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl p-4 border border-gray-200 hover:border-gray-400 hover:shadow-md transition-all text-left group"
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className="h-8 w-8 rounded-full bg-gradient-to-r from-gray-400 to-gray-600 flex items-center justify-center">
-                              <span className="text-white text-xs font-bold">S</span>
-                            </div>
-                            <span className="font-medium text-gray-700">Silver</span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-xl font-bold text-gray-800">₹{caterer.silverPrice}/plate</span>
-                            <span className="text-xs text-gray-400 group-hover:text-gray-600 transition-colors">View menu →</span>
-                          </div>
-                        </button>
-                      )}
-                      {caterer.goldPrice && (
-                        <button
-                          onClick={() => setMenuModal({ tier: "GOLD", label: "Gold", gradient: "from-yellow-400 to-yellow-600" })}
-                          className="w-full flex items-center justify-between bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl p-4 border border-amber-200 hover:border-amber-400 hover:shadow-md transition-all text-left group"
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className="h-8 w-8 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-600 flex items-center justify-center">
-                              <span className="text-white text-xs font-bold">G</span>
-                            </div>
-                            <span className="font-medium text-amber-700">Gold</span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-xl font-bold text-amber-800">₹{caterer.goldPrice}/plate</span>
-                            <span className="text-xs text-amber-400 group-hover:text-amber-600 transition-colors">View menu →</span>
-                          </div>
-                        </button>
-                      )}
-                      {caterer.platinumPrice && (
-                        <button
-                          onClick={() => setMenuModal({ tier: "PLATINUM", label: "Platinum", gradient: "from-purple-500 to-pink-600" })}
-                          className="w-full flex items-center justify-between bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-200 hover:border-purple-400 hover:shadow-md transition-all text-left group"
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className="h-8 w-8 rounded-full bg-gradient-to-r from-purple-500 to-pink-600 flex items-center justify-center">
-                              <span className="text-white text-xs font-bold">P</span>
-                            </div>
-                            <span className="font-medium text-purple-700">Platinum</span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-xl font-bold text-purple-800">₹{caterer.platinumPrice}/plate</span>
-                            <span className="text-xs text-purple-400 group-hover:text-purple-600 transition-colors">View menu →</span>
-                          </div>
-                        </button>
-                      )}
-                      {!caterer.silverPrice && !caterer.goldPrice && !caterer.platinumPrice && (
-                        <div className="text-center py-4">
-                          <p className="text-3xl font-bold text-gradient">₹{caterer.pricePerPlate}/plate</p>
-                          <span className="text-sm text-gray-500">Starting price</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Customize Menu CTA */}
-                  {caterer.menuPackages.length > 0 && (
-                    <div className="mb-5">
-                      <a
-                        href={`/catering/${caterer.id}/customize`}
-                        className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 py-3.5 font-bold text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 text-sm"
-                      >
-                        <UtensilsCrossed className="h-4 w-4" />
-                        Customize My Menu & Get Quote
-                      </a>
-                      <p className="text-center text-xs text-gray-400 mt-1.5">
-                        Pick dishes · See live price · Submit inquiry
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Guest Info */}
-                  <div className="mb-6 rounded-2xl bg-white/60 p-4">
-                    <Users className="h-6 w-6 text-purple-600 mb-2" />
-                    <p className="text-sm text-gray-600">Minimum Order</p>
-                    <p className="text-xl font-bold text-gray-900">{caterer.minGuests} guests</p>
-                  </div>
-
-                  {/* Contact Info Card */}
-                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-5 mb-6 border border-purple-100">
-                    <p className="text-sm text-gray-600 mb-3">For bookings & menu details, contact:</p>
-                    {caterer.contactName && (
-                      <p className="font-semibold text-gray-900 mb-2">{caterer.contactName}</p>
-                    )}
-                    {caterer.contactNumber && (
-                      <a 
-                        href={`tel:${caterer.contactNumber}`}
-                        className="flex items-center gap-3 text-lg font-bold text-purple-700 hover:text-purple-800"
-                      >
-                        <Phone className="h-5 w-5" />
-                        {caterer.contactNumber}
-                      </a>
-                    )}
-                  </div>
-
-                  {/* Call to Book Button */}
-                  {caterer.contactNumber && (
-                    <a
-                      href={`tel:${caterer.contactNumber}`}
-                      className="w-full rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 py-4 font-bold text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3"
-                    >
-                      <Phone className="h-5 w-5" />
-                      <span>Call for Menu & Booking</span>
-                    </a>
-                  )}
-
-                  {/* WhatsApp Button */}
-                  {caterer.contactNumber && (
-                    <a
-                      href={`https://wa.me/91${caterer.contactNumber.replace(/\D/g, '')}?text=Hi, I'm interested in catering services from ${caterer.name} for my event.`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-3 w-full rounded-xl bg-gradient-to-r from-green-600 to-green-700 py-4 font-bold text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3"
-                    >
-                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                      </svg>
-                      <span>WhatsApp Inquiry</span>
-                    </a>
-                  )}
-
-                  <p className="text-center text-sm text-gray-500 mt-4">
-                    💡 Online booking coming soon!
+            <div ref={bookingCardRef} className="sticky top-[72px] scroll-mt-20">
+              <div className="rounded-3xl bg-white border border-gray-200 shadow-xl overflow-hidden">
+                {/* Card header */}
+                <div className="bg-gradient-to-r from-purple-600 to-pink-500 px-6 py-5">
+                  <p className="text-purple-100 text-xs font-medium uppercase tracking-wider mb-1">Starting from</p>
+                  <p className="text-3xl font-extrabold text-white">
+                    ₹{caterer.pricePerPlate.toLocaleString("en-IN")}
                   </p>
+                  <p className="text-purple-200 text-xs mt-1">per plate · {caterer.minGuests}+ guests min</p>
+                </div>
 
-                  <div className="mt-4 flex gap-2">
-                    <button className="flex-1 rounded-xl border-2 border-gray-200 py-3 flex items-center justify-center gap-2 hover:bg-white/60 transition-colors">
-                      <Heart className="h-5 w-5" />
-                      Save
-                    </button>
-                    <button className="flex-1 rounded-xl border-2 border-gray-200 py-3 flex items-center justify-center gap-2 hover:bg-white/60 transition-colors">
-                      <Share2 className="h-5 w-5" />
-                      Share
-                    </button>
-                  </div>
-                </>
-              ) : (
-                /* Online Booking Mode */
-                <>
-                  {selectedPackage && (
-                    <>
-                      <div className="mb-6">
-                        <div className={`inline-block rounded-full bg-gradient-to-r ${TIER_COLORS[selectedPackage.tier]} px-4 py-1.5 mb-3`}>
-                          <span className="text-sm font-bold text-white">{selectedPackage.tier} Package</span>
-                        </div>
-                        <p className="text-4xl font-bold text-gradient">₹{selectedPackage.pricePerPlate}</p>
-                        <span className="text-sm text-gray-600">per plate</span>
+                <div className="p-6">
+                  {isFishbowl ? (
+                    /* ── Fishbowl ─────────────────────────────────── */
+                    <div className="space-y-4">
+                      {/* Tier pricing */}
+                      <div className="space-y-2">
+                        {caterer.silverPrice && (
+                          <button
+                            onClick={() => setMenuModal({ tier: "SILVER", label: "Silver", gradient: "from-gray-400 to-gray-600" })}
+                            className="w-full flex items-center justify-between rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 hover:border-slate-400 hover:shadow-sm transition-all text-left group"
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className="h-7 w-7 rounded-full bg-gradient-to-r from-gray-400 to-gray-600 flex items-center justify-center">
+                                <span className="text-white text-xs font-bold">S</span>
+                              </div>
+                              <span className="font-medium text-gray-700 text-sm">Silver</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-gray-900">₹{caterer.silverPrice}/plate</span>
+                              <span className="text-xs text-gray-400 group-hover:text-gray-600">View →</span>
+                            </div>
+                          </button>
+                        )}
+                        {caterer.goldPrice && (
+                          <button
+                            onClick={() => setMenuModal({ tier: "GOLD", label: "Gold", gradient: "from-yellow-400 to-yellow-600" })}
+                            className="w-full flex items-center justify-between rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 hover:border-amber-400 hover:shadow-sm transition-all text-left group"
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className="h-7 w-7 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-600 flex items-center justify-center">
+                                <span className="text-white text-xs font-bold">G</span>
+                              </div>
+                              <span className="font-medium text-amber-700 text-sm">Gold</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-amber-900">₹{caterer.goldPrice}/plate</span>
+                              <span className="text-xs text-amber-400 group-hover:text-amber-600">View →</span>
+                            </div>
+                          </button>
+                        )}
+                        {caterer.platinumPrice && (
+                          <button
+                            onClick={() => setMenuModal({ tier: "PLATINUM", label: "Platinum", gradient: "from-purple-500 to-pink-600" })}
+                            className="w-full flex items-center justify-between rounded-xl bg-purple-50 border border-purple-200 px-4 py-3 hover:border-purple-400 hover:shadow-sm transition-all text-left group"
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className="h-7 w-7 rounded-full bg-gradient-to-r from-purple-500 to-pink-600 flex items-center justify-center">
+                                <span className="text-white text-xs font-bold">P</span>
+                              </div>
+                              <span className="font-medium text-purple-700 text-sm">Platinum</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-purple-900">₹{caterer.platinumPrice}/plate</span>
+                              <span className="text-xs text-purple-400 group-hover:text-purple-600">View →</span>
+                            </div>
+                          </button>
+                        )}
                       </div>
 
-                      <div className="space-y-4 mb-6">
+                      {/* Customize CTA */}
+                      {caterer.menuPackages.length > 0 && (
+                        <a
+                          href={`/catering/${caterer.id}/customize`}
+                          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 py-3.5 font-bold text-white shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all text-sm"
+                        >
+                          <UtensilsCrossed className="h-4 w-4" />
+                          Customize Menu & Get Quote
+                        </a>
+                      )}
+
+                      {/* Contact card */}
+                      <div className="rounded-2xl bg-gray-50 border border-gray-100 p-4">
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Contact for booking</p>
+                        {caterer.contactName && (
+                          <p className="font-semibold text-gray-900 mb-1">{caterer.contactName}</p>
+                        )}
+                        {caterer.contactNumber && (
+                          <a href={`tel:${caterer.contactNumber}`} className="flex items-center gap-2 text-base font-bold text-purple-700 hover:text-purple-900">
+                            <Phone className="h-4 w-4" />
+                            {caterer.contactNumber}
+                          </a>
+                        )}
+                      </div>
+
+                      {caterer.contactNumber && (
+                        <a
+                          href={`tel:${caterer.contactNumber}`}
+                          className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 py-3.5 font-bold text-white shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all"
+                        >
+                          <Phone className="h-5 w-5" />
+                          Call for Menu & Booking
+                        </a>
+                      )}
+
+                      {caterer.contactNumber && (
+                        <a
+                          href={`https://wa.me/91${caterer.contactNumber.replace(/\D/g, "")}?text=Hi, I'm interested in catering services from ${caterer.name} for my event.`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-[#25D366] py-3.5 font-bold text-white shadow hover:shadow-md hover:scale-[1.02] transition-all"
+                        >
+                          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                          </svg>
+                          WhatsApp Inquiry
+                        </a>
+                      )}
+
+                      <p className="text-center text-xs text-gray-400">
+                        Online booking coming soon ·{" "}
+                        <span className="text-green-600 font-medium">● Available now</span>
+                      </p>
+                    </div>
+                  ) : (
+                    /* ── Online booking ───────────────────────────── */
+                    selectedPackage ? (
+                      <div className="space-y-4">
+                        <div className={`rounded-xl bg-gradient-to-r ${TIER_COLORS[selectedPackage.tier]} p-3 flex items-center justify-between`}>
+                          <span className="text-sm font-bold text-white">{selectedPackage.name || selectedPackage.tier} Package</span>
+                          <span className="text-white font-extrabold">₹{selectedPackage.pricePerPlate}/plate</span>
+                        </div>
+
                         <div>
-                          <label className="mb-2 block text-sm font-semibold text-gray-700">Event Date</label>
+                          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Event Date</label>
                           <input
                             type="date"
                             value={bookingDate}
                             onChange={(e) => setBookingDate(e.target.value)}
-                            min={new Date().toISOString().split('T')[0]}
-                            className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 focus:border-purple-600 outline-none"
+                            min={new Date().toISOString().split("T")[0]}
+                            className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm focus:border-purple-500 outline-none transition-colors"
                           />
                         </div>
 
                         <div>
-                          <label className="mb-2 block text-sm font-semibold text-gray-700">
-                            Number of Guests (min. {caterer.minGuests})
+                          <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                            Guests (min. {caterer.minGuests})
                           </label>
                           <input
                             type="number"
                             value={guests}
                             onChange={(e) => setGuests(e.target.value)}
-                            placeholder="Enter guest count"
+                            placeholder={`Min ${caterer.minGuests}`}
                             min={caterer.minGuests}
-                            className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 focus:border-purple-600 outline-none"
+                            className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm focus:border-purple-500 outline-none transition-colors"
                           />
                         </div>
 
                         <div>
-                          <label className="mb-2 block text-sm font-semibold text-gray-700">Special Requests</label>
+                          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Special Requests</label>
                           <textarea
                             value={message}
                             onChange={(e) => setMessage(e.target.value)}
                             placeholder="Dietary restrictions, special items..."
                             rows={3}
-                            className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 focus:border-purple-600 outline-none resize-none"
+                            className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm focus:border-purple-500 outline-none resize-none transition-colors"
                           />
                         </div>
-                      </div>
 
-                      <button
-                        onClick={handleBooking}
-                        disabled={!bookingDate || !guests || (parseInt(guests || "0") < caterer.minGuests) || bookingLoading}
-                        className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 py-4 font-bold text-white shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                      >
-                        {bookingLoading ? (
-                          <>
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                            Creating booking...
-                          </>
-                        ) : (
-                          "Request Booking"
+                        {guests && parseInt(guests) >= caterer.minGuests && (
+                          <div className="rounded-xl bg-gray-50 p-4 space-y-1.5 text-sm">
+                            <div className="flex justify-between text-gray-600">
+                              <span>₹{selectedPackage.pricePerPlate} × {guests} guests</span>
+                              <span>₹{totalPrice.toLocaleString("en-IN")}</span>
+                            </div>
+                            <div className="flex justify-between font-bold text-gray-900 pt-1.5 border-t border-gray-200">
+                              <span>Total</span>
+                              <span>₹{totalPrice.toLocaleString("en-IN")}</span>
+                            </div>
+                          </div>
                         )}
-                      </button>
 
-                      <div className="mt-4 flex gap-2">
-                        <button className="flex-1 rounded-xl border-2 border-gray-200 py-3 flex items-center justify-center gap-2 hover:bg-white/60 transition-colors">
-                          <Heart className="h-5 w-5" />
-                          Save
-                        </button>
-                        <button className="flex-1 rounded-xl border-2 border-gray-200 py-3 flex items-center justify-center gap-2 hover:bg-white/60 transition-colors">
-                          <Share2 className="h-5 w-5" />
-                          Share
+                        <button
+                          onClick={handleBooking}
+                          disabled={!bookingDate || !guests || parseInt(guests || "0") < caterer.minGuests || bookingLoading}
+                          className="w-full rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 py-4 font-bold text-white shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+                        >
+                          {bookingLoading ? (
+                            <>
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                              Creating booking…
+                            </>
+                          ) : (
+                            "Request Booking"
+                          )}
                         </button>
                       </div>
-
-                      {guests && parseInt(guests) >= caterer.minGuests && (
-                        <div className="mt-6 pt-6 border-t border-gray-200 space-y-2 text-sm text-gray-600">
-                          <div className="flex justify-between">
-                            <span>₹{selectedPackage.pricePerPlate} × {guests} guests</span>
-                            <span>₹{totalPrice.toLocaleString('en-IN')}</span>
-                          </div>
-                          <div className="flex justify-between font-semibold text-gray-900 text-lg pt-2 border-t">
-                            <span>Total</span>
-                            <span className="text-gradient">₹{totalPrice.toLocaleString('en-IN')}</span>
-                          </div>
-                        </div>
-                      )}
-                    </>
+                    ) : (
+                      <p className="text-sm text-gray-500 text-center py-4">Select a package above to book</p>
+                    )
                   )}
+
+                  {/* Save & Share */}
+                  <div className="flex gap-2 mt-4">
+                    <button className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border-2 border-gray-200 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                      <Heart className="h-4 w-4" /> Save
+                    </button>
+                    <button onClick={handleShare} className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border-2 border-gray-200 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                      <Share2 className="h-4 w-4" /> Share
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Mobile sticky bar ────────────────────────────────────── */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 lg:hidden border-t border-gray-200 bg-white/95 backdrop-blur-md px-4 py-3 flex items-center gap-3 shadow-2xl">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-gray-500">Starting from</p>
+          <p className="text-lg font-extrabold text-gray-900 leading-none">₹{caterer.pricePerPlate.toLocaleString("en-IN")}/plate</p>
+        </div>
+        <button
+          onClick={() => scrollTo(bookingCardRef)}
+          className="rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-3 font-bold text-white shadow-lg"
+        >
+          {isFishbowl ? "Contact" : "Book Now"}
+        </button>
+      </div>
+
+      {/* ── Menu Package Modal ─────────────────────────────────────── */}
+      {menuModal && (
+        <div
+          className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 p-4"
+          onClick={() => setMenuModal(null)}
+        >
+          <div
+            className="bg-white rounded-3xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={`bg-gradient-to-r ${menuModal.gradient} p-6 rounded-t-3xl`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl font-bold text-white">{menuModal.label} Package</h3>
+                  {menuModalPkg && <p className="text-white/80 text-sm mt-1">{menuModalPkg.name}</p>}
+                </div>
+                <button onClick={() => setMenuModal(null)} className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors">
+                  <X className="h-5 w-5 text-white" />
+                </button>
+              </div>
+              {menuModalPkg && (
+                <p className="text-3xl font-bold text-white mt-3">₹{menuModalPkg.pricePerPlate}/plate</p>
+              )}
+            </div>
+            <div className="p-6">
+              {menuModalPkg ? (
+                <>
+                  {menuModalPkg.description && (
+                    <p className="text-gray-600 text-sm mb-4">{menuModalPkg.description}</p>
+                  )}
+                  {menuModalPkg.itemCount && (
+                    <p className="text-xs text-gray-400 mb-3">{menuModalPkg.itemCount} items included</p>
+                  )}
+                  <MenuItemList items={menuModalPkg.items} />
                 </>
+              ) : (
+                <div className="text-center py-8">
+                  <UtensilsCrossed className="h-14 w-14 text-gray-200 mx-auto mb-4" />
+                  <p className="text-gray-800 font-semibold text-lg mb-1">{menuModal.label} Package Menu</p>
+                  <p className="text-sm text-gray-500 mb-6">
+                    Detailed menu is being updated.<br />Contact us directly to know exactly what&apos;s included.
+                  </p>
+                  {caterer.contactNumber && (
+                    <div className="space-y-3">
+                      <a
+                        href={`tel:${caterer.contactNumber}`}
+                        className="flex items-center justify-center gap-2 w-full rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 py-3 font-semibold text-white shadow hover:shadow-md transition-all"
+                      >
+                        <Phone className="h-4 w-4" />
+                        Call for Menu Details
+                      </a>
+                      <a
+                        href={`https://wa.me/91${caterer.contactNumber.replace(/\D/g, "")}?text=Hi, I'd like to know the full menu for the ${menuModal.label} package at ${caterer.name}.`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 w-full rounded-xl bg-[#25D366] py-3 font-semibold text-white shadow hover:shadow-md transition-all"
+                      >
+                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                        </svg>
+                        WhatsApp for Menu
+                      </a>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
         </div>
-      </div>
-    </div>
-
-    {/* ── Menu Package Modal ─────────────────────────────────────── */}
-    {menuModal && (
-      <div
-        className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 p-4"
-        onClick={() => setMenuModal(null)}
-      >
-        <div
-          className="bg-white rounded-3xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className={`bg-gradient-to-r ${menuModal.gradient} p-6 rounded-t-3xl`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-2xl font-bold text-white">{menuModal.label} Package</h3>
-                {menuModalPkg && (
-                  <p className="text-white/80 text-sm mt-1">{menuModalPkg.name}</p>
-                )}
-              </div>
-              <button
-                onClick={() => setMenuModal(null)}
-                className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
-              >
-                <X className="h-5 w-5 text-white" />
-              </button>
-            </div>
-            {menuModalPkg && (
-              <p className="text-3xl font-bold text-white mt-3">
-                ₹{menuModalPkg.pricePerPlate}/plate
-              </p>
-            )}
-          </div>
-
-          {/* Body */}
-          <div className="p-6">
-            {menuModalPkg ? (
-              <>
-                {menuModalPkg.description && (
-                  <p className="text-gray-600 text-sm mb-4">{menuModalPkg.description}</p>
-                )}
-                {menuModalPkg.itemCount && (
-                  <p className="text-xs text-gray-400 mb-3">{menuModalPkg.itemCount} items included</p>
-                )}
-                <MenuItemList items={menuModalPkg.items} />
-              </>
-            ) : (
-              <div className="text-center py-8">
-                <UtensilsCrossed className="h-14 w-14 text-gray-200 mx-auto mb-4" />
-                <p className="text-gray-800 font-semibold text-lg mb-1">
-                  {menuModal.label} Package Menu
-                </p>
-                <p className="text-sm text-gray-500 mb-6">
-                  Detailed menu for this package is being updated.<br />
-                  Contact us directly to know exactly what&apos;s included.
-                </p>
-                {caterer.contactNumber && (
-                  <div className="space-y-3">
-                    <a
-                      href={`tel:${caterer.contactNumber}`}
-                      className="flex items-center justify-center gap-2 w-full rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 py-3 font-semibold text-white shadow hover:shadow-md transition-all"
-                    >
-                      <Phone className="h-4 w-4" />
-                      Call for Menu Details
-                    </a>
-                    <a
-                      href={`https://wa.me/91${caterer.contactNumber.replace(/\D/g, "")}?text=Hi, I'd like to know the full menu for the ${menuModal.label} package at ${caterer.name}.`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 w-full rounded-xl bg-[#25D366] py-3 font-semibold text-white shadow hover:shadow-md transition-all"
-                    >
-                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                      </svg>
-                      WhatsApp for Menu
-                    </a>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    )}
+      )}
     </>
   );
 }
