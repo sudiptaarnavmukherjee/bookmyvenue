@@ -172,8 +172,10 @@ export async function POST(
     }
 
     const { action, role, reason } = validation.data;
+    // Accept both `role` and `newRole` from the request body
+    const effectiveRole = role ?? (body.newRole as string | undefined);
 
-    // Prevent admin from modifying themselves
+    // Prevent admin from banning themselves
     if (id === session.user.id && action === "ban") {
       return NextResponse.json(
         { error: "Cannot ban yourself" },
@@ -181,9 +183,7 @@ export async function POST(
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id },
-    });
+    const user = await prisma.user.findUnique({ where: { id } });
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -194,7 +194,7 @@ export async function POST(
 
     switch (action) {
       case "ban":
-        updateData = { isBanned: true, banReason: reason };
+        updateData = { isBanned: true, banReason: reason ?? null };
         auditAction = "USER_BANNED";
         break;
       case "unban":
@@ -206,15 +206,20 @@ export async function POST(
         auditAction = "USER_KYC_VERIFIED";
         break;
       case "change_role":
-        if (!role) {
+        if (!effectiveRole) {
           return NextResponse.json(
             { error: "Role is required for change_role action" },
             { status: 400 }
           );
         }
-        updateData = { role };
+        updateData = { role: effectiveRole };
         auditAction = "USER_ROLE_CHANGED";
         break;
+      case "update":
+        // No-op from POST; use PATCH for profile edits
+        return NextResponse.json({ success: true });
+      default:
+        return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
 
     const updatedUser = await prisma.user.update({
@@ -230,35 +235,36 @@ export async function POST(
       },
     });
 
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        action: auditAction,
-        entityType: "USER",
-        entityId: id,
-        userId: session.user.id,
-        details: {
-          action,
-          reason,
-          newRole: role,
+    // Create audit log — non-fatal: don't let logging failure block the action
+    try {
+      await prisma.auditLog.create({
+        data: {
+          action: auditAction,
+          entityType: "USER",
+          entityId: id,
+          userId: session.user.id,
+          details: {
+            action,
+            reason: reason ?? null,
+            newRole: effectiveRole ?? null,
+          },
+          previousValue: {
+            isBanned: (user as Record<string, unknown>).isBanned ?? false,
+            kycVerified: user.kycVerified,
+            role: user.role,
+          },
+          newValue: {
+            isBanned: updatedUser.isBanned,
+            kycVerified: updatedUser.kycVerified,
+            role: updatedUser.role,
+          },
         },
-        previousValue: {
-          isBanned: (user as any).isBanned,
-          kycVerified: user.kycVerified,
-          role: user.role,
-        },
-        newValue: {
-          isBanned: updatedUser.isBanned,
-          kycVerified: updatedUser.kycVerified,
-          role: updatedUser.role,
-        },
-      },
-    });
+      });
+    } catch (auditError) {
+      console.error("Audit log failed (non-fatal):", auditError);
+    }
 
-    return NextResponse.json({
-      success: true,
-      user: updatedUser,
-    });
+    return NextResponse.json({ success: true, user: updatedUser });
   } catch (error) {
     console.error("Error updating user:", error);
     return NextResponse.json(
@@ -314,19 +320,86 @@ export async function PATCH(
       select: { id: true, name: true, email: true, phone: true, role: true, isBanned: true, kycVerified: true },
     });
 
-    await prisma.auditLog.create({
-      data: {
-        action: "USER_PROFILE_EDITED",
-        entityType: "USER",
-        entityId: id,
-        userId: session.user.id,
-        details: { fields: Object.keys(updateData).filter(k => k !== "updatedAt" && k !== "password"), passwordChanged: !!password },
-      },
-    });
+    try {
+      await prisma.auditLog.create({
+        data: {
+          action: "USER_PROFILE_EDITED",
+          entityType: "USER",
+          entityId: id,
+          userId: session.user.id,
+          details: { fields: Object.keys(updateData).filter(k => k !== "updatedAt" && k !== "password"), passwordChanged: !!password },
+        },
+      });
+    } catch (auditError) {
+      console.error("Audit log failed (non-fatal):", auditError);
+    }
 
     return NextResponse.json({ success: true, user: updated });
   } catch (error) {
     console.error("Error patching user:", error);
     return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
+  }
+}
+
+// DELETE /api/admin/users/[id] - Soft-delete a user (anonymise + deactivate)
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user || session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await params;
+
+    if (id === session.user.id) {
+      return NextResponse.json(
+        { error: "Cannot delete your own account" },
+        { status: 400 }
+      );
+    }
+
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Soft delete: anonymise PII and deactivate
+    await prisma.user.update({
+      where: { id },
+      data: {
+        isActive: false,
+        isBanned: true,
+        email: `deleted_${id}@deleted.invalid`,
+        name: "Deleted User",
+        phone: null,
+        image: null,
+        banReason: "Account deleted by admin",
+      },
+    });
+
+    try {
+      await prisma.auditLog.create({
+        data: {
+          action: "USER_DELETED",
+          entityType: "USER",
+          entityId: id,
+          userId: session.user.id,
+          details: { originalEmail: user.email, originalName: user.name },
+        },
+      });
+    } catch (auditError) {
+      console.error("Audit log failed (non-fatal):", auditError);
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    return NextResponse.json(
+      { error: "Failed to delete user" },
+      { status: 500 }
+    );
   }
 }

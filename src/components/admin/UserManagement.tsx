@@ -17,6 +17,7 @@ import {
   KeyRound,
   X,
   Save,
+  Trash2,
 } from "lucide-react";
 
 interface UserData {
@@ -91,6 +92,17 @@ export default function UserManagement() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+
+  // Ban reason modal
+  const [showBanReason, setShowBanReason] = useState(false);
+  const [banReason, setBanReason] = useState("");
+  const [pendingBanUserId, setPendingBanUserId] = useState<string | null>(null);
+
+  // Delete confirmation modal
+  const [showDelete, setShowDelete] = useState(false);
+  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState("");
+  const [deleteSaving, setDeleteSaving] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -203,6 +215,45 @@ export default function UserManagement() {
       alert("Password updated successfully");
     } catch { setPasswordError("Network error"); }
     finally { setPasswordSaving(false); }
+  };
+
+  const openBan = (userId: string) => {
+    setPendingBanUserId(userId);
+    setBanReason("");
+    setShowBanReason(true);
+  };
+
+  const confirmBan = async () => {
+    if (!pendingBanUserId) return;
+    setShowBanReason(false);
+    await handleAction(pendingBanUserId, "ban", { reason: banReason.trim() || undefined });
+    setPendingBanUserId(null);
+    setBanReason("");
+  };
+
+  const openDelete = () => {
+    setDeleteConfirmEmail("");
+    setDeleteError(null);
+    setShowDelete(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedUser) return;
+    if (deleteConfirmEmail.trim().toLowerCase() !== selectedUser.email.toLowerCase()) {
+      setDeleteError("Email does not match");
+      return;
+    }
+    setDeleteSaving(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/admin/users/${selectedUser.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) { setDeleteError(data.error || "Failed to delete user"); return; }
+      setShowDelete(false);
+      setSelectedUser(null);
+      fetchUsers();
+    } catch { setDeleteError("Network error"); }
+    finally { setDeleteSaving(false); }
   };
 
   const roleColors: Record<string, string> = {
@@ -345,10 +396,11 @@ export default function UserManagement() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleAction(
-                                user.id,
-                                user.isBanned ? "unban" : "ban"
-                              );
+                              if (user.isBanned) {
+                                handleAction(user.id, "unban");
+                              } else {
+                                openBan(user.id);
+                              }
                             }}
                             disabled={actionLoading === user.id}
                             className={`p-2 rounded-lg ${
@@ -583,7 +635,13 @@ export default function UserManagement() {
                         </button>
                       )}
                       <button
-                        onClick={() => handleAction(selectedUser.id, selectedUser.isBanned ? "unban" : "ban")}
+                        onClick={() => {
+                          if (selectedUser.isBanned) {
+                            handleAction(selectedUser.id, "unban");
+                          } else {
+                            openBan(selectedUser.id);
+                          }
+                        }}
                         disabled={actionLoading === selectedUser.id}
                         className={`px-4 py-2 rounded-lg text-sm ${
                           selectedUser.isBanned
@@ -596,7 +654,7 @@ export default function UserManagement() {
                       <select
                         onChange={(e) => {
                           if (e.target.value) {
-                            handleAction(selectedUser.id, "change_role", { newRole: e.target.value });
+                            handleAction(selectedUser.id, "change_role", { role: e.target.value });
                             e.target.value = "";
                           }
                         }}
@@ -609,6 +667,12 @@ export default function UserManagement() {
                         <option value="CATERING_OWNER">Caterer</option>
                         <option value="ADMIN">Admin</option>
                       </select>
+                      <button
+                        onClick={openDelete}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Delete User
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -742,6 +806,96 @@ export default function UserManagement() {
               >
                 {passwordSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
                 Update Password
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Ban Reason Modal ──────────────────────────────────────────── */}
+      {showBanReason && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <Ban className="h-5 w-5 text-red-600" /> Ban User
+              </h3>
+              <button onClick={() => setShowBanReason(false)} className="p-1.5 hover:bg-gray-100 rounded-full">
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">
+              Optionally provide a reason for banning this user.
+            </p>
+            <textarea
+              value={banReason}
+              onChange={(e) => setBanReason(e.target.value)}
+              rows={3}
+              placeholder="Reason for ban (optional)"
+              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 resize-none"
+            />
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => setShowBanReason(false)}
+                className="flex-1 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmBan}
+                className="flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 flex items-center justify-center gap-2"
+              >
+                <Ban className="h-4 w-4" /> Confirm Ban
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Confirmation Modal ─────────────────────────────────── */}
+      {showDelete && selectedUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-lg font-bold text-red-700 flex items-center gap-2">
+                <Trash2 className="h-5 w-5" /> Delete User
+              </h3>
+              <button onClick={() => setShowDelete(false)} className="p-1.5 hover:bg-gray-100 rounded-full">
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+              <p className="text-sm text-red-700 font-medium">This action cannot be undone.</p>
+              <p className="text-sm text-red-600 mt-1">
+                The user account will be anonymised and permanently deactivated.
+                All their venues, bookings and data will remain but ownership will be removed.
+              </p>
+            </div>
+            <p className="text-sm text-gray-600 mb-2">
+              Type <span className="font-mono font-semibold text-gray-900">{selectedUser.email}</span> to confirm:
+            </p>
+            <input
+              type="email"
+              value={deleteConfirmEmail}
+              onChange={(e) => setDeleteConfirmEmail(e.target.value)}
+              placeholder="Enter user email to confirm"
+              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
+            />
+            {deleteError && <p className="text-red-600 text-sm mt-2 bg-red-50 px-3 py-2 rounded-lg">{deleteError}</p>}
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => setShowDelete(false)}
+                className="flex-1 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleteSaving || deleteConfirmEmail.toLowerCase() !== selectedUser.email.toLowerCase()}
+                className="flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {deleteSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                Delete Permanently
               </button>
             </div>
           </div>
