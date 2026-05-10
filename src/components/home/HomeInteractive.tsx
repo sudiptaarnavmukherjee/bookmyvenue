@@ -62,11 +62,14 @@ export default function HomeInteractive({
     return () => window.removeEventListener("bmv:locationUpdated", handler);
   }, []);
 
-  // Tab change handler
+  // Tab change handler — update URL silently + notify HomeTabContent via event
   const handleTabChange = useCallback((tab: "venues" | "catering") => {
     setActiveTab(tab);
-    router.replace(`/?mode=${tab}`, { scroll: false });
-  }, [router]);
+    const url = new URL(window.location.href);
+    url.searchParams.set("mode", tab);
+    window.history.replaceState({}, "", url.toString());
+    window.dispatchEvent(new CustomEvent("home:tabChanged", { detail: { tab } }));
+  }, []);
 
   // Search handler
   const handleSearch = useCallback((params: {

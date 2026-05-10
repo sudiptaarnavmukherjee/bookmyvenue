@@ -216,6 +216,54 @@ export default function CateringPage() {
           </div>
         )}
 
+        {/* Nearby Caterers Section (within 10km) */}
+        {!loading && location && (() => {
+          const nearbyCaterers = caterers.filter(c => c.distanceKm != null && c.distanceKm <= 10);
+          if (nearbyCaterers.length === 0) return null;
+          return (
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
+                  <Navigation className="w-4 h-4 text-orange-600" />
+                </div>
+                <div>
+                  <h2 className="font-bold text-gray-900 text-base leading-tight">Near You</h2>
+                  <p className="text-[11px] text-gray-400 leading-tight">Within 10 km · {nearbyCaterers.length} caterers</p>
+                </div>
+              </div>
+              <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+                {nearbyCaterers.slice(0, 10).map((caterer) => {
+                  const img = caterer.coverImage || (caterer.images ? caterer.images.split(",")[0]?.trim() : null) || "https://images.unsplash.com/photo-1555244162-803834f70033?w=200&q=70";
+                  return (
+                    <a
+                      key={caterer.id}
+                      href={`/catering/${caterer.slug || caterer.id}`}
+                      className="flex-shrink-0 w-48 bg-white rounded-xl overflow-hidden border border-gray-100 hover:shadow-md transition-shadow"
+                    >
+                      <div className="relative h-28 bg-gray-100">
+                        <img src={img} alt={caterer.name} className="w-full h-full object-cover" loading="lazy" />
+                        {caterer.distanceText && (
+                          <span className="absolute top-1.5 right-1.5 text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded-full">
+                            📍 {caterer.distanceText}
+                          </span>
+                        )}
+                        {caterer.isPureVeg && (
+                          <span className="absolute top-1.5 left-1.5 bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">🌿 Veg</span>
+                        )}
+                      </div>
+                      <div className="p-2.5">
+                        <h3 className="font-semibold text-gray-900 text-xs truncate">{caterer.name}</h3>
+                        <p className="text-gray-500 text-[10px] truncate">{caterer.area || caterer.city}</p>
+                        <p className="text-orange-600 font-bold text-xs mt-1">₹{caterer.minPlatePrice || caterer.silverPrice || 0}<span className="text-gray-400 font-normal text-[10px]">/plate</span></p>
+                      </div>
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Quick Area Filter Pills */}
         <div className="mb-6 overflow-x-auto pb-2 -mx-4 px-4">
           <div className="flex gap-2 min-w-max">
