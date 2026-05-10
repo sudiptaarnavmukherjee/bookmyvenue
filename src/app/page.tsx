@@ -45,10 +45,16 @@ export default async function HomePage({
   const mode = params.mode || "venues";
 
   // Pre-fetch both tabs server-side so client switching is instant (no extra API calls)
-  const [venues, caterers] = await Promise.all([
-    getFeaturedVenues(12),
-    getFeaturedCaterers(12),
-  ]);
+  let venues: Awaited<ReturnType<typeof getFeaturedVenues>> = [];
+  let caterers: Awaited<ReturnType<typeof getFeaturedCaterers>> = [];
+  try {
+    [venues, caterers] = await Promise.all([
+      getFeaturedVenues(12),
+      getFeaturedCaterers(12),
+    ]);
+  } catch {
+    // DB unavailable - render empty state gracefully
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
