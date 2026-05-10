@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PaymentStatus } from "@prisma/client";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
 
 // Validation schema
 const updateUserSchema = z.object({
@@ -264,5 +265,68 @@ export async function POST(
       { error: "Failed to update user" },
       { status: 500 }
     );
+  }
+}
+
+// PATCH /api/admin/users/[id] — edit profile fields + set password
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user || session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const body = await req.json();
+    const { name, email, phone, password } = body as {
+      name?: string;
+      email?: string;
+      phone?: string;
+      password?: string;
+    };
+
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+    // Validate email uniqueness if changing
+    if (email && email !== user.email) {
+      const existing = await prisma.user.findUnique({ where: { email } });
+      if (existing) return NextResponse.json({ error: "Email already in use" }, { status: 400 });
+    }
+
+    // Validate password strength
+    if (password !== undefined && password.length < 8) {
+      return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
+    }
+
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
+    if (name !== undefined) updateData.name = name.trim() || null;
+    if (email !== undefined) updateData.email = email.trim().toLowerCase();
+    if (phone !== undefined) updateData.phone = phone.trim() || null;
+    if (password !== undefined) updateData.password = await bcrypt.hash(password, 12);
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: updateData,
+      select: { id: true, name: true, email: true, phone: true, role: true, isBanned: true, kycVerified: true },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        action: "USER_PROFILE_EDITED",
+        entityType: "USER",
+        entityId: id,
+        userId: session.user.id,
+        details: { fields: Object.keys(updateData).filter(k => k !== "updatedAt" && k !== "password"), passwordChanged: !!password },
+      },
+    });
+
+    return NextResponse.json({ success: true, user: updated });
+  } catch (error) {
+    console.error("Error patching user:", error);
+    return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
   }
 }

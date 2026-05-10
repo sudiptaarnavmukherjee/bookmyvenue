@@ -12,13 +12,11 @@ import {
   Loader2,
   Search,
   Building,
-  MapPin,
   Calendar,
-  CreditCard,
-  Star,
-  Eye,
-  MoreVertical,
-  ChevronDown,
+  Pencil,
+  KeyRound,
+  X,
+  Save,
 } from "lucide-react";
 
 interface UserData {
@@ -80,6 +78,19 @@ export default function UserManagement() {
   const [selectedUser, setSelectedUser] = useState<UserDetails | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Edit profile modal
+  const [showEdit, setShowEdit] = useState(false);
+  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "" });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  // Set password modal
+  const [showPassword, setShowPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -145,6 +156,53 @@ export default function UserManagement() {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const openEdit = (user: UserDetails) => {
+    setEditForm({ name: user.name || "", email: user.email, phone: user.phone || "" });
+    setEditError(null);
+    setShowEdit(true);
+  };
+
+  const saveEdit = async () => {
+    if (!selectedUser) return;
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      const res = await fetch(`/api/admin/users/${selectedUser.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editForm),
+      });
+      const data = await res.json();
+      if (!res.ok) { setEditError(data.error || "Failed to save"); return; }
+      setShowEdit(false);
+      fetchUsers();
+      fetchUserDetails(selectedUser.id);
+    } catch { setEditError("Network error"); }
+    finally { setEditSaving(false); }
+  };
+
+  const savePassword = async () => {
+    if (!selectedUser) return;
+    if (newPassword.length < 8) { setPasswordError("Minimum 8 characters"); return; }
+    if (newPassword !== confirmPassword) { setPasswordError("Passwords do not match"); return; }
+    setPasswordSaving(true);
+    setPasswordError(null);
+    try {
+      const res = await fetch(`/api/admin/users/${selectedUser.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setPasswordError(data.error || "Failed to set password"); return; }
+      setShowPassword(false);
+      setNewPassword("");
+      setConfirmPassword("");
+      alert("Password updated successfully");
+    } catch { setPasswordError("Network error"); }
+    finally { setPasswordSaving(false); }
   };
 
   const roleColors: Record<string, string> = {
@@ -499,11 +557,25 @@ export default function UserManagement() {
                   <div className="pt-4 border-t space-y-2">
                     <h4 className="font-semibold text-gray-900 mb-3">Actions</h4>
                     <div className="flex flex-wrap gap-2">
+                      {/* Edit Profile */}
+                      <button
+                        onClick={() => openEdit(selectedUser)}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-sm"
+                      >
+                        <Pencil className="h-3.5 w-3.5" /> Edit Profile
+                      </button>
+
+                      {/* Set Password */}
+                      <button
+                        onClick={() => { setPasswordError(null); setNewPassword(""); setConfirmPassword(""); setShowPassword(true); }}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 text-sm"
+                      >
+                        <KeyRound className="h-3.5 w-3.5" /> Set Password
+                      </button>
+
                       {!selectedUser.kycVerified && (
                         <button
-                          onClick={() =>
-                            handleAction(selectedUser.id, "verify_kyc")
-                          }
+                          onClick={() => handleAction(selectedUser.id, "verify_kyc")}
                           disabled={actionLoading === selectedUser.id}
                           className="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 disabled:opacity-50 text-sm"
                         >
@@ -511,12 +583,7 @@ export default function UserManagement() {
                         </button>
                       )}
                       <button
-                        onClick={() =>
-                          handleAction(
-                            selectedUser.id,
-                            selectedUser.isBanned ? "unban" : "ban"
-                          )
-                        }
+                        onClick={() => handleAction(selectedUser.id, selectedUser.isBanned ? "unban" : "ban")}
                         disabled={actionLoading === selectedUser.id}
                         className={`px-4 py-2 rounded-lg text-sm ${
                           selectedUser.isBanned
@@ -529,18 +596,14 @@ export default function UserManagement() {
                       <select
                         onChange={(e) => {
                           if (e.target.value) {
-                            handleAction(selectedUser.id, "change_role", {
-                              newRole: e.target.value,
-                            });
+                            handleAction(selectedUser.id, "change_role", { newRole: e.target.value });
                             e.target.value = "";
                           }
                         }}
                         className="px-4 py-2 bg-gray-100 rounded-lg text-sm"
                         defaultValue=""
                       >
-                        <option value="" disabled>
-                          Change Role
-                        </option>
+                        <option value="" disabled>Change Role</option>
                         <option value="USER">User</option>
                         <option value="VENUE_OWNER">Venue Owner</option>
                         <option value="CATERING_OWNER">Caterer</option>
@@ -554,6 +617,136 @@ export default function UserManagement() {
           </div>
         )}
       </div>
+
+      {/* ── Edit Profile Modal ────────────────────────────────────────── */}
+      {showEdit && selectedUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <Pencil className="h-5 w-5 text-blue-600" /> Edit Profile
+              </h3>
+              <button onClick={() => setShowEdit(false)} className="p-1.5 hover:bg-gray-100 rounded-full">
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1">Full Name</label>
+                <input
+                  type="text"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm(f => ({ ...f, name: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  placeholder="Full name"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1">Email</label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm(f => ({ ...f, email: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  placeholder="Email address"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1">Phone</label>
+                <input
+                  type="tel"
+                  value={editForm.phone}
+                  onChange={(e) => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  placeholder="Phone number"
+                />
+              </div>
+              {editError && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{editError}</p>}
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowEdit(false)}
+                className="flex-1 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveEdit}
+                disabled={editSaving}
+                className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {editSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Set Password Modal ────────────────────────────────────────── */}
+      {showPassword && selectedUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <KeyRound className="h-5 w-5 text-amber-600" /> Set New Password
+              </h3>
+              <button onClick={() => setShowPassword(false)} className="p-1.5 hover:bg-gray-100 rounded-full">
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-500 mb-4">
+              Setting password for <span className="font-semibold text-gray-800">{selectedUser.name || selectedUser.email}</span>
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1">New Password</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                  placeholder="Min 8 characters"
+                  autoComplete="new-password"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1">Confirm Password</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                  placeholder="Repeat password"
+                  autoComplete="new-password"
+                />
+              </div>
+              {passwordError && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{passwordError}</p>}
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowPassword(false)}
+                className="flex-1 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={savePassword}
+                disabled={passwordSaving}
+                className="flex-1 py-2.5 bg-amber-600 text-white rounded-xl text-sm font-semibold hover:bg-amber-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {passwordSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                Update Password
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
