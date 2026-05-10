@@ -34,6 +34,14 @@ export async function POST(request: Request) {
       );
     }
 
+    // Block public admin registration
+    if (role === "ADMIN") {
+      return NextResponse.json(
+        { error: "Admin accounts can only be created by an existing admin" },
+        { status: 403 }
+      );
+    }
+
     // Hash password
     const hashedPassword = await hash(password, 12);
 

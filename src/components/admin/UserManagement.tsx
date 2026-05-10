@@ -18,6 +18,7 @@ import {
   X,
   Save,
   Trash2,
+  UserPlus,
 } from "lucide-react";
 
 interface UserData {
@@ -80,6 +81,9 @@ export default function UserManagement() {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  // Unified modal target — can be populated from list row OR details panel
+  const [modalTarget, setModalTarget] = useState<{ id: string; name: string | null; email: string; phone: string | null } | null>(null);
+
   // Edit profile modal
   const [showEdit, setShowEdit] = useState(false);
   const [editForm, setEditForm] = useState({ name: "", email: "", phone: "" });
@@ -103,6 +107,12 @@ export default function UserManagement() {
   const [deleteConfirmEmail, setDeleteConfirmEmail] = useState("");
   const [deleteSaving, setDeleteSaving] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Create user modal
+  const [showCreate, setShowCreate] = useState(false);
+  const [createForm, setCreateForm] = useState({ name: "", email: "", password: "", role: "USER" });
+  const [createSaving, setCreateSaving] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -170,18 +180,19 @@ export default function UserManagement() {
     }
   };
 
-  const openEdit = (user: UserDetails) => {
+  const openEdit = (user: { id: string; name: string | null; email: string; phone: string | null }) => {
+    setModalTarget(user);
     setEditForm({ name: user.name || "", email: user.email, phone: user.phone || "" });
     setEditError(null);
     setShowEdit(true);
   };
 
   const saveEdit = async () => {
-    if (!selectedUser) return;
+    if (!modalTarget) return;
     setEditSaving(true);
     setEditError(null);
     try {
-      const res = await fetch(`/api/admin/users/${selectedUser.id}`, {
+      const res = await fetch(`/api/admin/users/${modalTarget.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editForm),
@@ -190,19 +201,27 @@ export default function UserManagement() {
       if (!res.ok) { setEditError(data.error || "Failed to save"); return; }
       setShowEdit(false);
       fetchUsers();
-      fetchUserDetails(selectedUser.id);
+      if (selectedUser?.id === modalTarget.id) fetchUserDetails(modalTarget.id);
     } catch { setEditError("Network error"); }
     finally { setEditSaving(false); }
   };
 
+  const openPasswordModal = (user: { id: string; name: string | null; email: string }) => {
+    setModalTarget({ ...user, phone: null });
+    setPasswordError(null);
+    setNewPassword("");
+    setConfirmPassword("");
+    setShowPassword(true);
+  };
+
   const savePassword = async () => {
-    if (!selectedUser) return;
+    if (!modalTarget) return;
     if (newPassword.length < 8) { setPasswordError("Minimum 8 characters"); return; }
     if (newPassword !== confirmPassword) { setPasswordError("Passwords do not match"); return; }
     setPasswordSaving(true);
     setPasswordError(null);
     try {
-      const res = await fetch(`/api/admin/users/${selectedUser.id}`, {
+      const res = await fetch(`/api/admin/users/${modalTarget.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password: newPassword }),
@@ -231,29 +250,52 @@ export default function UserManagement() {
     setBanReason("");
   };
 
-  const openDelete = () => {
+  const openDelete = (user: { id: string; name: string | null; email: string }) => {
+    setModalTarget({ ...user, phone: null });
     setDeleteConfirmEmail("");
     setDeleteError(null);
     setShowDelete(true);
   };
 
   const confirmDelete = async () => {
-    if (!selectedUser) return;
-    if (deleteConfirmEmail.trim().toLowerCase() !== selectedUser.email.toLowerCase()) {
+    if (!modalTarget) return;
+    if (deleteConfirmEmail.trim().toLowerCase() !== modalTarget.email.toLowerCase()) {
       setDeleteError("Email does not match");
       return;
     }
     setDeleteSaving(true);
     setDeleteError(null);
     try {
-      const res = await fetch(`/api/admin/users/${selectedUser.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/users/${modalTarget.id}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) { setDeleteError(data.error || "Failed to delete user"); return; }
       setShowDelete(false);
-      setSelectedUser(null);
+      if (selectedUser?.id === modalTarget.id) setSelectedUser(null);
       fetchUsers();
     } catch { setDeleteError("Network error"); }
     finally { setDeleteSaving(false); }
+  };
+
+  const createUser = async () => {
+    if (!createForm.name.trim() || !createForm.email.trim() || createForm.password.length < 8) {
+      setCreateError("Name, email and password (min 8 chars) are required");
+      return;
+    }
+    setCreateSaving(true);
+    setCreateError(null);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(createForm),
+      });
+      const data = await res.json();
+      if (!res.ok) { setCreateError(data.error || "Failed to create user"); return; }
+      setShowCreate(false);
+      setCreateForm({ name: "", email: "", password: "", role: "USER" });
+      fetchUsers();
+    } catch { setCreateError("Network error"); }
+    finally { setCreateSaving(false); }
   };
 
   const roleColors: Record<string, string> = {
@@ -304,6 +346,12 @@ export default function UserManagement() {
           className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700"
         >
           Search
+        </button>
+        <button
+          onClick={() => { setCreateError(null); setCreateForm({ name: "", email: "", password: "", role: "USER" }); setShowCreate(true); }}
+          className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 flex items-center gap-2 whitespace-nowrap"
+        >
+          <UserPlus className="h-4 w-4" /> Add User
         </button>
       </div>
 
@@ -392,10 +440,23 @@ export default function UserManagement() {
                         </div>
 
                         {/* Quick Actions */}
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
+                            onClick={() => openEdit(user)}
+                            className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100"
+                            title="Edit Profile"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => openPasswordModal(user)}
+                            className="p-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100"
+                            title="Set Password"
+                          >
+                            <KeyRound className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => {
                               if (user.isBanned) {
                                 handleAction(user.id, "unban");
                               } else {
@@ -405,16 +466,25 @@ export default function UserManagement() {
                             disabled={actionLoading === user.id}
                             className={`p-2 rounded-lg ${
                               user.isBanned
-                                ? "bg-green-100 text-green-700 hover:bg-green-200"
-                                : "bg-red-100 text-red-700 hover:bg-red-200"
+                                ? "bg-green-50 text-green-600 hover:bg-green-100"
+                                : "bg-orange-50 text-orange-600 hover:bg-orange-100"
                             } disabled:opacity-50`}
                             title={user.isBanned ? "Unban User" : "Ban User"}
                           >
-                            {user.isBanned ? (
-                              <CheckCircle className="h-4 w-4" />
+                            {actionLoading === user.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : user.isBanned ? (
+                              <CheckCircle className="h-3.5 w-3.5" />
                             ) : (
-                              <Ban className="h-4 w-4" />
+                              <Ban className="h-3.5 w-3.5" />
                             )}
+                          </button>
+                          <button
+                            onClick={() => openDelete(user)}
+                            className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100"
+                            title="Delete User"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         </div>
                       </div>
@@ -619,7 +689,7 @@ export default function UserManagement() {
 
                       {/* Set Password */}
                       <button
-                        onClick={() => { setPasswordError(null); setNewPassword(""); setConfirmPassword(""); setShowPassword(true); }}
+                        onClick={() => openPasswordModal(selectedUser)}
                         className="flex items-center gap-1.5 px-4 py-2 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 text-sm"
                       >
                         <KeyRound className="h-3.5 w-3.5" /> Set Password
@@ -668,7 +738,7 @@ export default function UserManagement() {
                         <option value="ADMIN">Admin</option>
                       </select>
                       <button
-                        onClick={openDelete}
+                        onClick={() => openDelete(selectedUser)}
                         className="flex items-center gap-1.5 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
                       >
                         <Trash2 className="h-3.5 w-3.5" /> Delete User
@@ -683,7 +753,7 @@ export default function UserManagement() {
       </div>
 
       {/* ── Edit Profile Modal ────────────────────────────────────────── */}
-      {showEdit && selectedUser && (
+      {showEdit && modalTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
             <div className="flex items-center justify-between mb-5">
@@ -750,7 +820,7 @@ export default function UserManagement() {
       )}
 
       {/* ── Set Password Modal ────────────────────────────────────────── */}
-      {showPassword && selectedUser && (
+      {showPassword && modalTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
             <div className="flex items-center justify-between mb-5">
@@ -763,7 +833,7 @@ export default function UserManagement() {
             </div>
 
             <p className="text-sm text-gray-500 mb-4">
-              Setting password for <span className="font-semibold text-gray-800">{selectedUser.name || selectedUser.email}</span>
+              Setting password for <span className="font-semibold text-gray-800">{modalTarget.name || modalTarget.email}</span>
             </p>
 
             <div className="space-y-4">
@@ -853,7 +923,7 @@ export default function UserManagement() {
       )}
 
       {/* ── Delete Confirmation Modal ─────────────────────────────────── */}
-      {showDelete && selectedUser && (
+      {showDelete && modalTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
             <div className="flex items-center justify-between mb-5">
@@ -872,7 +942,7 @@ export default function UserManagement() {
               </p>
             </div>
             <p className="text-sm text-gray-600 mb-2">
-              Type <span className="font-mono font-semibold text-gray-900">{selectedUser.email}</span> to confirm:
+              Type <span className="font-mono font-semibold text-gray-900">{modalTarget.email}</span> to confirm:
             </p>
             <input
               type="email"
@@ -891,11 +961,90 @@ export default function UserManagement() {
               </button>
               <button
                 onClick={confirmDelete}
-                disabled={deleteSaving || deleteConfirmEmail.toLowerCase() !== selectedUser.email.toLowerCase()}
+                disabled={deleteSaving || deleteConfirmEmail.toLowerCase() !== modalTarget.email.toLowerCase()}
                 className="flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {deleteSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                 Delete Permanently
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Create User Modal ─────────────────────────────────────────── */}
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <UserPlus className="h-5 w-5 text-green-600" /> Add New User
+              </h3>
+              <button onClick={() => setShowCreate(false)} className="p-1.5 hover:bg-gray-100 rounded-full">
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1">Full Name</label>
+                <input
+                  type="text"
+                  value={createForm.name}
+                  onChange={(e) => setCreateForm(f => ({ ...f, name: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
+                  placeholder="Full name"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1">Email</label>
+                <input
+                  type="email"
+                  value={createForm.email}
+                  onChange={(e) => setCreateForm(f => ({ ...f, email: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
+                  placeholder="Email address"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1">Password</label>
+                <input
+                  type="password"
+                  value={createForm.password}
+                  onChange={(e) => setCreateForm(f => ({ ...f, password: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
+                  placeholder="Min 8 characters"
+                  autoComplete="new-password"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1">Role</label>
+                <select
+                  value={createForm.role}
+                  onChange={(e) => setCreateForm(f => ({ ...f, role: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
+                >
+                  <option value="USER">Customer</option>
+                  <option value="VENUE_OWNER">Venue Owner</option>
+                  <option value="CATERING_OWNER">Catering Owner</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
+              </div>
+              {createError && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{createError}</p>}
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowCreate(false)}
+                className="flex-1 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={createUser}
+                disabled={createSaving}
+                className="flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {createSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+                Create User
               </button>
             </div>
           </div>

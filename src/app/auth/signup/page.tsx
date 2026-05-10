@@ -14,7 +14,7 @@ export default function SignUpPage() {
     name: "",
     email: "",
     password: "",
-    role: "USER" as "USER" | "VENUE_OWNER" | "CATERING_OWNER" | "ADMIN"
+    role: "USER" as "USER" | "VENUE_OWNER" | "CATERING_OWNER"
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -175,17 +175,6 @@ export default function SignUpPage() {
                 }`}
               >
                 🍽️ Catering Owner
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormData({...formData, role: "ADMIN"})}
-                className={`rounded-xl p-4 font-semibold transition-all ${
-                  formData.role === "ADMIN"
-                    ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg"
-                    : "bg-white/60 text-gray-700 hover:bg-white/80"
-                }`}
-              >
-                👑 Admin
               </button>
             </div>
           </div>
