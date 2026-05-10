@@ -4,8 +4,8 @@ import CateringDetailContent, { CatererData, MenuPackageData } from "@/component
 import { AlertCircle } from "lucide-react";
 import Link from "next/link";
 
-// Revalidate every 60 seconds (ISR)
-export const revalidate = 60;
+// Always fetch fresh data so admin menu changes appear immediately
+export const dynamic = "force-dynamic";
 
 // Generate static params for all caterers at build time
 export async function generateStaticParams() {
@@ -81,6 +81,7 @@ async function getCaterer(idOrSlug: string): Promise<CatererData | null> {
         address: true,
         owner: { select: { name: true } },
         packages: {
+          where: { isTemplate: false },
           select: {
             id: true,
             tier: true,
@@ -91,6 +92,7 @@ async function getCaterer(idOrSlug: string): Promise<CatererData | null> {
             items: true,
             description: true,
           },
+          orderBy: [{ tier: "asc" }, { variant: "asc" }],
         },
         _count: { select: { reviews: true, bookings: true } },
         bookings: {

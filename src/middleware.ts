@@ -20,18 +20,19 @@ export default withAuth(
       return NextResponse.redirect(new URL("/", req.url));
     }
 
-    // Redirect owners/admin from public pages
-    // Public browsing pages — owners should be redirected to their dashboards
+    // Redirect owners/admin from public pages AND auth pages
     // Use exact match or /catering/ prefix to avoid matching /catering-owner
     const isPublicBrowsing =
       path === "/" ||
       path === "/venues" ||
       path.startsWith("/venues/") ||
       path === "/catering" ||
-      path.startsWith("/catering/");
+      path.startsWith("/catering/") ||
+      path === "/auth/signin" ||
+      path === "/auth/signup";
 
     if (token?.role === "ADMIN" && isPublicBrowsing) {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
+      return NextResponse.redirect(new URL("/admin", req.url));
     }
 
     if (token?.role === "VENUE_OWNER" && isPublicBrowsing) {
@@ -40,6 +41,12 @@ export default withAuth(
 
     if (token?.role === "CATERING_OWNER" && isPublicBrowsing) {
       return NextResponse.redirect(new URL("/catering-owner", req.url));
+    }
+
+    // Redirect USER to homepage (already there, so no extra redirect needed)
+    // Redirect /dashboard to /admin for admin users
+    if (path === "/dashboard" && token?.role === "ADMIN") {
+      return NextResponse.redirect(new URL("/admin", req.url));
     }
 
     return NextResponse.next();
@@ -63,7 +70,7 @@ export default withAuth(
 );
 
 export const config = {
-  // ONLY protected routes - NOT homepage or public pages
+  // Protected routes + auth routes (to redirect already-logged-in users)
   matcher: [
     "/dashboard/:path*",
     "/admin/:path*",
@@ -72,5 +79,9 @@ export const config = {
     "/bookings/:path*",
     "/profile/:path*",
     "/wishlist/:path*",
+    "/auth/signin",
+    "/auth/signup",
+  ],
+};
   ],
 };
