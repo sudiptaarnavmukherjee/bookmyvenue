@@ -31,6 +31,7 @@ import {
   Clock3,
   Eye,
   Star,
+  Wand2,
 } from "lucide-react";
 
 type Caterer = {
@@ -85,13 +86,11 @@ export default function CateringOwnerDashboard() {
   const [ownedCaterers, setOwnedCaterers] = useState<Caterer[]>([]);
   const [verificationLoading, setVerificationLoading] = useState<string | null>(null);
 
-  // Menus state
-  const [packages, setPackages] = useState<any[]>([]);
-  const [globalTemplates, setGlobalTemplates] = useState<any[]>([]);
+  // Menus state — uses owned caterers, not booking caterers
+  const [menuCatererId, setMenuCatererId] = useState<string | null>(null);
+  const [menuPackages, setMenuPackages] = useState<any[]>([]);
   const [loadingMenus, setLoadingMenus] = useState(false);
-  const [cloningId, setCloningId] = useState<string | null>(null);
-  const [deletingPkgId, setDeletingPkgId] = useState<string | null>(null);
-  const [editingPkg, setEditingPkg] = useState<{ id: string; price: number } | null>(null);
+  // Legacy template state (kept for calendar compatibility)
   const [selectedCatererId, setSelectedCatererId] = useState<string | null>(null);
   
   // Block date modal state
@@ -147,9 +146,13 @@ export default function CateringOwnerDashboard() {
         const ownedData = await ownedRes.json();
         const owned: Caterer[] = ownedData.caterers || [];
         setOwnedCaterers(owned);
-        // If no bookings caterer selected yet, pick first owned
+        // Set calendar caterer if not already set
         if (!selectedCatererId && owned.length > 0) {
           setSelectedCatererId(owned[0].id);
+        }
+        // Always set menuCatererId from OWNED caterers (not bookings)
+        if (owned.length > 0) {
+          setMenuCatererId(owned[0].id);
         }
       }
     } catch (err) {
@@ -203,15 +206,16 @@ export default function CateringOwnerDashboard() {
     }
   };
 
-  const fetchMenus = async (catererId: string) => {
+  // Fetch menu packages for a specific owned caterer
+  const fetchBuiltMenus = async (catererId: string) => {
     setLoadingMenus(true);
-    const [pkgRes, tplRes] = await Promise.all([
-      fetch(`/api/catering/${catererId}/packages`),
-      fetch("/api/admin/menu-templates"),
-    ]);
-    const [pkgs, tpls] = await Promise.all([pkgRes.json(), tplRes.json()]);
-    setPackages(Array.isArray(pkgs) ? pkgs : []);
-    setGlobalTemplates(Array.isArray(tpls) ? tpls : []);
+    const res = await fetch(`/api/caterer/${catererId}/menu`);
+    if (res.ok) {
+      const data = await res.json();
+      setMenuPackages(data.packages || []);
+    } else {
+      setMenuPackages([]);
+    }
     setLoadingMenus(false);
   };
 
@@ -391,7 +395,7 @@ export default function CateringOwnerDashboard() {
           <button
             onClick={() => {
               setActiveTab("menus");
-              if (selectedCatererId) fetchMenus(selectedCatererId);
+              if (menuCatererId) fetchBuiltMenus(menuCatererId);
             }}
             className={`px-6 py-3 rounded-xl font-semibold transition-all ${
               activeTab === "menus"
@@ -584,179 +588,96 @@ export default function CateringOwnerDashboard() {
 
         {/* Menus Tab */}
         {activeTab === "menus" && (
-          <div className="space-y-6">
-            {!selectedCatererId ? (
-              <div className="bg-white rounded-2xl p-8 text-center">
+          <div className="space-y-4">
+            {ownedCaterers.length === 0 ? (
+              <div className="bg-white rounded-2xl p-10 text-center shadow-sm">
                 <UtensilsCrossed className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">No catering service found. Menus will appear once you have bookings.</p>
-              </div>
-            ) : loadingMenus ? (
-              <div className="flex items-center justify-center py-16">
-                <Loader2 className="h-8 w-8 animate-spin text-purple-600 mr-3" />
-                <span className="text-gray-500">Loading menus…</span>
+                <h3 className="text-xl font-semibold text-gray-700 mb-2">No caterers linked</h3>
+                <p className="text-gray-500 max-w-sm mx-auto">
+                  An admin needs to tag your account to a catering business first. Share your email with the admin.
+                </p>
               </div>
             ) : (
               <>
-                {/* My Packages */}
+                {/* Caterer selector — only shown if multiple owned caterers */}
+                {ownedCaterers.length > 1 && (
+                  <div className="bg-white rounded-2xl px-6 py-4 shadow-sm flex items-center gap-4">
+                    <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Caterer:</label>
+                    <select
+                      value={menuCatererId || ""}
+                      onChange={(e) => {
+                        setMenuCatererId(e.target.value);
+                        fetchBuiltMenus(e.target.value);
+                      }}
+                      className="flex-1 max-w-xs border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+                    >
+                      {ownedCaterers.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name} — {c.city}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Menu Builder card */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm">
-                  <h2 className="text-xl font-bold text-gray-900 mb-4">
-                    My Packages ({packages.length})
-                  </h2>
-                  {packages.length === 0 ? (
-                    <p className="text-gray-500 text-sm">
-                      No packages yet. Clone one of the Bengali templates below to get started.
-                    </p>
+                  <div className="flex items-center justify-between mb-5">
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900">Menu Builder</h2>
+                      <p className="text-sm text-gray-500 mt-0.5">
+                        Build Silver · Gold · Platinum packages with authentic Bengali dishes
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => menuCatererId && router.push(`/catering-owner/menu-builder/${menuCatererId}`)}
+                      disabled={!menuCatererId}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 shadow-md"
+                    >
+                      <Wand2 className="h-4 w-4" />
+                      Build / Edit Menu
+                    </button>
+                  </div>
+
+                  {loadingMenus ? (
+                    <div className="flex items-center justify-center py-10 gap-3">
+                      <Loader2 className="h-6 w-6 animate-spin text-purple-600" />
+                      <span className="text-gray-500">Loading packages…</span>
+                    </div>
+                  ) : menuPackages.length === 0 ? (
+                    <div className="border-2 border-dashed border-gray-200 rounded-xl p-10 text-center">
+                      <UtensilsCrossed className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                      <p className="text-gray-600 font-medium">No menu built yet</p>
+                      <p className="text-sm text-gray-400 mt-1">
+                        Click &quot;Build / Edit Menu&quot; to set up your Silver, Gold, and Platinum packages.
+                      </p>
+                    </div>
                   ) : (
                     <div className="space-y-3">
-                      {packages.map((pkg) => (
+                      {menuPackages.map((pkg: any) => (
                         <div
                           key={pkg.id}
-                          className="border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                          className="flex items-center justify-between border rounded-xl p-4 hover:bg-gray-50 transition-colors"
                         >
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                                pkg.tier === "SILVER" ? "bg-gray-100 text-gray-700" :
-                                pkg.tier === "GOLD" ? "bg-yellow-100 text-yellow-800" :
-                                "bg-purple-100 text-purple-800"
-                              }`}>{pkg.tier}</span>
-                              <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                pkg.variant === "VEG" ? "bg-green-100 text-green-700" :
-                                pkg.variant === "JAIN" ? "bg-amber-100 text-amber-700" :
-                                "bg-red-100 text-red-700"
-                              }`}>{pkg.variant}</span>
-                              <span className="font-medium text-gray-800">{pkg.name}</span>
-                            </div>
-                            {pkg.description && (
-                              <p className="text-sm text-gray-500 mb-1">{pkg.description}</p>
-                            )}
-                            <p className="text-xs text-gray-400">{pkg.itemCount} items</p>
-                          </div>
                           <div className="flex items-center gap-3">
-                            {editingPkg?.id === pkg.id ? (
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm text-gray-600">₹</span>
-                                <input
-                                  type="number"
-                                  defaultValue={pkg.pricePerPlate}
-                                  className="w-24 border rounded-lg px-2 py-1 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      handleSavePrice(pkg.id, Number((e.target as HTMLInputElement).value));
-                                    }
-                                  }}
-                                  autoFocus
-                                />
-                                <span className="text-xs text-gray-400">/plate</span>
-                                <button
-                                  onClick={(e) => {
-                                    const input = (e.currentTarget.parentElement?.querySelector("input") as HTMLInputElement);
-                                    if (input) handleSavePrice(pkg.id, Number(input.value));
-                                  }}
-                                  className="text-xs bg-purple-600 text-white px-3 py-1 rounded-lg hover:bg-purple-700"
-                                >
-                                  Save
-                                </button>
-                                <button
-                                  onClick={() => setEditingPkg(null)}
-                                  className="text-xs text-gray-400 hover:text-gray-600"
-                                >
-                                  Cancel
-                                </button>
-                              </div>
-                            ) : (
-                              <>
-                                <span className="font-semibold text-purple-700">
-                                  ₹{pkg.pricePerPlate?.toLocaleString("en-IN")}/plate
-                                </span>
-                                <button
-                                  onClick={() => setEditingPkg({ id: pkg.id, price: pkg.pricePerPlate })}
-                                  className="text-gray-400 hover:text-purple-600 transition-colors"
-                                  title="Edit price"
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </button>
-                              </>
-                            )}
-                            <button
-                              onClick={() => handleDeletePackage(pkg.id)}
-                              disabled={deletingPkgId === pkg.id}
-                              className="text-gray-300 hover:text-red-500 transition-colors disabled:opacity-50"
-                              title="Delete package"
-                            >
-                              {deletingPkgId === pkg.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-4 w-4" />
-                              )}
-                            </button>
+                            <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                              pkg.tier === "SILVER" ? "bg-gray-100 text-gray-700" :
+                              pkg.tier === "GOLD" ? "bg-yellow-100 text-yellow-800" :
+                              "bg-purple-100 text-purple-800"
+                            }`}>
+                              {pkg.tier === "SILVER" ? "🥈" : pkg.tier === "GOLD" ? "🥇" : "💜"} {pkg.tier}
+                            </span>
+                            <div>
+                              <p className="font-semibold text-gray-900 text-sm">{pkg.name}</p>
+                              <p className="text-xs text-gray-500">{pkg.itemCount} items</p>
+                            </div>
                           </div>
+                          <p className="font-bold text-purple-700">
+                            ₹{pkg.pricePerPlate?.toLocaleString("en-IN")}
+                            <span className="text-xs font-normal text-gray-400">/plate</span>
+                          </p>
                         </div>
                       ))}
                     </div>
                   )}
-                </div>
-
-                {/* Bengali Templates to Clone */}
-                <div className="bg-white rounded-2xl p-6 shadow-sm">
-                  <h2 className="text-xl font-bold text-gray-900 mb-1">Bengali Menu Templates</h2>
-                  <p className="text-sm text-gray-500 mb-6">
-                    Click &quot;Use Template&quot; to instantly clone a pre-built Bengali menu into your packages. You can adjust pricing after cloning.
-                  </p>
-                  {(["SILVER", "GOLD", "PLATINUM"] as const).map((tier) => (
-                    <div key={tier} className="mb-6">
-                      <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                        {tier === "SILVER" ? "🥈" : tier === "GOLD" ? "🥇" : "💎"} {tier}
-                      </h3>
-                      <div className="grid gap-3 sm:grid-cols-3">
-                        {globalTemplates
-                          .filter((t) => t.tier === tier)
-                          .map((tpl) => {
-                            const alreadyAdded = packages.some(
-                              (p) => p.tier === tpl.tier && p.variant === tpl.variant
-                            );
-                            return (
-                              <div
-                                key={tpl.id}
-                                className={`border rounded-xl p-4 ${alreadyAdded ? "opacity-60" : ""}`}
-                              >
-                                <div className="flex items-center gap-2 mb-1">
-                                  {tpl.variant === "VEG" ? (
-                                    <Leaf className="h-3.5 w-3.5 text-green-600" />
-                                  ) : tpl.variant === "JAIN" ? (
-                                    <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-                                  ) : (
-                                    <Drumstick className="h-3.5 w-3.5 text-red-500" />
-                                  )}
-                                  <span className="text-sm font-semibold text-gray-800">{tpl.name}</span>
-                                </div>
-                                <p className="text-xs text-gray-500 mb-2 line-clamp-2">{tpl.description}</p>
-                                <p className="text-xs text-gray-400 mb-3">{tpl.itemCount} items · ₹{tpl.pricePerPlate}/plate</p>
-                                <button
-                                  onClick={() => !alreadyAdded && handleCloneTemplate(tpl.id)}
-                                  disabled={alreadyAdded || cloningId === tpl.id}
-                                  className={`w-full text-xs font-semibold py-2 rounded-lg flex items-center justify-center gap-1.5 transition-colors ${
-                                    alreadyAdded
-                                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                      : "bg-purple-100 text-purple-700 hover:bg-purple-600 hover:text-white"
-                                  }`}
-                                >
-                                  {cloningId === tpl.id ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  ) : alreadyAdded ? (
-                                    "Already added"
-                                  ) : (
-                                    <>
-                                      <Copy className="h-3.5 w-3.5" /> Use Template
-                                    </>
-                                  )}
-                                </button>
-                              </div>
-                            );
-                          })}
-                      </div>
-                    </div>
-                  ))}
                 </div>
               </>
             )}

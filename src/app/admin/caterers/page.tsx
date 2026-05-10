@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Utensils,
+  UtensilsCrossed,
   Search,
   Eye,
   Phone,
@@ -13,6 +14,8 @@ import {
   XCircle,
   User,
   Tag,
+  Mail,
+  X as XIcon,
   Loader2,
   ArrowLeft,
   Plus,
@@ -22,7 +25,7 @@ import {
   Bell,
   Pencil,
   Trash2,
-  BookOpen,
+  Wand2,
 } from "lucide-react";
 
 type Caterer = {
@@ -56,26 +59,21 @@ type Caterer = {
   verificationRequestedAt?: string | null;
 };
 
-type CateringOwner = {
-  id: string;
-  name: string;
-  email: string;
-};
-
 export default function AdminCaterersPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [caterers, setCaterers] = useState<Caterer[]>([]);
-  const [cateringOwners, setCateringOwners] = useState<CateringOwner[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<"all" | "fishbowl" | "verified" | "requested">("all");
   const [tagModalOpen, setTagModalOpen] = useState(false);
   const [selectedCaterer, setSelectedCaterer] = useState<Caterer | null>(null);
-  const [selectedOwnerId, setSelectedOwnerId] = useState("");
+  const [tagEmail, setTagEmail] = useState("");
   const [tagLoading, setTagLoading] = useState(false);
+  const [tagMsg, setTagMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [seedLoading, setSeedLoading] = useState(false);
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -83,7 +81,6 @@ export default function AdminCaterersPage() {
         router.push("/");
       } else {
         fetchCaterers();
-        fetchCateringOwners();
       }
     } else if (status === "unauthenticated") {
       router.push("/auth/signin");
@@ -105,40 +102,31 @@ export default function AdminCaterersPage() {
     }
   };
 
-  const fetchCateringOwners = async () => {
+  const handleTagByEmail = async () => {
+    if (!selectedCaterer || !tagEmail.trim()) return;
+    setTagLoading(true);
+    setTagMsg(null);
     try {
-      const response = await fetch("/api/admin/users?role=CATERING_OWNER&limit=200");
-      const data = await response.json();
-      if (data.users) {
-        setCateringOwners(data.users);
-      }
-    } catch (error) {
-      console.error("Failed to fetch catering owners:", error);
-    }
-  };
-
-  const handleTagOwner = async () => {
-    if (!selectedCaterer || !selectedOwnerId) return;
-
-    try {
-      setTagLoading(true);
-      const response = await fetch(`/api/admin/caterers/${selectedCaterer.id}/tag-owner`, {
+      const res = await fetch(`/api/admin/caterers/${selectedCaterer.id}/tag-owner`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ownerId: selectedOwnerId }),
+        body: JSON.stringify({ email: tagEmail.trim().toLowerCase() }),
       });
-
-      const data = await response.json();
+      const data = await res.json();
       if (data.success) {
+        setTagMsg({ type: "success", text: `✅ Owner tagged & booking enabled` });
         fetchCaterers();
-        setTagModalOpen(false);
-        setSelectedCaterer(null);
-        setSelectedOwnerId("");
+        setTimeout(() => {
+          setTagModalOpen(false);
+          setTagEmail("");
+          setTagMsg(null);
+          setSelectedCaterer(null);
+        }, 1500);
       } else {
-        alert(data.error || "Failed to tag owner");
+        setTagMsg({ type: "error", text: `❌ ${data.error || "Failed to tag"}` });
       }
-    } catch (error) {
-      alert("Failed to tag owner");
+    } catch {
+      setTagMsg({ type: "error", text: "❌ Request failed. Please try again." });
     } finally {
       setTagLoading(false);
     }
@@ -248,11 +236,18 @@ export default function AdminCaterersPage() {
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => router.push("/admin/caterers/menu-builder")}
-              className="flex items-center gap-2 rounded-xl bg-white/80 border-2 border-purple-200 px-4 py-3 font-semibold text-purple-700 hover:bg-purple-50 transition-all"
+              onClick={async () => {
+                setSeedLoading(true);
+                const r = await fetch("/api/admin/seed-bengali-menu", { method: "POST" });
+                const d = await r.json();
+                alert(d.message || d.error || "Done");
+                setSeedLoading(false);
+              }}
+              disabled={seedLoading}
+              className="flex items-center gap-2 rounded-xl bg-white/80 border-2 border-green-200 px-4 py-3 font-semibold text-green-700 hover:bg-green-50 transition-all disabled:opacity-50"
             >
-              <BookOpen className="h-5 w-5" />
-              Menu Builder
+              {seedLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Wand2 className="h-5 w-5" />}
+              Seed Bengali Menu
             </button>
             <button
               onClick={() => router.push("/admin/caterers/add")}
@@ -344,8 +339,13 @@ export default function AdminCaterersPage() {
               <div className="flex flex-col lg:flex-row lg:items-center gap-4">
                 {/* Caterer Info */}
                 <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-xl font-bold text-gray-900">{caterer.name}</h3>
+                  <div className="flex items-center gap-3 mb-2 flex-wrap">
+                    <button
+                      onClick={() => router.push(`/admin/caterers/${caterer.id}`)}
+                      className="text-xl font-bold text-gray-900 hover:text-purple-700 transition-colors text-left"
+                    >
+                      {caterer.name}
+                    </button>
                     {caterer.isPureVeg && (
                       <span className="px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium flex items-center gap-1">
                         <Leaf className="h-3 w-3" />
@@ -427,11 +427,21 @@ export default function AdminCaterersPage() {
 
                 {/* Actions */}
                 <div className="flex flex-wrap gap-2">
+                  {/* Open / Menu Builder */}
+                  <button
+                    onClick={() => router.push(`/admin/caterers/${caterer.id}`)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold hover:opacity-90 transition-opacity shadow-sm"
+                  >
+                    <UtensilsCrossed className="h-4 w-4" />
+                    Open / Build Menu
+                  </button>
+
                   {/* Tag Owner Button */}
                   <button
                     onClick={() => {
                       setSelectedCaterer(caterer);
-                      setSelectedOwnerId(caterer.taggedToOwner?.id || caterer.owner?.id || "");
+                      setTagEmail(caterer.taggedToOwner?.email || caterer.owner?.email || "");
+                      setTagMsg(null);
                       setTagModalOpen(true);
                     }}
                     className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors"
@@ -478,16 +488,16 @@ export default function AdminCaterersPage() {
                     )}
                   </button>
 
-                  {/* Edit */}
+                  {/* Edit Details (granular fields) */}
                   <button
                     onClick={() => router.push(`/admin/caterers/${caterer.id}/edit`)}
                     className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
                   >
                     <Pencil className="h-4 w-4" />
-                    Edit
+                    Edit Details
                   </button>
 
-                  {/* View */}
+                  {/* View public page */}
                   <button
                     onClick={() => router.push(`/catering/${caterer.slug}`)}
                     className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
@@ -524,72 +534,73 @@ export default function AdminCaterersPage() {
         </div>
       </div>
 
-      {/* Tag Owner Modal */}
+      {/* Tag Owner Modal — email search */}
       {tagModalOpen && selectedCaterer && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="glass-card rounded-3xl p-8 max-w-md w-full"
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8"
           >
-            <h2 className="text-2xl font-bold text-gradient mb-2">Tag Owner</h2>
-            <p className="text-gray-600 mb-6">
-              Assign <strong>{selectedCaterer.name}</strong> to a catering owner
-            </p>
-
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Select Catering Owner
-              </label>
-              <select
-                value={selectedOwnerId}
-                onChange={(e) => setSelectedOwnerId(e.target.value)}
-                className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 focus:border-purple-600 outline-none"
-              >
-                <option value="">-- Select Owner --</option>
-                {cateringOwners.map((owner) => (
-                  <option key={owner.id} value={owner.id}>
-                    {owner.name} ({owner.email})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {selectedOwnerId && (
-              <div className="mb-6 p-4 rounded-xl bg-green-50 border border-green-200">
-                <p className="text-sm text-green-700">
-                  ✓ After tagging, online booking will be <strong>enabled</strong> for this caterer.
-                  The owner will be able to manage their bookings from their dashboard.
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Tag Catering Owner</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  Link an owner account to <strong>{selectedCaterer.name}</strong>
                 </p>
               </div>
-            )}
-
-            <div className="flex gap-3">
               <button
-                onClick={() => {
-                  setTagModalOpen(false);
-                  setSelectedCaterer(null);
-                  setSelectedOwnerId("");
-                }}
-                className="flex-1 rounded-xl border-2 border-gray-200 py-3 font-semibold text-gray-700 hover:bg-white/60 transition-colors"
+                onClick={() => { setTagModalOpen(false); setTagEmail(""); setTagMsg(null); setSelectedCaterer(null); }}
+                className="p-2 rounded-full hover:bg-gray-100 text-gray-400"
               >
-                Cancel
-              </button>
-              <button
-                onClick={handleTagOwner}
-                disabled={!selectedOwnerId || tagLoading}
-                className="flex-1 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 py-3 font-semibold text-white shadow-lg hover:shadow-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {tagLoading ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    Tagging...
-                  </>
-                ) : (
-                  "Tag & Enable Booking"
-                )}
+                <XIcon className="h-5 w-5" />
               </button>
             </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Owner Email Address</label>
+              <div className="flex gap-2">
+                <div className="flex-1 flex items-center gap-2 border-2 border-gray-200 rounded-xl px-3 py-2.5 focus-within:border-purple-500 transition-colors">
+                  <Mail className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  <input
+                    type="email"
+                    placeholder="owner@email.com"
+                    value={tagEmail}
+                    onChange={(e) => { setTagEmail(e.target.value); setTagMsg(null); }}
+                    onKeyDown={(e) => e.key === "Enter" && handleTagByEmail()}
+                    className="flex-1 outline-none text-sm"
+                    autoFocus
+                  />
+                </div>
+                <button
+                  onClick={handleTagByEmail}
+                  disabled={!tagEmail.trim() || tagLoading}
+                  className="px-4 py-2.5 rounded-xl bg-purple-600 text-white font-semibold hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2 text-sm whitespace-nowrap"
+                >
+                  {tagLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Tag className="h-4 w-4" />}
+                  Tag
+                </button>
+              </div>
+
+              {tagMsg && (
+                <p className={`mt-2 text-sm font-medium ${tagMsg.type === "success" ? "text-green-600" : "text-red-600"}`}>
+                  {tagMsg.text}
+                </p>
+              )}
+            </div>
+
+            <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
+              <p className="text-xs text-blue-700 leading-relaxed">
+                <strong>How it works:</strong> The user just needs to sign up with their email. After tagging, their account will be promoted to Catering Owner and they can manage menus, prices, and bookings from their dashboard.
+              </p>
+            </div>
+
+            <button
+              onClick={() => { setTagModalOpen(false); setTagEmail(""); setTagMsg(null); setSelectedCaterer(null); }}
+              className="w-full mt-4 rounded-xl border-2 border-gray-200 py-3 font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Close
+            </button>
           </motion.div>
         </div>
       )}

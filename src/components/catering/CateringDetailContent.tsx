@@ -430,6 +430,22 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
                     </div>
                   </div>
 
+                  {/* Customize Menu CTA */}
+                  {caterer.menuPackages.length > 0 && (
+                    <div className="mb-5">
+                      <a
+                        href={`/catering/${caterer.id}/customize`}
+                        className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 py-3.5 font-bold text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 text-sm"
+                      >
+                        <UtensilsCrossed className="h-4 w-4" />
+                        Customize My Menu & Get Quote
+                      </a>
+                      <p className="text-center text-xs text-gray-400 mt-1.5">
+                        Pick dishes · See live price · Submit inquiry
+                      </p>
+                    </div>
+                  )}
+
                   {/* Guest Info */}
                   <div className="mb-6 rounded-2xl bg-white/60 p-4">
                     <Users className="h-6 w-6 text-purple-600 mb-2" />
