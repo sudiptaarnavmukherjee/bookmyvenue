@@ -22,7 +22,7 @@ export default function DesktopNav() {
   };
 
   return (
-    <nav className="hidden lg:block glass-card sticky top-0 z-50 border-b border-white/20">
+    <nav className="hidden lg:block glass-card fixed top-0 left-0 right-0 z-50 border-b border-white/20">
       <div className="mx-auto max-w-7xl px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}

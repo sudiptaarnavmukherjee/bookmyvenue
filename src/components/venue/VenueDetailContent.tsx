@@ -218,55 +218,56 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
 
         {/* ── Hero Gallery ─────────────────────────────────────────── */}
         <div ref={heroRef} className="mx-auto max-w-7xl px-4 sm:px-6">
-          {venue.images.length === 0 ? (
-            <div className="h-[420px] w-full rounded-2xl bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
-              <Grid3x3 className="h-16 w-16 text-purple-300" />
-            </div>
-          ) : venue.images.length === 1 ? (
-            <div
-              className="relative h-[420px] w-full rounded-2xl overflow-hidden cursor-pointer group"
-              onClick={() => setShowLightbox(true)}
-            >
+          {/* Main image */}
+          <div
+            className="relative w-full rounded-2xl overflow-hidden cursor-pointer bg-gray-100"
+            style={{ aspectRatio: '16/7' }}
+            onClick={() => setShowLightbox(true)}
+          >
+            {venue.images.length > 0 ? (
               <img
-                src={venue.images[0]}
+                src={venue.images[selectedImage]}
                 alt={venue.name}
-                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                className="h-full w-full object-contain"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-            </div>
-          ) : (
-            <div className="grid grid-cols-4 grid-rows-2 gap-2 h-[420px] rounded-2xl overflow-hidden">
-              {/* Main large image */}
-              <div
-                className="col-span-2 row-span-2 relative cursor-pointer group overflow-hidden"
-                onClick={() => { setSelectedImage(0); setShowLightbox(true); }}
-              >
-                <img
-                  src={venue.images[0]}
-                  alt={venue.name}
-                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+            ) : (
+              <div className="h-full w-full flex items-center justify-center">
+                <Grid3x3 className="h-16 w-16 text-purple-300" />
               </div>
-              {/* Side images */}
-              {venue.images.slice(1, 5).map((img, idx) => (
-                <div
-                  key={idx}
-                  className="relative cursor-pointer group overflow-hidden"
-                  onClick={() => { setSelectedImage(idx + 1); setShowLightbox(true); }}
+            )}
+            {venue.images.length > 1 && (
+              <>
+                <button
+                  onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/40 p-2 text-white hover:bg-black/60 transition-colors"
                 >
-                  <img
-                    src={img}
-                    alt=""
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                  {idx === 3 && venue.images.length > 5 && (
-                    <div className="absolute inset-0 bg-black/55 flex flex-col items-center justify-center">
-                      <Grid3x3 className="h-6 w-6 text-white mb-1" />
-                      <span className="text-white font-bold text-sm">+{venue.images.length - 5} more</span>
-                    </div>
-                  )}
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/40 p-2 text-white hover:bg-black/60 transition-colors"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+                <div className="absolute bottom-3 right-3 rounded-full bg-black/50 px-3 py-1 text-xs text-white">
+                  {selectedImage + 1} / {venue.images.length}
                 </div>
+              </>
+            )}
+          </div>
+          {/* Thumbnails */}
+          {venue.images.length > 1 && (
+            <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+              {venue.images.map((img, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setSelectedImage(idx)}
+                  className={`flex-shrink-0 h-16 w-24 rounded-xl overflow-hidden border-2 transition-all ${
+                    selectedImage === idx ? 'border-purple-600' : 'border-transparent opacity-70 hover:opacity-100'
+                  }`}
+                >
+                  <img src={img} alt="" className="h-full w-full object-cover" />
+                </button>
               ))}
             </div>
           )}
