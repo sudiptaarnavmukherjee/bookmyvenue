@@ -7,7 +7,7 @@ import { api } from "@/lib/api-client";
 import { 
   MapPin, Star, Leaf, ArrowLeft, Heart, Share2,
   Check, Users, Loader2, Phone, Eye,
-  ChevronDown, ChevronUp, Drumstick, Sparkles
+  ChevronDown, ChevronUp, Drumstick, Sparkles, X, UtensilsCrossed
 } from "lucide-react";
 import MapEmbed from "@/components/venue/MapEmbed";
 
@@ -134,6 +134,12 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
   const [bookingDate, setBookingDate] = useState("");
   const [guests, setGuests] = useState("");
   const [message, setMessage] = useState("");
+  // Menu modal for tier pricing cards
+  const [menuModal, setMenuModal] = useState<{ tier: "SILVER" | "GOLD" | "PLATINUM"; label: string; gradient: string } | null>(null);
+
+  const menuModalPkg = menuModal
+    ? caterer.menuPackages.find((p) => p.tier === menuModal.tier) ?? null
+    : null;
 
   // Track view on mount
   useState(() => {
@@ -364,37 +370,55 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
                     <h3 className="text-lg font-semibold text-gray-800 mb-4">Package Pricing</h3>
                     <div className="space-y-3">
                       {caterer.silverPrice && (
-                        <div className="flex items-center justify-between bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl p-4 border border-gray-200">
+                        <button
+                          onClick={() => setMenuModal({ tier: "SILVER", label: "Silver", gradient: "from-gray-400 to-gray-600" })}
+                          className="w-full flex items-center justify-between bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl p-4 border border-gray-200 hover:border-gray-400 hover:shadow-md transition-all text-left group"
+                        >
                           <div className="flex items-center gap-2">
                             <div className="h-8 w-8 rounded-full bg-gradient-to-r from-gray-400 to-gray-600 flex items-center justify-center">
                               <span className="text-white text-xs font-bold">S</span>
                             </div>
                             <span className="font-medium text-gray-700">Silver</span>
                           </div>
-                          <span className="text-xl font-bold text-gray-800">₹{caterer.silverPrice}/plate</span>
-                        </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xl font-bold text-gray-800">₹{caterer.silverPrice}/plate</span>
+                            <span className="text-xs text-gray-400 group-hover:text-gray-600 transition-colors">View menu →</span>
+                          </div>
+                        </button>
                       )}
                       {caterer.goldPrice && (
-                        <div className="flex items-center justify-between bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl p-4 border border-amber-200">
+                        <button
+                          onClick={() => setMenuModal({ tier: "GOLD", label: "Gold", gradient: "from-yellow-400 to-yellow-600" })}
+                          className="w-full flex items-center justify-between bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl p-4 border border-amber-200 hover:border-amber-400 hover:shadow-md transition-all text-left group"
+                        >
                           <div className="flex items-center gap-2">
                             <div className="h-8 w-8 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-600 flex items-center justify-center">
                               <span className="text-white text-xs font-bold">G</span>
                             </div>
                             <span className="font-medium text-amber-700">Gold</span>
                           </div>
-                          <span className="text-xl font-bold text-amber-800">₹{caterer.goldPrice}/plate</span>
-                        </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xl font-bold text-amber-800">₹{caterer.goldPrice}/plate</span>
+                            <span className="text-xs text-amber-400 group-hover:text-amber-600 transition-colors">View menu →</span>
+                          </div>
+                        </button>
                       )}
                       {caterer.platinumPrice && (
-                        <div className="flex items-center justify-between bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-200">
+                        <button
+                          onClick={() => setMenuModal({ tier: "PLATINUM", label: "Platinum", gradient: "from-purple-500 to-pink-600" })}
+                          className="w-full flex items-center justify-between bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-200 hover:border-purple-400 hover:shadow-md transition-all text-left group"
+                        >
                           <div className="flex items-center gap-2">
                             <div className="h-8 w-8 rounded-full bg-gradient-to-r from-purple-500 to-pink-600 flex items-center justify-center">
                               <span className="text-white text-xs font-bold">P</span>
                             </div>
                             <span className="font-medium text-purple-700">Platinum</span>
                           </div>
-                          <span className="text-xl font-bold text-purple-800">₹{caterer.platinumPrice}/plate</span>
-                        </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xl font-bold text-purple-800">₹{caterer.platinumPrice}/plate</span>
+                            <span className="text-xs text-purple-400 group-hover:text-purple-600 transition-colors">View menu →</span>
+                          </div>
+                        </button>
                       )}
                       {!caterer.silverPrice && !caterer.goldPrice && !caterer.platinumPrice && (
                         <div className="text-center py-4">
@@ -568,5 +592,90 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
         </div>
       </div>
     </div>
+
+    {/* ── Menu Package Modal ─────────────────────────────────────── */}
+    {menuModal && (
+      <div
+        className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 p-4"
+        onClick={() => setMenuModal(null)}
+      >
+        <div
+          className="bg-white rounded-3xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className={`bg-gradient-to-r ${menuModal.gradient} p-6 rounded-t-3xl`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-2xl font-bold text-white">{menuModal.label} Package</h3>
+                {menuModalPkg && (
+                  <p className="text-white/80 text-sm mt-1">{menuModalPkg.name}</p>
+                )}
+              </div>
+              <button
+                onClick={() => setMenuModal(null)}
+                className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+              >
+                <X className="h-5 w-5 text-white" />
+              </button>
+            </div>
+            {menuModalPkg && (
+              <p className="text-3xl font-bold text-white mt-3">
+                ₹{menuModalPkg.pricePerPlate}/plate
+              </p>
+            )}
+          </div>
+
+          {/* Body */}
+          <div className="p-6">
+            {menuModalPkg ? (
+              <>
+                {menuModalPkg.description && (
+                  <p className="text-gray-600 text-sm mb-4">{menuModalPkg.description}</p>
+                )}
+                {menuModalPkg.itemCount && (
+                  <p className="text-xs text-gray-400 mb-3">{menuModalPkg.itemCount} items included</p>
+                )}
+                <MenuItemList items={menuModalPkg.items} />
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <UtensilsCrossed className="h-14 w-14 text-gray-200 mx-auto mb-4" />
+                <p className="text-gray-800 font-semibold text-lg mb-1">
+                  {menuModal.label} Package Menu
+                </p>
+                <p className="text-sm text-gray-500 mb-6">
+                  Detailed menu for this package is being updated.<br />
+                  Contact us directly to know exactly what&apos;s included.
+                </p>
+                {caterer.contactNumber && (
+                  <div className="space-y-3">
+                    <a
+                      href={`tel:${caterer.contactNumber}`}
+                      className="flex items-center justify-center gap-2 w-full rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 py-3 font-semibold text-white shadow hover:shadow-md transition-all"
+                    >
+                      <Phone className="h-4 w-4" />
+                      Call for Menu Details
+                    </a>
+                    <a
+                      href={`https://wa.me/91${caterer.contactNumber.replace(/\D/g, "")}?text=Hi, I'd like to know the full menu for the ${menuModal.label} package at ${caterer.name}.`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 w-full rounded-xl bg-[#25D366] py-3 font-semibold text-white shadow hover:shadow-md transition-all"
+                    >
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                      </svg>
+                      WhatsApp for Menu
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
   );
 }

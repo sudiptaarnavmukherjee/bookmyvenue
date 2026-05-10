@@ -22,6 +22,7 @@ import {
   Bell,
   Pencil,
   Trash2,
+  BookOpen,
 } from "lucide-react";
 
 type Caterer = {
@@ -106,7 +107,7 @@ export default function AdminCaterersPage() {
 
   const fetchCateringOwners = async () => {
     try {
-      const response = await fetch("/api/admin/users?role=CATERING_OWNER");
+      const response = await fetch("/api/admin/users?role=CATERING_OWNER&limit=200");
       const data = await response.json();
       if (data.users) {
         setCateringOwners(data.users);
@@ -245,13 +246,22 @@ export default function AdminCaterersPage() {
               <p className="text-gray-600">Tag owners and enable online booking</p>
             </div>
           </div>
-          <button
-            onClick={() => router.push("/admin/caterers/add")}
-            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-5 py-3 font-semibold text-white shadow-lg hover:shadow-xl transition-all"
-          >
-            <Plus className="h-5 w-5" />
-            Add Caterer
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.push("/admin/caterers/menu-builder")}
+              className="flex items-center gap-2 rounded-xl bg-white/80 border-2 border-purple-200 px-4 py-3 font-semibold text-purple-700 hover:bg-purple-50 transition-all"
+            >
+              <BookOpen className="h-5 w-5" />
+              Menu Builder
+            </button>
+            <button
+              onClick={() => router.push("/admin/caterers/add")}
+              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-5 py-3 font-semibold text-white shadow-lg hover:shadow-xl transition-all"
+            >
+              <Plus className="h-5 w-5" />
+              Add Caterer
+            </button>
+          </div>
         </div>
 
         {/* Search & Filter */}

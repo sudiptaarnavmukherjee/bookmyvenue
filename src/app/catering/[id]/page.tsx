@@ -84,7 +84,10 @@ async function getCaterer(idOrSlug: string): Promise<CatererData | null> {
           select: {
             id: true,
             tier: true,
+            name: true,
+            variant: true,
             pricePerPlate: true,
+            itemCount: true,
             items: true,
             description: true,
           },
@@ -109,16 +112,30 @@ async function getCaterer(idOrSlug: string): Promise<CatererData | null> {
       ? caterer.cuisines.split(",").map((c) => c.trim()).filter(Boolean)
       : (caterer.cuisines as string[]) || [];
 
-    // Transform packages
-    const menuPackages: MenuPackageData[] = caterer.packages.map((pkg) => ({
-      id: pkg.id,
-      tier: pkg.tier as "SILVER" | "GOLD" | "DIAMOND" | "PLATINUM",
-      pricePerPlate: pkg.pricePerPlate,
-      items: typeof pkg.items === "string"
-        ? pkg.items.split(",").map((i) => i.trim()).filter(Boolean)
-        : (pkg.items as string[]) || [],
-      description: pkg.description,
-    }));
+    // Transform packages — items field is Json (string[], Record<string,string[]>, or CSV)
+    const menuPackages: MenuPackageData[] = caterer.packages.map((pkg) => {
+      const raw = pkg.items;
+      let items: Record<string, string[]> | string[];
+      if (typeof raw === "string") {
+        items = raw.split(",").map((i) => i.trim()).filter(Boolean);
+      } else if (Array.isArray(raw)) {
+        items = raw as string[];
+      } else if (raw && typeof raw === "object") {
+        items = raw as Record<string, string[]>;
+      } else {
+        items = [];
+      }
+      return {
+        id: pkg.id,
+        tier: pkg.tier as "SILVER" | "GOLD" | "DIAMOND" | "PLATINUM",
+        name: pkg.name,
+        variant: (pkg.variant ?? null) as "NON_VEG" | "VEG" | "JAIN" | null,
+        pricePerPlate: pkg.pricePerPlate,
+        itemCount: pkg.itemCount ?? null,
+        items,
+        description: pkg.description,
+      };
+    });
 
     return {
       id: caterer.id,
