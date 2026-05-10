@@ -21,15 +21,24 @@ export default withAuth(
     }
 
     // Redirect owners/admin from public pages
-    if (token?.role === "ADMIN" && (path === "/" || path.startsWith("/venues") || path.startsWith("/catering"))) {
+    // Public browsing pages — owners should be redirected to their dashboards
+    // Use exact match or /catering/ prefix to avoid matching /catering-owner
+    const isPublicBrowsing =
+      path === "/" ||
+      path === "/venues" ||
+      path.startsWith("/venues/") ||
+      path === "/catering" ||
+      path.startsWith("/catering/");
+
+    if (token?.role === "ADMIN" && isPublicBrowsing) {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
 
-    if (token?.role === "VENUE_OWNER" && (path === "/" || path.startsWith("/venues") || path.startsWith("/catering"))) {
+    if (token?.role === "VENUE_OWNER" && isPublicBrowsing) {
       return NextResponse.redirect(new URL("/venue-owner", req.url));
     }
 
-    if (token?.role === "CATERING_OWNER" && (path === "/" || path.startsWith("/venues") || path.startsWith("/catering"))) {
+    if (token?.role === "CATERING_OWNER" && isPublicBrowsing) {
       return NextResponse.redirect(new URL("/catering-owner", req.url));
     }
 
