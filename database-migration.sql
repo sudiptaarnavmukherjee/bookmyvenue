@@ -6,6 +6,10 @@
 -- VENUE TABLE - Add missing columns
 -- =====================================================
 
+-- Location coordinates
+ALTER TABLE "Venue" ADD COLUMN IF NOT EXISTS "latitude" DOUBLE PRECISION;
+ALTER TABLE "Venue" ADD COLUMN IF NOT EXISTS "longitude" DOUBLE PRECISION;
+
 -- Fishbowl Model - Prime/Non-Prime Pricing
 ALTER TABLE "Venue" ADD COLUMN IF NOT EXISTS "primeDayPrice" DOUBLE PRECISION;
 ALTER TABLE "Venue" ADD COLUMN IF NOT EXISTS "nonPrimeDayPrice" DOUBLE PRECISION;
@@ -64,6 +68,13 @@ ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "cancellationReason" TEXT;
 -- CATERER TABLE - Add missing columns
 -- =====================================================
 
+ALTER TABLE "Caterer" ADD COLUMN IF NOT EXISTS "latitude" DOUBLE PRECISION;
+ALTER TABLE "Caterer" ADD COLUMN IF NOT EXISTS "longitude" DOUBLE PRECISION;
+ALTER TABLE "Caterer" ADD COLUMN IF NOT EXISTS "silverPrice" DOUBLE PRECISION;
+ALTER TABLE "Caterer" ADD COLUMN IF NOT EXISTS "goldPrice" DOUBLE PRECISION;
+ALTER TABLE "Caterer" ADD COLUMN IF NOT EXISTS "platinumPrice" DOUBLE PRECISION;
+ALTER TABLE "Caterer" ADD COLUMN IF NOT EXISTS "googleMapsUrl" TEXT;
+ALTER TABLE "Caterer" ADD COLUMN IF NOT EXISTS "verificationRequestedAt" TIMESTAMP(3);
 ALTER TABLE "Caterer" ADD COLUMN IF NOT EXISTS "isAdminListed" BOOLEAN DEFAULT true;
 ALTER TABLE "Caterer" ADD COLUMN IF NOT EXISTS "taggedToOwnerId" TEXT;
 ALTER TABLE "Caterer" ADD COLUMN IF NOT EXISTS "contactNumber" TEXT;
