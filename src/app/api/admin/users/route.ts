@@ -20,8 +20,8 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search");
     const skip = (page - 1) * limit;
 
-    // Build where clause
-    const where: any = {};
+    // Build where clause — always exclude soft-deleted users
+    const where: any = { isActive: { not: false } };
 
     if (role) {
       where.role = role;
