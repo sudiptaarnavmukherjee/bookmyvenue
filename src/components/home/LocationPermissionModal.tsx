@@ -141,8 +141,7 @@ export default function LocationPermissionModal({ onLocationSet, onDismiss }: Pr
     // 3. Last resort: fuzzy match against known Kolkata areas
     if (lat === 0 || lng === 0) {
       const areaCoords = getAreaCoordinates(label);
-      lat = areaCoords.lat;
-      lng = areaCoords.lng;
+      if (areaCoords) { lat = areaCoords.lat; lng = areaCoords.lng; }
     }
 
     storeBmvLocation(lat, lng, label);
