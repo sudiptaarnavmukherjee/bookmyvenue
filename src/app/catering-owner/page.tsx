@@ -245,45 +245,6 @@ export default function CateringOwnerDashboard() {
     }
   };
 
-  const handleCloneTemplate = async (templateId: string) => {
-    const res = await fetch(`/api/catering/${selectedCatererId}/packages`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fromTemplateId: templateId }),
-    });
-    if (res.ok) {
-      if (selectedCatererId) await fetchMenus(selectedCatererId);
-    } else {
-      alert("Failed to clone template");
-    }
-    setCloningId(null);
-  };
-
-  const handleDeletePackage = async (packageId: string) => {
-    if (!selectedCatererId || !confirm("Delete this package?")) return;
-    setDeletingPkgId(packageId);
-    await fetch(`/api/catering/${selectedCatererId}/packages?packageId=${packageId}`, {
-      method: "DELETE",
-    });
-    setPackages((prev) => prev.filter((p) => p.id !== packageId));
-    setDeletingPkgId(null);
-  };
-
-  const handleSavePrice = async (pkgId: string, newPrice: number) => {
-    if (!selectedCatererId) return;
-    const res = await fetch(`/api/catering/${selectedCatererId}/packages`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ packageId: pkgId, pricePerPlate: newPrice }),
-    });
-    if (res.ok) {
-      setPackages((prev) =>
-        prev.map((p) => (p.id === pkgId ? { ...p, pricePerPlate: newPrice } : p))
-      );
-      setEditingPkg(null);
-    }
-  };
-
   const pendingBookings = bookings.filter(b => b.status === "PENDING");
   const confirmedBookings = bookings.filter(b => b.status === "CONFIRMED");
   const totalRevenue = confirmedBookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
