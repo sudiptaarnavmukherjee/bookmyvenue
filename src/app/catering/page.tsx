@@ -1,7 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { Search, Filter, MapPin, X, Loader2, AlertCircle, Leaf, UtensilsCrossed, Navigation } from "lucide-react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import {
+  Search, MapPin, X, AlertCircle, Navigation,
+  SlidersHorizontal, ChevronLeft, CheckCircle, Leaf, UtensilsCrossed,
+} from "lucide-react";
 import { CatererCard } from "@/components/catering/CatererCard";
 import { useLocation } from "@/hooks/useLocation";
 
@@ -28,17 +31,21 @@ type Caterer = {
   rating?: number;
   distanceText?: string | null;
   distanceKm?: number | null;
-  _count?: {
-    reviews: number;
-    bookings: number;
-  };
+  _count?: { reviews: number; bookings: number };
 };
 
-// Popular areas in Kolkata
 const POPULAR_AREAS = [
   "Salt Lake", "New Town", "Rajarhat", "Park Street", "Ballygunge",
-  "Jadavpur", "Behala", "Barasat", "Madhyamgram", "Howrah"
+  "Jadavpur", "Behala", "Barasat", "Madhyamgram", "Howrah",
 ];
+
+const SORT_OPTIONS = [
+  { value: "default",    label: "🍽️ Featured" },
+  { value: "nearby",    label: "🧭 Nearest" },
+  { value: "price-low", label: "💰 Low–High" },
+  { value: "price-high",label: "💰 High–Low" },
+  { value: "veg-first", label: "🥬 Veg First" },
+] as const;
 
 export default function CateringPage() {
   const [caterers, setCaterers] = useState<Caterer[]>([]);
@@ -65,17 +72,14 @@ export default function CateringPage() {
         if (sortBy === "nearby") params.set("sortBy", "nearby");
         const response = await fetch(`/api/catering?${params.toString()}`);
         const data = await response.json();
-        
         if (data.error) {
           setError(data.error);
         } else {
-          // Transform API data
-          const rawCaterers = data.caterers || [];
-          const transformedCaterers = rawCaterers.map((c: any) => ({
+          const raw = data.caterers || [];
+          setCaterers(raw.map((c: any) => ({
             ...c,
             minPlatePrice: c.minPlatePrice || c.pricePerPlate || c.silverPrice || 0,
-          }));
-          setCaterers(transformedCaterers);
+          })));
         }
       } catch (err: any) {
         setError(err.message || "Failed to load caterers");
@@ -86,326 +90,245 @@ export default function CateringPage() {
     fetchCaterers();
   }, [location, locationLoading, sortBy]);
 
-  // Get unique areas from caterers
-  const availableAreas = useMemo(() => {
-    const areas = caterers.map(c => c.area).filter(Boolean) as string[];
-    return [...new Set(areas)].sort();
-  }, [caterers]);
-
-  // Client-side filtering and sorting
   const filteredCaterers = useMemo(() => {
-    let result = caterers.filter(caterer => {
-      // Search filter
+    let result = caterers.filter((c) => {
       if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        if (!caterer.name.toLowerCase().includes(query) && 
-            !caterer.city.toLowerCase().includes(query) &&
-            !(caterer.area || "").toLowerCase().includes(query)) {
-          return false;
-        }
+        const q = searchQuery.toLowerCase();
+        if (
+          !c.name.toLowerCase().includes(q) &&
+          !c.city.toLowerCase().includes(q) &&
+          !(c.area || "").toLowerCase().includes(q)
+        ) return false;
       }
-      // Area filter
-      if (selectedArea && caterer.area !== selectedArea) return false;
-      // Pure veg filter
-      if (pureVegOnly && !caterer.isPureVeg) return false;
+      if (selectedArea && c.area !== selectedArea) return false;
+      if (pureVegOnly && !c.isPureVeg) return false;
       return true;
     });
 
-    // Sorting
     switch (sortBy) {
-      case "nearby":
-        result.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
-        break;
-      case "price-low":
-        result.sort((a, b) => (a.minPlatePrice || 0) - (b.minPlatePrice || 0));
-        break;
-      case "price-high":
-        result.sort((a, b) => (b.minPlatePrice || 0) - (a.minPlatePrice || 0));
-        break;
-      case "veg-first":
-        result.sort((a, b) => {
-          if (a.isPureVeg === b.isPureVeg) return 0;
-          return a.isPureVeg ? -1 : 1;
-        });
-        break;
+      case "nearby":    result.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity)); break;
+      case "price-low": result.sort((a, b) => (a.minPlatePrice || 0) - (b.minPlatePrice || 0)); break;
+      case "price-high":result.sort((a, b) => (b.minPlatePrice || 0) - (a.minPlatePrice || 0)); break;
+      case "veg-first": result.sort((a, b) => (a.isPureVeg === b.isPureVeg ? 0 : a.isPureVeg ? -1 : 1)); break;
     }
-
     return result;
   }, [caterers, searchQuery, selectedArea, pureVegOnly, sortBy]);
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setSearchQuery("");
     setSortBy("default");
     setSelectedArea("");
     setPureVegOnly(false);
-  };
+  }, []);
 
-  const getCatererImage = (caterer: Caterer) => {
-    if (caterer.coverImage) return caterer.coverImage;
-    if (caterer.images) {
-      const imgs = caterer.images.split(",");
-      return imgs[0] || "https://images.unsplash.com/photo-1555244162-803834f70033?w=800";
-    }
+  const getCatererImage = useCallback((c: Caterer) => {
+    if (c.coverImage) return c.coverImage;
+    if (c.images) return c.images.split(",")[0] || "https://images.unsplash.com/photo-1555244162-803834f70033?w=800";
     return "https://images.unsplash.com/photo-1555244162-803834f70033?w=800";
-  };
+  }, []);
+
+  const activeFilterCount = (pureVegOnly ? 1 : 0) + (selectedArea ? 1 : 0);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      {/* Header */}
-      <div className="bg-white border-b sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Wedding Caterers</h1>
-              <p className="text-sm text-gray-600">Delicious food for your special celebration</p>
+      {/* ── Sticky top bar ─────────────────────────────── */}
+      <div className="bg-white border-b sticky top-0 lg:top-16 z-30 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 pt-3 pb-0">
+          {/* Title row */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <button onClick={() => window.history.back()} className="p-1.5 -ml-1.5 rounded-full hover:bg-gray-100">
+                <ChevronLeft className="w-5 h-5 text-gray-600" />
+              </button>
+              <div>
+                <h1 className="text-lg font-bold text-gray-900 leading-tight">Caterers in Kolkata</h1>
+                {!loading && (
+                  <p className="text-xs text-gray-400">
+                    {filteredCaterers.length} caterer{filteredCaterers.length !== 1 ? "s" : ""} found
+                  </p>
+                )}
+              </div>
             </div>
-            <span className="text-sm text-gray-500 hidden sm:block">
-              {filteredCaterers.length} caterers
-            </span>
-          </div>
-
-          {/* Search & Sort Bar */}
-          <div className="flex gap-3">
-            <div className="flex-1 flex items-center gap-2 bg-gray-100 rounded-xl px-4 py-2.5">
-              <Search className="h-5 w-5 text-gray-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by name or location..."
-                className="flex-1 bg-transparent outline-none text-sm"
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery("")} className="text-gray-400 hover:text-gray-600">
-                  <X className="h-4 w-4" />
-                </button>
+            {/* Filter button */}
+            <button
+              onClick={() => setShowFilters(true)}
+              className={`relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-colors border ${
+                activeFilterCount > 0
+                  ? "bg-orange-500 text-white border-orange-500"
+                  : "bg-white text-gray-700 border-gray-200 hover:border-orange-300"
+              }`}
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              Filters
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-white text-orange-600 text-[10px] font-bold rounded-full flex items-center justify-center border border-orange-300">
+                  {activeFilterCount}
+                </span>
               )}
-            </div>
-            
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="bg-gray-100 rounded-xl px-4 py-2.5 text-sm font-medium outline-none cursor-pointer hidden sm:block"
-            >
-              <option value="default">🍽️ Featured</option>
-              <option value="nearby">🧭 Nearest First</option>
-              <option value="price-low">💰 Low to High</option>
-              <option value="price-high">💰 High to Low</option>
-              <option value="veg-first">🥬 Veg First</option>
-            </select>
-
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                showFilters || pureVegOnly || selectedArea ? "bg-orange-100 text-orange-700" : "bg-gray-100 text-gray-700"
-              }`}
-            >
-              <Filter className="h-4 w-4" />
-              <span className="hidden sm:inline">Filters</span>
             </button>
           </div>
-        </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Location Status Banner */}
-        {isPermissionDenied && (
-          <div className="mb-4 flex items-center gap-2 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
-            <Navigation className="h-4 w-4 flex-shrink-0" />
-            <span>Location access denied — distances shown from Kolkata centre. <button onClick={() => window.location.reload()} className="underline font-medium">Allow location</button> for accurate results.</span>
+          {/* Search bar */}
+          <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5 mb-3">
+            <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search caterers, cuisines, areas…"
+              className="flex-1 bg-transparent text-sm outline-none placeholder:text-gray-400"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery("")}>
+                <X className="w-4 h-4 text-gray-400" />
+              </button>
+            )}
           </div>
-        )}
 
-        {/* Nearby Caterers Section (within 10km) */}
-        {!loading && location && (() => {
-          const nearbyCaterers = caterers.filter(c => c.distanceKm != null && c.distanceKm <= 10);
-          if (nearbyCaterers.length === 0) return null;
-          return (
-            <div className="mb-6">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
-                  <Navigation className="w-4 h-4 text-orange-600" />
-                </div>
-                <div>
-                  <h2 className="font-bold text-gray-900 text-base leading-tight">Near You</h2>
-                  <p className="text-[11px] text-gray-400 leading-tight">Within 10 km · {nearbyCaterers.length} caterers</p>
-                </div>
-              </div>
-              <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-                {nearbyCaterers.slice(0, 10).map((caterer) => {
-                  const img = caterer.coverImage || (caterer.images ? caterer.images.split(",")[0]?.trim() : null) || "https://images.unsplash.com/photo-1555244162-803834f70033?w=200&q=70";
-                  return (
-                    <a
-                      key={caterer.id}
-                      href={`/catering/${caterer.slug || caterer.id}`}
-                      className="flex-shrink-0 w-48 bg-white rounded-xl overflow-hidden border border-gray-100 hover:shadow-md transition-shadow"
-                    >
-                      <div className="relative h-28 bg-gray-100">
-                        <img src={img} alt={caterer.name} className="w-full h-full object-cover" loading="lazy" />
-                        {caterer.distanceText && (
-                          <span className="absolute top-1.5 right-1.5 text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded-full">
-                            📍 {caterer.distanceText}
-                          </span>
-                        )}
-                        {caterer.isPureVeg && (
-                          <span className="absolute top-1.5 left-1.5 bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">🌿 Veg</span>
-                        )}
-                      </div>
-                      <div className="p-2.5">
-                        <h3 className="font-semibold text-gray-900 text-xs truncate">{caterer.name}</h3>
-                        <p className="text-gray-500 text-[10px] truncate">{caterer.area || caterer.city}</p>
-                        <p className="text-orange-600 font-bold text-xs mt-1">₹{caterer.minPlatePrice || caterer.silverPrice || 0}<span className="text-gray-400 font-normal text-[10px]">/plate</span></p>
-                      </div>
-                    </a>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* Quick Area Filter Pills */}
-        <div className="mb-6 overflow-x-auto pb-2 -mx-4 px-4">
-          <div className="flex gap-2 min-w-max">
-            <button
-              onClick={() => setSelectedArea("")}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                !selectedArea
-                  ? "bg-orange-500 text-white"
-                  : "bg-white text-gray-700 border border-gray-200 hover:border-orange-300"
-              }`}
-            >
-              All Areas
-            </button>
-            {/* Pure Veg Quick Toggle */}
-            <button
-              onClick={() => setPureVegOnly(!pureVegOnly)}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors flex items-center gap-1 ${
-                pureVegOnly
-                  ? "bg-green-500 text-white"
-                  : "bg-white text-gray-700 border border-gray-200 hover:border-green-300"
-              }`}
-            >
-              <Leaf className="h-4 w-4" />
-              Pure Veg
-            </button>
-            {POPULAR_AREAS.map((area) => (
+          {/* Sort chips */}
+          <div className="flex gap-2 overflow-x-auto pb-3 -mx-4 px-4 scrollbar-hide">
+            {SORT_OPTIONS.map((opt) => (
               <button
-                key={area}
-                onClick={() => setSelectedArea(selectedArea === area ? "" : area)}
-                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                  selectedArea === area
-                    ? "bg-orange-500 text-white"
-                    : "bg-white text-gray-700 border border-gray-200 hover:border-orange-300"
+                key={opt.value}
+                onClick={() => setSortBy(opt.value)}
+                className={`flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
+                  sortBy === opt.value
+                    ? "bg-orange-500 text-white border-orange-500"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-orange-300 hover:text-orange-700"
                 }`}
               >
-                {area}
+                {opt.label}
               </button>
             ))}
           </div>
         </div>
+      </div>
 
-        {/* Filter Panel */}
-        {showFilters && (
-          <div className="bg-white rounded-2xl p-4 mb-6 border border-gray-200">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900">Filters</h3>
-              <button onClick={clearFilters} className="text-sm text-orange-600 font-medium">
-                Clear All
+      <div className="max-w-7xl mx-auto px-4 py-4">
+        {/* Location denied banner */}
+        {isPermissionDenied && (
+          <div className="mb-4 flex items-center gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
+            <Navigation className="w-4 h-4 flex-shrink-0" />
+            <span>
+              Location denied — distances from Kolkata centre.{" "}
+              <button onClick={() => window.location.reload()} className="underline font-semibold">
+                Allow location
               </button>
-            </div>
-            
-            <div className="flex flex-wrap gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={pureVegOnly}
-                  onChange={(e) => setPureVegOnly(e.target.checked)}
-                  className="rounded text-green-500 focus:ring-green-500"
-                />
-                <span className="text-sm text-gray-700 flex items-center gap-1">
-                  <Leaf className="h-4 w-4 text-green-500" />
-                  Pure Vegetarian Only
-                </span>
-              </label>
-              
-              {/* Mobile sort */}
-              <div className="sm:hidden w-full">
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
-                  className="w-full bg-gray-100 rounded-xl px-4 py-2.5 text-sm font-medium outline-none"
-                >
-                  <option value="default">🍽️ Featured</option>
-                  <option value="nearby">🧭 Nearest First</option>
-                  <option value="price-low">💰 Price: Low to High</option>
-                  <option value="price-high">💰 Price: High to Low</option>
-                  <option value="veg-first">🥬 Vegetarian First</option>
-                </select>
-              </div>
-
-              {/* Area dropdown for more areas */}
-              {availableAreas.length > POPULAR_AREAS.length && (
-                <select
-                  value={selectedArea}
-                  onChange={(e) => setSelectedArea(e.target.value)}
-                  className="bg-gray-100 rounded-xl px-4 py-2.5 text-sm font-medium outline-none"
-                >
-                  <option value="">All Areas</option>
-                  {availableAreas.map(area => (
-                    <option key={area} value={area}>{area}</option>
-                  ))}
-                </select>
-              )}
-            </div>
+            </span>
           </div>
         )}
 
-        {/* Loading State */}
+        {/* Area + Veg pills */}
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide mb-5">
+          <button
+            onClick={() => setSelectedArea("")}
+            className={`flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
+              !selectedArea && !pureVegOnly
+                ? "bg-orange-500 text-white border-orange-500"
+                : "bg-white text-gray-600 border-gray-200 hover:border-orange-300"
+            }`}
+          >
+            All
+          </button>
+          {/* Veg quick-toggle chip */}
+          <button
+            onClick={() => setPureVegOnly(!pureVegOnly)}
+            className={`flex-shrink-0 flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
+              pureVegOnly
+                ? "bg-green-600 text-white border-green-600"
+                : "bg-white text-gray-600 border-gray-200 hover:border-green-400"
+            }`}
+          >
+            <Leaf className="w-2.5 h-2.5" /> Pure Veg
+          </button>
+          {POPULAR_AREAS.map((area) => (
+            <button
+              key={area}
+              onClick={() => setSelectedArea(selectedArea === area ? "" : area)}
+              className={`flex-shrink-0 flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
+                selectedArea === area
+                  ? "bg-orange-500 text-white border-orange-500"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-orange-300"
+              }`}
+            >
+              <MapPin className="w-2.5 h-2.5" />
+              {area}
+            </button>
+          ))}
+        </div>
+
+        {/* Active filters strip */}
+        {(searchQuery || pureVegOnly) && (
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            {searchQuery && (
+              <span className="flex items-center gap-1 text-xs bg-orange-50 text-orange-700 border border-orange-200 px-2.5 py-1 rounded-full font-medium">
+                "{searchQuery}"
+                <button onClick={() => setSearchQuery("")}><X className="w-3 h-3" /></button>
+              </span>
+            )}
+            {pureVegOnly && (
+              <span className="flex items-center gap-1 text-xs bg-green-50 text-green-700 border border-green-200 px-2.5 py-1 rounded-full font-medium">
+                🥬 Pure veg only
+                <button onClick={() => setPureVegOnly(false)}><X className="w-3 h-3" /></button>
+              </span>
+            )}
+            <button onClick={clearFilters} className="text-xs text-gray-400 hover:text-gray-600 underline">
+              Clear all
+            </button>
+          </div>
+        )}
+
+        {/* Loading skeletons — Zomato list style */}
         {loading && (
-          <div className="flex flex-col items-center justify-center py-20">
-            <Loader2 className="h-10 w-10 animate-spin text-orange-500 mb-4" />
-            <p className="text-gray-500">Loading caterers...</p>
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex gap-3 p-3 bg-white rounded-2xl border border-gray-100 animate-pulse">
+                <div className="w-24 h-24 flex-shrink-0 rounded-xl bg-gray-200" />
+                <div className="flex-1 space-y-2 py-1">
+                  <div className="h-4 bg-gray-200 rounded-lg w-3/4" />
+                  <div className="h-3 bg-gray-100 rounded-lg w-1/2" />
+                  <div className="h-3 bg-gray-100 rounded-lg w-2/3" />
+                  <div className="h-4 bg-gray-200 rounded-lg w-1/3 mt-2" />
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
-        {/* Error State */}
+        {/* Error */}
         {error && !loading && (
           <div className="bg-white rounded-2xl p-8 text-center border border-gray-200">
-            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <h3 className="text-lg font-bold mb-2">Failed to Load Caterers</h3>
-            <p className="text-gray-600 mb-4">{error}</p>
+            <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-3" />
+            <h3 className="font-bold text-gray-900 mb-1">Failed to Load</h3>
+            <p className="text-sm text-gray-500 mb-4">{error}</p>
             <button
               onClick={() => window.location.reload()}
-              className="px-6 py-2 bg-orange-500 text-white rounded-xl font-medium hover:bg-orange-600 transition-colors"
+              className="px-5 py-2 bg-orange-500 text-white rounded-xl text-sm font-semibold hover:bg-orange-600 transition-colors"
             >
               Retry
             </button>
           </div>
         )}
 
-        {/* Empty State */}
+        {/* Empty */}
         {!loading && !error && filteredCaterers.length === 0 && (
           <div className="bg-white rounded-2xl p-8 text-center border border-gray-200">
-            <UtensilsCrossed className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-bold mb-2">No Caterers Found</h3>
-            <p className="text-gray-600 mb-4">
+            <UtensilsCrossed className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+            <h3 className="font-bold text-gray-900 mb-1">No Caterers Found</h3>
+            <p className="text-sm text-gray-500 mb-4">
               {searchQuery || selectedArea || pureVegOnly ? "Try adjusting your filters" : "No caterers available yet"}
             </p>
             {(searchQuery || selectedArea || pureVegOnly) && (
-              <button
-                onClick={clearFilters}
-                className="px-6 py-2 bg-orange-500 text-white rounded-xl font-medium hover:bg-orange-600 transition-colors"
-              >
+              <button onClick={clearFilters} className="px-5 py-2 bg-orange-500 text-white rounded-xl text-sm font-semibold hover:bg-orange-600 transition-colors">
                 Clear Filters
               </button>
             )}
           </div>
         )}
 
-        {/* Caterers Grid */}
+        {/* Caterer list */}
         {!loading && !error && filteredCaterers.length > 0 && (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="space-y-3">
             {filteredCaterers.map((caterer) => (
               <CatererCard
                 key={caterer.id}
@@ -434,6 +357,124 @@ export default function CateringPage() {
           </div>
         )}
       </div>
+
+      {/* ── Filter bottom sheet ─────────────────────────── */}
+      {showFilters && (
+        <>
+          <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setShowFilters(false)} />
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto">
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-10 h-1 bg-gray-200 rounded-full" />
+            </div>
+
+            <div className="px-5 pb-8">
+              <div className="flex items-center justify-between py-3 border-b mb-5">
+                <h3 className="font-bold text-gray-900 text-lg">Filters</h3>
+                <button onClick={clearFilters} className="text-sm text-orange-500 font-semibold">
+                  Clear All
+                </button>
+              </div>
+
+              {/* Veg toggle */}
+              <div className="mb-6">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">Dietary Preference</h4>
+                <button
+                  onClick={() => setPureVegOnly(!pureVegOnly)}
+                  className={`flex items-center gap-3 w-full p-3 rounded-xl border-2 transition-colors ${
+                    pureVegOnly ? "border-green-500 bg-green-50" : "border-gray-200 bg-white"
+                  }`}
+                >
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center border-2 ${pureVegOnly ? "bg-green-600 border-green-600" : "border-gray-300"}`}>
+                    {pureVegOnly && <CheckCircle className="w-3 h-3 text-white" />}
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-gray-900 flex items-center gap-1">
+                      <Leaf className="w-3.5 h-3.5 text-green-600" /> Pure Vegetarian Only
+                    </p>
+                    <p className="text-xs text-gray-500">Show only 100% veg caterers</p>
+                  </div>
+                </button>
+              </div>
+
+              {/* Sort options */}
+              <div className="mb-6">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">Sort By</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {SORT_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setSortBy(opt.value)}
+                      className={`p-3 rounded-xl border-2 text-sm font-medium text-left transition-colors ${
+                        sortBy === opt.value
+                          ? "border-orange-400 bg-orange-50 text-orange-700"
+                          : "border-gray-200 text-gray-700 hover:border-orange-200"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Area filter */}
+              <div className="mb-6">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">Area</h4>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setSelectedArea("")}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                      !selectedArea ? "bg-orange-500 text-white border-orange-500" : "bg-white text-gray-600 border-gray-200"
+                    }`}
+                  >
+                    All
+                  </button>
+                  {POPULAR_AREAS.map((area) => (
+                    <button
+                      key={area}
+                      onClick={() => setSelectedArea(selectedArea === area ? "" : area)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                        selectedArea === area ? "bg-orange-500 text-white border-orange-500" : "bg-white text-gray-600 border-gray-200"
+                      }`}
+                    >
+                      {area}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowFilters(false)}
+                className="w-full py-4 bg-orange-500 text-white rounded-2xl font-bold text-base hover:bg-orange-600 transition-colors"
+              >
+                Show {filteredCaterers.length} Caterer{filteredCaterers.length !== 1 ? "s" : ""}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
+
+type Caterer = {
+  id: string;
+  name: string;
+  slug: string;
+  city: string;
+  area?: string;
+  minPlatePrice?: number;
+  pricePerPlate?: number;
+  silverPrice?: number;
+  goldPrice?: number;
+  platinumPrice?: number;
+  isPureVeg?: boolean;
+  isVerified?: boolean;
+  isAdminListed?: boolean;
+  bookingEnabled?: boolean;
+  viewCount?: number;
+  images?: string;
+  coverImage?: string;
+  contactNumber?: string;
+  contactName?: string;
+  rating?: number;
+  distanceText?: string | null;
