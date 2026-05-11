@@ -57,7 +57,7 @@ export default async function HomePage({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 -mt-0 lg:-mt-16">
+    <div className="min-h-screen bg-gray-50">
       {/* Interactive Header - Client Component */}
       <Suspense fallback={<div className="h-[52px] bg-white border-b" />}>
         <HomeInteractive initialMode={mode as "venues" | "catering"} />
