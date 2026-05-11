@@ -102,8 +102,8 @@ export default function HomeInteractive({
 
   return (
     <>
-      {/* â”€â”€ Fixed header â€” mobile only (lg+ uses DesktopNav) â”€â”€ */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b shadow-sm">
+      {/* Sticky Header — mobile only; DesktopNav handles lg+ */}
+      <header className="lg:hidden sticky top-0 z-50 bg-white border-b shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-2.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -140,7 +140,7 @@ export default function HomeInteractive({
         </div>
       </header>
 
-      {/* â”€â”€ Tab Switcher â”€â”€ */}
+      {/* Tab Switcher */}
       <div className="bg-white border-b sticky top-[52px] lg:top-0 z-40">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex">
@@ -170,7 +170,7 @@ export default function HomeInteractive({
         </div>
       </div>
 
-      {/* â”€â”€ Search Bar â”€â”€ */}
+      {/* Search Bar */}
       <div className={`px-4 py-4 ${accentBg}`}>
         <div className="max-w-3xl mx-auto">
           <button
@@ -186,8 +186,8 @@ export default function HomeInteractive({
               </p>
               <p className="text-xs text-gray-500">
                 {activeTab === "venues"
-                  ? "Search venues Â· Add dates Â· Add guests"
-                  : "Search caterers Â· Cuisine Â· Location"}
+                  ? "Search venues · Add dates · Add guests"
+                  : "Search caterers · Cuisine · Location"}
               </p>
             </div>
             {activeTab === "venues" && (
@@ -212,6 +212,13 @@ export default function HomeInteractive({
                 {area}
               </button>
             ))}
+            <button
+              onClick={() => setShowSearchModal(true)}
+              className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 bg-white text-gray-700 text-xs rounded-full hover:bg-gray-50 font-semibold transition-colors shadow-sm"
+            >
+              <Search className="w-3 h-3" />
+              More
+            </button>
           </div>
         </div>
       </div>
