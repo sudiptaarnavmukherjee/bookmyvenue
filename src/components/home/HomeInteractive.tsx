@@ -103,8 +103,8 @@ export default function HomeInteractive({
 
   return (
     <>
-      {/* Sticky Header */}
-      <header className="sticky top-0 z-50 bg-white border-b">
+      {/* Sticky Header — mobile only; DesktopNav handles lg+ */}
+      <header className="lg:hidden sticky top-0 z-50 bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 py-2.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -202,19 +202,21 @@ export default function HomeInteractive({
             )}
           </button>
           
-          <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+          {/* Quick area chips */}
+          <div className="flex gap-2 mt-3 overflow-x-auto pb-1 scrollbar-hide">
             {quickAreas.map(area => (
               <button
                 key={area}
                 onClick={() => handleQuickSearch(area)}
-                className="flex-shrink-0 px-3 py-1.5 bg-white/20 text-white text-xs rounded-full hover:bg-white/30 font-medium"
+                className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 bg-white/15 backdrop-blur-sm text-white text-xs rounded-full border border-white/30 hover:bg-white/25 font-medium transition-colors"
               >
+                <MapPin className="w-2.5 h-2.5 opacity-70" />
                 {area}
               </button>
             ))}
             <button
               onClick={() => setShowSearchModal(true)}
-              className="flex-shrink-0 px-3 py-1.5 bg-white text-gray-700 text-xs rounded-full hover:bg-gray-100 font-medium flex items-center gap-1"
+              className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 bg-white text-gray-700 text-xs rounded-full hover:bg-gray-50 font-semibold transition-colors shadow-sm"
             >
               <Search className="w-3 h-3" />
               More
