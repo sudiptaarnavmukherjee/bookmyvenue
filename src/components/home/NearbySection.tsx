@@ -1,117 +1,123 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
-  MapPin, Navigation, Loader2, ChevronRight,
+  MapPin, Navigation, ChevronRight,
   Star, Leaf, CheckCircle, Building2, ChefHat,
 } from "lucide-react";
 import { getBmvLocation, type StoredLocation } from "@/components/home/LocationPermissionModal";
 
 // ── Constants ────────────────────────────────────────────────────────────────
-const RADIUS_KM = 10;
-const MAX_SHOWN = 6;
+const RADIUS_M   = 10_000; // 10 km in metres
+const MAX_SHOWN  = 6;
+const CACHE_KEY  = "bmv_nearby_v1";
+const CACHE_TTL  = 5 * 60 * 1000; // 5 minutes
 const VENUE_FALLBACK   = "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=300&q=70";
 const CATERER_FALLBACK = "https://images.unsplash.com/photo-1555244162-803834f70033?w=200&q=70";
 
 // ── Types ────────────────────────────────────────────────────────────────────
-interface NearbyVenue {
+interface NearbyVenueItem {
   id: string; name: string; slug: string | null;
-  area: string | null; city: string;
-  coverImage: string | null; images: string | null;
-  exactPrice: number | null; estimatedMinPrice: number | null;
-  marriagePrice: number | null; birthdayPrice: number | null; otherEventPrice: number | null;
-  maxGuests: number | null;
+  city: string; area: string | null;
+  image: string | null; price: number; maxGuests: number | null;
   isVerified: boolean; bookingEnabled: boolean;
-  distanceKm: number | null; distanceText: string | null;
+  distanceMeters: number; distanceText: string | null;
 }
 
-interface NearbyCaterer {
+interface NearbyCatererItem {
   id: string; name: string; slug: string | null;
-  area: string | null; city: string;
-  coverImage: string | null; images: string | null;
-  minPlatePrice: number | null; silverPrice: number | null;
-  isPureVeg: boolean; cuisines: string | null;
-  rating: number | null;
+  city: string; area: string | null;
+  image: string | null; price: number;
+  isPureVeg: boolean; cuisines: string | null; rating: number | null;
   isVerified: boolean; bookingEnabled: boolean;
-  distanceKm: number | null; distanceText: string | null;
+  distanceMeters: number; distanceText: string | null;
 }
 
 // ── NearbySection ─────────────────────────────────────────────────────────────
 export default function NearbySection() {
-  const [location, setLocation]   = useState<StoredLocation | null>(null);
-  const [venues, setVenues]       = useState<NearbyVenue[]>([]);
-  const [caterers, setCaterers]   = useState<NearbyCaterer[]>([]);
-  const [loading, setLoading]     = useState(false);
+  const [venues, setVenues]       = useState<NearbyVenueItem[]>([]);
+  const [caterers, setCaterers]   = useState<NearbyCatererItem[]>([]);
+  const [loading, setLoading]     = useState(true);  // true immediately → skeleton on first paint
   const [activeTab, setActiveTab] = useState<"venues" | "caterers">("venues");
-  const [mounted, setMounted]     = useState(false);
+  const [hidden, setHidden]       = useState(false);
   const abortRef                  = useRef<AbortController | null>(null);
+  const locRef                    = useRef<StoredLocation | null>(null);
 
-  useEffect(() => { setMounted(true); }, []);
-
-  // Read location from localStorage on mount + listen for updates
   useEffect(() => {
-    if (!mounted) return;
-    const stored = getBmvLocation();
-    if (stored) setLocation(stored);
+    const loc = getBmvLocation();
+    if (!loc) { setLoading(false); setHidden(true); return; }
+    locRef.current = loc;
+
+    function runFetch(fetchLoc: StoredLocation) {
+      abortRef.current?.abort();
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+      setLoading(true);
+
+      fetch(
+        `/api/nearby?lat=${fetchLoc.lat}&lng=${fetchLoc.lng}&radius=${RADIUS_M}&limit=${MAX_SHOWN}`,
+        { signal: ctrl.signal }
+      )
+        .then(r => r.json())
+        .then(data => {
+          if (ctrl.signal.aborted) return;
+          setVenues(data.venues || []);
+          setCaterers(data.caterers || []);
+          if (!data.venues?.length && !data.caterers?.length) setHidden(true);
+          try {
+            sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+              data, ts: Date.now(), lat: fetchLoc.lat, lng: fetchLoc.lng,
+            }));
+          } catch {}
+        })
+        .catch(err => { if (err?.name !== "AbortError") setHidden(true); })
+        .finally(() => { if (!ctrl.signal.aborted) setLoading(false); });
+    }
+
+    // Serve from sessionStorage cache instantly if location matches and data is fresh
+    let cacheHit = false;
+    try {
+      const raw = sessionStorage.getItem(CACHE_KEY);
+      if (raw) {
+        const { data, ts, lat, lng } = JSON.parse(raw);
+        const same = Math.abs(lat - loc.lat) < 0.001 && Math.abs(lng - loc.lng) < 0.001;
+        if (same && Date.now() - ts < CACHE_TTL) {
+          setVenues(data.venues || []);
+          setCaterers(data.caterers || []);
+          setLoading(false);
+          if (!data.venues?.length && !data.caterers?.length) setHidden(true);
+          cacheHit = true;
+        }
+      }
+    } catch {}
+
+    if (!cacheHit) runFetch(loc);
 
     const handler = (e: Event) => {
       const d = (e as CustomEvent<{ lat: number; lng: number; label: string }>).detail;
       if (d?.lat && d?.lng) {
-        setLocation({ lat: d.lat, lng: d.lng, label: d.label, ts: Date.now() });
+        const newLoc = { lat: d.lat, lng: d.lng, label: d.label, ts: Date.now() };
+        locRef.current = newLoc;
+        setHidden(false);
+        runFetch(newLoc);
       }
     };
     window.addEventListener("bmv:locationUpdated", handler);
-    return () => window.removeEventListener("bmv:locationUpdated", handler);
-  }, [mounted]);
-
-  // Fetch nearby data whenever location changes
-  const fetchNearby = useCallback(async (loc: StoredLocation) => {
-    // Cancel any in-flight request
-    abortRef.current?.abort();
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
-
-    setLoading(true);
-    try {
-      const base = `lat=${loc.lat}&lng=${loc.lng}&sortBy=nearby&radius=${RADIUS_KM}&limit=20`;
-      const [vRes, cRes] = await Promise.all([
-        fetch(`/api/venues?${base}`,   { signal: ctrl.signal }),
-        fetch(`/api/catering?${base}`, { signal: ctrl.signal }),
-      ]);
-
-      const [vData, cData] = await Promise.all([vRes.json(), cRes.json()]);
-      setVenues((vData.venues  || []).slice(0, 20));
-      setCaterers((cData.caterers || []).slice(0, 20));
-    } catch (err: any) {
-      if (err?.name !== "AbortError") {
-        setVenues([]);
-        setCaterers([]);
-      }
-    } finally {
-      if (!ctrl.signal.aborted) setLoading(false);
-    }
+    return () => {
+      window.removeEventListener("bmv:locationUpdated", handler);
+      abortRef.current?.abort();
+    };
   }, []);
 
-  useEffect(() => {
-    if (location) fetchNearby(location);
-    return () => abortRef.current?.abort();
-  }, [location, fetchNearby]);
+  if (hidden) return null;
 
-  // Don't render until client-side hydrated
-  if (!mounted) return null;
-  // Don't render if no location set yet
-  if (!location) return null;
-  // Don't render if nothing found and not loading
-  if (!loading && venues.length === 0 && caterers.length === 0) return null;
-
-  const shownVenues   = venues.slice(0, MAX_SHOWN);
-  const shownCaterers = caterers.slice(0, MAX_SHOWN);
-  const hasVenues     = shownVenues.length > 0;
-  const hasCaterers   = shownCaterers.length > 0;
-
-  const qLink = `lat=${location.lat}&lng=${location.lng}`;
+  const hasVenues     = venues.length > 0;
+  const hasCaterers   = caterers.length > 0;
+  const loc           = locRef.current;
+  const qLink         = loc ? `lat=${loc.lat}&lng=${loc.lng}` : "";
+  const radiusKm      = RADIUS_M / 1000;
 
   return (
     <section className="px-4 pt-3 pb-1 max-w-7xl mx-auto">
@@ -124,11 +130,10 @@ export default function NearbySection() {
           <div>
             <h2 className="font-bold text-gray-900 text-base leading-tight">Near You</h2>
             <p className="text-[11px] text-gray-400 leading-tight">
-              {location.label} · within {RADIUS_KM} km
+              {loc?.label ?? "Your location"} · within {radiusKm} km
             </p>
           </div>
         </div>
-        {loading && <Loader2 className="w-4 h-4 text-gray-300 animate-spin" />}
       </div>
 
       {/* Tabs */}
@@ -193,7 +198,7 @@ export default function NearbySection() {
           {hasVenues ? (
             <>
               <div className="space-y-2.5">
-                {shownVenues.map(v => <NearbyVenueCard key={v.id} venue={v} />)}
+                {venues.map(v => <NearbyVenueCard key={v.id} venue={v} />)}
               </div>
               {venues.length > MAX_SHOWN && (
                 <Link
@@ -215,7 +220,7 @@ export default function NearbySection() {
           ) : (
             <div className="py-8 text-center">
               <Building2 className="w-8 h-8 text-gray-200 mx-auto mb-2" />
-              <p className="text-gray-500 text-sm font-medium">No venues found within {RADIUS_KM} km</p>
+              <p className="text-gray-500 text-sm font-medium">No venues found within {radiusKm} km</p>
               <Link
                 href="/venues"
                 className="text-purple-600 text-xs mt-1 inline-block hover:underline"
@@ -233,7 +238,7 @@ export default function NearbySection() {
           {hasCaterers ? (
             <>
               <div className="space-y-2.5">
-                {shownCaterers.map(c => <NearbyCatererCard key={c.id} caterer={c} />)}
+                {caterers.map(c => <NearbyCatererCard key={c.id} caterer={c} />)}
               </div>
               {caterers.length > MAX_SHOWN && (
                 <Link
@@ -255,7 +260,7 @@ export default function NearbySection() {
           ) : (
             <div className="py-8 text-center">
               <ChefHat className="w-8 h-8 text-gray-200 mx-auto mb-2" />
-              <p className="text-gray-500 text-sm font-medium">No caterers found within {RADIUS_KM} km</p>
+              <p className="text-gray-500 text-sm font-medium">No caterers found within {radiusKm} km</p>
               <Link
                 href="/catering"
                 className="text-orange-600 text-xs mt-1 inline-block hover:underline"
@@ -271,9 +276,8 @@ export default function NearbySection() {
 }
 
 // ── Venue card ───────────────────────────────────────────────────────────────
-function NearbyVenueCard({ venue }: { venue: NearbyVenue }) {
-  const img   = venue.coverImage || (venue.images ? venue.images.split(",")[0].trim() : null) || VENUE_FALLBACK;
-  const price = venue.marriagePrice || venue.exactPrice || venue.estimatedMinPrice || 0;
+function NearbyVenueCard({ venue }: { venue: NearbyVenueItem }) {
+  const img = venue.image || VENUE_FALLBACK;
 
   return (
     <Link
@@ -302,7 +306,7 @@ function NearbyVenueCard({ venue }: { venue: NearbyVenue }) {
 
         <div className="flex items-center justify-between mt-1.5 gap-1">
           <span className="text-purple-600 font-bold text-sm">
-            {price > 0 ? `₹${(price / 1000).toFixed(0)}K` : "Call for price"}
+            {venue.price > 0 ? `₹${(venue.price / 1000).toFixed(0)}K` : "Call for price"}
           </span>
           <div className="flex items-center gap-1 flex-shrink-0">
             {venue.isVerified && (
@@ -325,9 +329,8 @@ function NearbyVenueCard({ venue }: { venue: NearbyVenue }) {
 }
 
 // ── Caterer card ─────────────────────────────────────────────────────────────
-function NearbyCatererCard({ caterer }: { caterer: NearbyCaterer }) {
-  const img   = caterer.coverImage || (caterer.images ? caterer.images.split(",")[0].trim() : null) || CATERER_FALLBACK;
-  const price = caterer.minPlatePrice || caterer.silverPrice || 0;
+function NearbyCatererCard({ caterer }: { caterer: NearbyCatererItem }) {
+  const img = caterer.image || CATERER_FALLBACK;
 
   return (
     <Link
@@ -364,7 +367,7 @@ function NearbyCatererCard({ caterer }: { caterer: NearbyCaterer }) {
         <div className="flex items-center justify-between mt-1.5 gap-1">
           <div className="flex items-center gap-1.5">
             <span className="text-orange-600 font-bold text-sm">
-              ₹{price}<span className="text-gray-400 font-normal text-[10px]">/plate</span>
+              ₹{caterer.price}<span className="text-gray-400 font-normal text-[10px]">/plate</span>
             </span>
             {caterer.rating && caterer.rating > 0 && (
               <span className="flex items-center gap-0.5 bg-green-600 text-white text-[9px] px-1.5 py-0.5 rounded font-semibold">
@@ -383,3 +386,5 @@ function NearbyCatererCard({ caterer }: { caterer: NearbyCaterer }) {
     </Link>
   );
 }
+
+
