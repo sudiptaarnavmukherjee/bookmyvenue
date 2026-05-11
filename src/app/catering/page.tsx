@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import {
@@ -40,11 +40,11 @@ const POPULAR_AREAS = [
 ];
 
 const SORT_OPTIONS = [
-  { value: "default",    label: "🍽️ Featured" },
-  { value: "nearby",    label: "🧭 Nearest" },
-  { value: "price-low", label: "💰 Low–High" },
-  { value: "price-high",label: "💰 High–Low" },
-  { value: "veg-first", label: "🥬 Veg First" },
+  { value: "default",    label: "ðŸ½ï¸ Featured" },
+  { value: "nearby",    label: "ðŸ§­ Nearest" },
+  { value: "price-low", label: "ðŸ’° Lowâ€“High" },
+  { value: "price-high",label: "ðŸ’° Highâ€“Low" },
+  { value: "veg-first", label: "ðŸ¥¬ Veg First" },
 ] as const;
 
 export default function CateringPage() {
@@ -131,7 +131,7 @@ export default function CateringPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      {/* ── Sticky top bar ─────────────────────────────── */}
+      {/* â”€â”€ Sticky top bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="bg-white border-b sticky top-0 lg:top-16 z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 pt-3 pb-0">
           {/* Title row */}
@@ -175,7 +175,7 @@ export default function CateringPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search caterers, cuisines, areas…"
+              placeholder="Search caterers, cuisines, areasâ€¦"
               className="flex-1 bg-transparent text-sm outline-none placeholder:text-gray-400"
             />
             {searchQuery && (
@@ -210,7 +210,7 @@ export default function CateringPage() {
           <div className="mb-4 flex items-center gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
             <Navigation className="w-4 h-4 flex-shrink-0" />
             <span>
-              Location denied — distances from Kolkata centre.{" "}
+              Location denied â€” distances from Kolkata centre.{" "}
               <button onClick={() => window.location.reload()} className="underline font-semibold">
                 Allow location
               </button>
@@ -268,7 +268,7 @@ export default function CateringPage() {
             )}
             {pureVegOnly && (
               <span className="flex items-center gap-1 text-xs bg-green-50 text-green-700 border border-green-200 px-2.5 py-1 rounded-full font-medium">
-                🥬 Pure veg only
+                ðŸ¥¬ Pure veg only
                 <button onClick={() => setPureVegOnly(false)}><X className="w-3 h-3" /></button>
               </span>
             )}
@@ -278,7 +278,7 @@ export default function CateringPage() {
           </div>
         )}
 
-        {/* Loading skeletons — Zomato list style */}
+        {/* Loading skeletons â€” Zomato list style */}
         {loading && (
           <div className="space-y-3">
             {[...Array(5)].map((_, i) => (
@@ -358,7 +358,7 @@ export default function CateringPage() {
         )}
       </div>
 
-      {/* ── Filter bottom sheet ─────────────────────────── */}
+      {/* â”€â”€ Filter bottom sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {showFilters && (
         <>
           <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setShowFilters(false)} />
@@ -455,58 +455,3 @@ export default function CateringPage() {
     </div>
   );
 }
-
-type Caterer = {
-  id: string;
-  name: string;
-  slug: string;
-  city: string;
-  area?: string;
-  minPlatePrice?: number;
-  pricePerPlate?: number;
-  silverPrice?: number;
-  goldPrice?: number;
-  platinumPrice?: number;
-  isPureVeg?: boolean;
-  isVerified?: boolean;
-  isAdminListed?: boolean;
-  bookingEnabled?: boolean;
-  viewCount?: number;
-  images?: string;
-  coverImage?: string;
-  contactNumber?: string;
-  contactName?: string;
-  rating?: number;
-  distanceText?: string | null;
-
-        </>
-      )}
-    </div>
-  );
-}
-
-type Caterer = {
-  id: string;
-  name: string;
-  slug: string;
-  city: string;
-  area?: string;
-  minPlatePrice?: number;
-  pricePerPlate?: number;
-  silverPrice?: number;
-  goldPrice?: number;
-  platinumPrice?: number;
-  isPureVeg?: boolean;
-  isVerified?: boolean;
-  isAdminListed?: boolean;
-  bookingEnabled?: boolean;
-  viewCount?: number;
-  images?: string;
-  coverImage?: string;
-  contactNumber?: string;
-  contactName?: string;
-  rating?: number;
-  distanceText?: string | null;
-  distanceKm?: number | null;
-  _count?: { reviews: number; bookings: number };
-};
