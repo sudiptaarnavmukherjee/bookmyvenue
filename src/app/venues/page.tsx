@@ -275,7 +275,7 @@ export default function VenuesPage() {
           <div className="flex items-center gap-2 mb-4 flex-wrap">
             {searchQuery && (
               <span className="flex items-center gap-1 text-xs bg-purple-50 text-purple-700 border border-purple-200 px-2.5 py-1 rounded-full font-medium">
-                "{searchQuery}"
+                &ldquo;{searchQuery}&rdquo;
                 <button onClick={() => setSearchQuery("")}><X className="w-3 h-3" /></button>
               </span>
             )}

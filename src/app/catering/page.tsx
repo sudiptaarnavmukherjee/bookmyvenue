@@ -262,7 +262,7 @@ export default function CateringPage() {
           <div className="flex items-center gap-2 mb-4 flex-wrap">
             {searchQuery && (
               <span className="flex items-center gap-1 text-xs bg-orange-50 text-orange-700 border border-orange-200 px-2.5 py-1 rounded-full font-medium">
-                "{searchQuery}"
+                &ldquo;{searchQuery}&rdquo;
                 <button onClick={() => setSearchQuery("")}><X className="w-3 h-3" /></button>
               </span>
             )}
