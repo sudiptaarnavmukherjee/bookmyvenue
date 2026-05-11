@@ -33,7 +33,7 @@ export function VenueCardServer({ venue }: { venue: VenueCard }) {
     <Link href={href} className="block group" prefetch={true}>
       <article className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm group-hover:shadow-lg group-hover:-translate-y-0.5 group-active:scale-[0.98] transition-all duration-200">
         {/* ── Image ── */}
-        <div className="relative aspect-[4/3] bg-gray-100 overflow-hidden">
+        <div className="relative aspect-[3/2] bg-gray-100 overflow-hidden">
           <Image
             src={venue.image || VENUE_FALLBACK}
             alt={venue.name}
@@ -45,18 +45,18 @@ export function VenueCardServer({ venue }: { venue: VenueCard }) {
             blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAIAAoDASIAAhEBAxEB/8QAFgABAQEAAAAAAAAAAAAAAAAABgUH/8QAIhAAAQMEAgMAAAAAAAAAAAAAAQIDBAAFBhExIUFR/8QAFAEBAAAAAAAAAAAAAAAAAAAAAP/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AMriGMZG7fJuLhuBgQpHCiQAAMqCfPkk8u+WD5GH+6IAAAP/2Q=="
           />
           {/* Dark gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
 
           {/* Verified badge — top left */}
           {venue.isVerified && (
-            <span className="absolute top-2 left-2 flex items-center gap-0.5 bg-white/95 text-green-700 text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm border border-green-100">
-              <CheckCircle className="w-2.5 h-2.5" /> Verified
+            <span className="absolute top-2 left-2 flex items-center gap-1 bg-white/95 text-green-700 text-[11px] font-bold px-2 py-1 rounded-full shadow-sm border border-green-100">
+              <CheckCircle className="w-3 h-3" /> Verified
             </span>
           )}
 
           {/* Booking badge — top right */}
           <span
-            className={`absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+            className={`absolute top-2 right-2 text-[11px] font-bold px-2 py-1 rounded-full ${
               venue.bookingEnabled
                 ? "bg-purple-600 text-white"
                 : "bg-amber-500 text-white"
@@ -66,17 +66,17 @@ export function VenueCardServer({ venue }: { venue: VenueCard }) {
           </span>
 
           {/* Price — bottom left (on photo like Airbnb) */}
-          <div className="absolute bottom-2 left-2">
-            <p className="text-white font-extrabold text-sm drop-shadow-sm leading-none">
+          <div className="absolute bottom-2.5 left-3">
+            <p className="text-white font-extrabold text-base drop-shadow leading-none">
               {price}
             </p>
-            <p className="text-white/60 text-[9px] mt-0.5">per event</p>
+            <p className="text-white/70 text-[10px] mt-0.5">per event</p>
           </div>
 
           {/* Capacity chip — bottom right */}
           {venue.capacity && (
-            <div className="absolute bottom-2 right-2 flex items-center gap-0.5 bg-black/50 backdrop-blur-sm text-white text-[9px] px-1.5 py-0.5 rounded-full">
-              <Users className="w-2.5 h-2.5" />
+            <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1 bg-black/50 backdrop-blur-sm text-white text-[11px] px-2 py-0.5 rounded-full">
+              <Users className="w-3 h-3" />
               {venue.capacity >= 1000
                 ? `${(venue.capacity / 1000).toFixed(0)}K`
                 : venue.capacity}
@@ -85,12 +85,12 @@ export function VenueCardServer({ venue }: { venue: VenueCard }) {
         </div>
 
         {/* ── Body ── */}
-        <div className="p-2.5">
-          <h3 className="font-semibold text-gray-900 text-sm leading-tight line-clamp-1">
+        <div className="p-3">
+          <h3 className="font-bold text-gray-900 text-[15px] leading-snug line-clamp-1">
             {venue.name}
           </h3>
-          <p className="flex items-center gap-0.5 text-gray-400 text-xs mt-0.5 truncate">
-            <MapPin className="w-2.5 h-2.5 flex-shrink-0 text-purple-400" />
+          <p className="flex items-center gap-1 text-gray-500 text-[13px] mt-1 truncate">
+            <MapPin className="w-3 h-3 flex-shrink-0 text-purple-400" />
             {venue.location}
           </p>
         </div>
@@ -355,10 +355,10 @@ export function SectionHeader({
 export function VenueCardSkeleton() {
   return (
     <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 animate-pulse">
-      <div className="aspect-[4/3] bg-gray-200" />
-      <div className="p-2.5 space-y-1.5">
-        <div className="h-3.5 bg-gray-200 rounded-full w-3/4" />
-        <div className="h-2.5 bg-gray-100 rounded-full w-1/2" />
+      <div className="aspect-[3/2] bg-gray-200" />
+      <div className="p-3 space-y-2">
+        <div className="h-4 bg-gray-200 rounded-full w-3/4" />
+        <div className="h-3 bg-gray-100 rounded-full w-1/2" />
       </div>
     </div>
   );
