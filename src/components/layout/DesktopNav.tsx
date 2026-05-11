@@ -60,10 +60,8 @@ export default function DesktopNav() {
         href={href}
         className={`relative flex items-center gap-1.5 py-1 font-medium text-sm transition-colors group ${
           isActive
-            ? scrolled ? "text-purple-600" : "text-white"
-            : scrolled
-            ? "text-gray-700 hover:text-purple-600"
-            : "text-white/80 hover:text-white"
+            ? "text-purple-600"
+            : "text-gray-700 hover:text-purple-600"
         }`}
       >
         {children}
@@ -77,9 +75,7 @@ export default function DesktopNav() {
     );
   };
 
-  const navBg = scrolled
-    ? "bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm"
-    : "bg-transparent border-b border-white/10";
+  const navBg = "bg-white border-b border-gray-200 shadow-sm";
 
   return (
     <nav className={`hidden lg:block fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${navBg}`}>
@@ -87,8 +83,8 @@ export default function DesktopNav() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 flex-shrink-0">
-            <Sparkles className={`h-7 w-7 transition-colors ${scrolled ? "text-purple-600" : "text-white"}`} />
-            <span className={`text-xl font-bold transition-colors ${scrolled ? "text-gradient" : "text-white"}`}>
+            <Sparkles className="h-7 w-7 text-purple-600" />
+            <span className="text-xl font-bold text-gradient">
               ShubhSpace
             </span>
           </Link>
@@ -122,11 +118,7 @@ export default function DesktopNav() {
             {(!user || user.role === "USER") && (
               <button
                 onClick={() => router.push("/venues")}
-                className={`p-2 rounded-full transition-colors ${
-                  scrolled
-                    ? "hover:bg-gray-100 text-gray-600"
-                    : "hover:bg-white/10 text-white/80"
-                }`}
+                className="p-2 rounded-full transition-colors hover:bg-gray-100 text-gray-600"
                 aria-label="Search venues"
               >
                 <Search className="h-5 w-5" />
@@ -139,11 +131,7 @@ export default function DesktopNav() {
               <div className="relative" ref={profileRef}>
                 <button
                   onClick={() => setShowProfileMenu(!showProfileMenu)}
-                  className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all hover:shadow-md ${
-                    scrolled
-                      ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white"
-                      : "bg-white/10 border border-white/25 text-white hover:bg-white/20 backdrop-blur-sm"
-                  }`}
+                  className="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all hover:shadow-md bg-gradient-to-r from-purple-600 to-pink-600 text-white"
                 >
                   <div className="w-5 h-5 rounded-full bg-white/30 flex items-center justify-center">
                     <User className="h-3.5 w-3.5" />
@@ -206,19 +194,13 @@ export default function DesktopNav() {
               <div className="flex items-center gap-3">
                 <Link
                   href="/auth/signin"
-                  className={`text-sm font-medium transition-colors ${
-                    scrolled ? "text-gray-700 hover:text-purple-600" : "text-white/90 hover:text-white"
-                  }`}
+                  className="text-sm font-medium text-gray-700 hover:text-purple-600 transition-colors"
                 >
                   Sign In
                 </Link>
                 <Link
                   href="/auth/signup"
-                  className={`rounded-full px-5 py-2 text-sm font-semibold transition-all hover:shadow-md ${
-                    scrolled
-                      ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white"
-                      : "bg-white text-purple-700 hover:bg-white/90"
-                  }`}
+                  className="rounded-full px-5 py-2 text-sm font-semibold bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:shadow-md transition-all"
                 >
                   Get Started
                 </Link>
