@@ -478,3 +478,35 @@ type Caterer = {
   contactName?: string;
   rating?: number;
   distanceText?: string | null;
+
+        </>
+      )}
+    </div>
+  );
+}
+
+type Caterer = {
+  id: string;
+  name: string;
+  slug: string;
+  city: string;
+  area?: string;
+  minPlatePrice?: number;
+  pricePerPlate?: number;
+  silverPrice?: number;
+  goldPrice?: number;
+  platinumPrice?: number;
+  isPureVeg?: boolean;
+  isVerified?: boolean;
+  isAdminListed?: boolean;
+  bookingEnabled?: boolean;
+  viewCount?: number;
+  images?: string;
+  coverImage?: string;
+  contactNumber?: string;
+  contactName?: string;
+  rating?: number;
+  distanceText?: string | null;
+  distanceKm?: number | null;
+  _count?: { reviews: number; bookings: number };
+};
