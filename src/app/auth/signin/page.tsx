@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Mail, Lock, ArrowRight, Sparkles, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -34,8 +34,20 @@ export default function SignInPage() {
         return;
       }
 
-      // Redirect will be handled by middleware based on role
-      router.push("/");
+      // Fetch fresh session to get the user's role, then redirect directly
+      const session = await getSession();
+      const role = session?.user?.role;
+
+      if (role === "ADMIN") {
+        router.push("/admin");
+      } else if (role === "VENUE_OWNER") {
+        router.push("/venue-owner");
+      } else if (role === "CATERING_OWNER") {
+        router.push("/catering-owner");
+      } else {
+        // Regular USER or unknown → homepage
+        router.push("/");
+      }
       router.refresh();
     } catch (err: any) {
       setError(err.message || "Failed to sign in");
