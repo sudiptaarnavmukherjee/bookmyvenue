@@ -9,12 +9,10 @@ import { useSession } from "next-auth/react";
 export function MobileNav() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
-  
-  // Render immediately with default nav - don't wait for session
+
   const user = session?.user;
   const isLoading = status === "loading";
 
-  // Default nav items for everyone (show immediately)
   const defaultNavItems = [
     { href: "/", icon: Home, label: "Home" },
     { href: "/wishlist", icon: Heart, label: "Wishlist" },
@@ -22,40 +20,23 @@ export function MobileNav() {
     { href: "/profile", icon: User, label: "Profile" },
   ];
 
-  // Dynamic nav items based on user role (only update after session loads)
   const getNavItems = () => {
-    // Show default while loading
     if (isLoading || !user) return defaultNavItems;
-
-    // For regular users
     if (user.role === "USER") return defaultNavItems;
-
-    // For venue owners
-    if (user.role === "VENUE_OWNER") {
-      return [
-        { href: "/venue-owner", icon: LayoutDashboard, label: "Dashboard" },
-        { href: "/bookings", icon: Calendar, label: "Bookings" },
-        { href: "/profile", icon: User, label: "Profile" },
-      ];
-    }
-    
-    // For catering owners
-    if (user.role === "CATERING_OWNER") {
-      return [
-        { href: "/catering-owner", icon: LayoutDashboard, label: "Dashboard" },
-        { href: "/bookings", icon: Calendar, label: "Bookings" },
-        { href: "/profile", icon: User, label: "Profile" },
-      ];
-    }
-    
-    // For admin - no bookings link
-    if (user.role === "ADMIN") {
-      return [
-        { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
-        { href: "/profile", icon: User, label: "Profile" },
-      ];
-    }
-
+    if (user.role === "VENUE_OWNER") return [
+      { href: "/venue-owner", icon: LayoutDashboard, label: "Dashboard" },
+      { href: "/bookings", icon: Calendar, label: "Bookings" },
+      { href: "/profile", icon: User, label: "Profile" },
+    ];
+    if (user.role === "CATERING_OWNER") return [
+      { href: "/catering-owner", icon: LayoutDashboard, label: "Dashboard" },
+      { href: "/bookings", icon: Calendar, label: "Bookings" },
+      { href: "/profile", icon: User, label: "Profile" },
+    ];
+    if (user.role === "ADMIN") return [
+      { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
+      { href: "/profile", icon: User, label: "Profile" },
+    ];
     return [
       { href: "/", icon: Home, label: "Home" },
       { href: "/profile", icon: User, label: "Profile" },
@@ -65,10 +46,16 @@ export function MobileNav() {
   const navItems = getNavItems();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white md:hidden">
-      <div className="flex items-center justify-around">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-gray-100 shadow-[0_-1px_12px_rgba(0,0,0,0.06)] md:hidden">
+      <div
+        className="flex items-stretch"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive =
+            item.href === "/"
+              ? pathname === "/"
+              : pathname.startsWith(item.href);
           const Icon = item.icon;
 
           return (
@@ -76,14 +63,22 @@ export function MobileNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-1 flex-col items-center gap-1 py-3 text-xs transition-colors",
-                isActive
-                  ? "text-rose-600"
-                  : "text-gray-500 hover:text-gray-700"
+                "flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-semibold transition-colors relative",
+                isActive ? "text-purple-600" : "text-gray-400 hover:text-gray-600"
               )}
             >
-              <Icon className={cn("h-6 w-6", isActive && "fill-rose-100")} />
-              <span className="font-medium">{item.label}</span>
+              {/* Active background pill */}
+              {isActive && (
+                <div className="absolute top-1.5 w-10 h-7 bg-purple-100 rounded-full -z-0" />
+              )}
+              <Icon
+                className={cn(
+                  "h-5 w-5 relative z-10 transition-transform",
+                  isActive && "scale-110"
+                )}
+                strokeWidth={isActive ? 2.5 : 1.75}
+              />
+              <span className="relative z-10">{item.label}</span>
             </Link>
           );
         })}

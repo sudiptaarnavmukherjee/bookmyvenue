@@ -100,7 +100,7 @@ export default function RootLayout({
         <SessionProvider>
           <CompareProvider>
             {/* Main content renders IMMEDIATELY - no blocking */}
-            <main className="min-h-screen pb-16 lg:pt-16">
+            <main className="min-h-screen pb-16 lg:pt-16 page-enter">
               {children}
             </main>
             

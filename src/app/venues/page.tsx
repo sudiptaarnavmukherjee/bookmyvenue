@@ -387,7 +387,7 @@ export default function VenuesPage() {
             onClick={() => setShowFilters(false)}
           />
           {/* Sheet */}
-          <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto">
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto sheet-enter">
             {/* Handle */}
             <div className="flex justify-center pt-3 pb-1">
               <div className="w-10 h-1 bg-gray-200 rounded-full" />
