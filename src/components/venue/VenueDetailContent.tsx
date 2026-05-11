@@ -220,18 +220,18 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
         <div ref={heroRef} className="mx-auto max-w-7xl px-4 sm:px-6">
           {/* Main image */}
           <div
-            className="relative w-full rounded-2xl overflow-hidden cursor-pointer bg-gray-100"
-            style={{ aspectRatio: '16/7' }}
+            className="relative w-full rounded-2xl overflow-hidden cursor-pointer"
             onClick={() => setShowLightbox(true)}
           >
             {venue.images.length > 0 ? (
               <img
                 src={venue.images[selectedImage]}
                 alt={venue.name}
-                className="h-full w-full object-contain"
+                className="w-full h-auto block"
+                style={{ maxHeight: '520px', objectFit: 'cover', objectPosition: 'center' }}
               />
             ) : (
-              <div className="h-full w-full flex items-center justify-center">
+              <div className="h-64 flex items-center justify-center bg-purple-50 rounded-2xl">
                 <Grid3x3 className="h-16 w-16 text-purple-300" />
               </div>
             )}

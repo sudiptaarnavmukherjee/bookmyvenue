@@ -283,18 +283,18 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
         <div ref={heroRef} className="mx-auto max-w-7xl px-4 sm:px-6">
           {/* Main image */}
           <div
-            className="relative w-full rounded-2xl overflow-hidden cursor-pointer bg-gray-100"
-            style={{ aspectRatio: '16/7' }}
+            className="relative w-full rounded-2xl overflow-hidden cursor-pointer"
             onClick={() => setShowLightbox(true)}
           >
             {caterer.images.length > 0 ? (
               <img
                 src={caterer.images[selectedImage]}
                 alt={caterer.name}
-                className="h-full w-full object-contain"
+                className="w-full h-auto block"
+                style={{ maxHeight: '520px', objectFit: 'cover', objectPosition: 'center' }}
               />
             ) : (
-              <div className="h-full w-full flex items-center justify-center">
+              <div className="h-64 flex items-center justify-center bg-green-50 rounded-2xl">
                 <Grid3x3 className="h-16 w-16 text-green-300" />
               </div>
             )}
