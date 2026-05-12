@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { getAreaCoordinates } from "@/lib/ola-maps";
 
 // Cache headers - 30 second cache with stale-while-revalidate
 const CACHE_HEADERS = {
@@ -133,9 +134,17 @@ export async function GET(request: Request) {
       let distanceKm: number | null = null;
       let distanceText: string | null = null;
       
-      if (userLat && userLng && caterer.latitude && caterer.longitude) {
-        distanceKm = calculateDistance(userLat, userLng, caterer.latitude, caterer.longitude);
-        distanceText = formatDistance(distanceKm);
+      if (userLat && userLng) {
+        let cLat: number | null = caterer.latitude;
+        let cLng: number | null = caterer.longitude;
+        if (!cLat || !cLng) {
+          const fallback = getAreaCoordinates(caterer.area || caterer.city || "");
+          if (fallback) { cLat = fallback.lat; cLng = fallback.lng; }
+        }
+        if (cLat && cLng) {
+          distanceKm = calculateDistance(userLat, userLng, cLat, cLng);
+          distanceText = formatDistance(distanceKm);
+        }
       }
       
       return {

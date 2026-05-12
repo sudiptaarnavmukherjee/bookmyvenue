@@ -39,7 +39,19 @@ export default function DesktopNav() {
   // Read stored location on mount + listen for updates
   useEffect(() => {
     const stored = getBmvLocation();
-    if (stored) setLocationLabel(stored.label);
+    if (stored) {
+      setLocationLabel(stored.label);
+    } else {
+      // Auto-prompt on desktop for first-time visitors (same logic as mobile)
+      const prompted = sessionStorage.getItem("bmv_loc_prompted");
+      if (!prompted) {
+        const timer = setTimeout(() => {
+          setShowLocationModal(true);
+          sessionStorage.setItem("bmv_loc_prompted", "1");
+        }, 800);
+        return () => clearTimeout(timer);
+      }
+    }
     const handler = (e: Event) => {
       const d = (e as CustomEvent<{ label: string }>).detail;
       if (d?.label) setLocationLabel(d.label);
