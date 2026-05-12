@@ -2,9 +2,16 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
-import { Sparkles, Heart, Calendar, User, LogOut, Settings, LayoutDashboard, Search } from "lucide-react";
+import { Sparkles, Heart, Calendar, User, LogOut, Settings, LayoutDashboard, Search, MapPin, ChevronDown } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
+import { getBmvLocation } from "@/components/home/LocationPermissionModal";
+
+const LocationModal = dynamic(
+  () => import("@/components/home/LocationPermissionModal"),
+  { ssr: false, loading: () => null }
+);
 
 export default function DesktopNav() {
   const pathname = usePathname();
@@ -12,6 +19,8 @@ export default function DesktopNav() {
   const { data: session, status } = useSession();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [locationLabel, setLocationLabel] = useState<string | null>(null);
+  const [showLocationModal, setShowLocationModal] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
   const user = session?.user;
@@ -26,6 +35,18 @@ export default function DesktopNav() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, [isHome]);
+
+  // Read stored location on mount + listen for updates
+  useEffect(() => {
+    const stored = getBmvLocation();
+    if (stored) setLocationLabel(stored.label);
+    const handler = (e: Event) => {
+      const d = (e as CustomEvent<{ label: string }>).detail;
+      if (d?.label) setLocationLabel(d.label);
+    };
+    window.addEventListener("bmv:locationUpdated", handler);
+    return () => window.removeEventListener("bmv:locationUpdated", handler);
+  }, []);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -78,7 +99,8 @@ export default function DesktopNav() {
   const navBg = "bg-white border-b border-gray-200 shadow-sm";
 
   return (
-    <nav className={`hidden lg:block fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${navBg}`}>
+    <>
+      <nav className={`hidden lg:block fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${navBg}`}>
       <div className="mx-auto max-w-7xl px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
@@ -111,6 +133,21 @@ export default function DesktopNav() {
               </NavLink>
             )}
           </div>
+
+          {/* Location button — desktop only */}
+          <button
+            onClick={() => setShowLocationModal(true)}
+            className="flex items-center gap-1.5 text-left px-3 py-1.5 rounded-full border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-colors"
+          >
+            <MapPin className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" />
+            <div>
+              <p className="text-[9px] text-gray-400 leading-none">Location</p>
+              <p className="text-xs font-semibold text-gray-900 leading-tight max-w-[110px] truncate">
+                {locationLabel ?? "Set location"}
+              </p>
+            </div>
+            <ChevronDown className="w-3 h-3 text-gray-400" />
+          </button>
 
           {/* Right: Search + User */}
           <div className="flex items-center gap-3">
@@ -210,5 +247,15 @@ export default function DesktopNav() {
         </div>
       </div>
     </nav>
+      {showLocationModal && (
+        <LocationModal
+          onLocationSet={(_lat, _lng, label) => {
+            setLocationLabel(label);
+            setShowLocationModal(false);
+          }}
+          onDismiss={() => setShowLocationModal(false)}
+        />
+      )}
+    </>
   );
 }
