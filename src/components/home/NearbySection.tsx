@@ -37,9 +37,10 @@ interface NearbyCatererItem {
 
 // ── NearbySection ─────────────────────────────────────────────────────────────
 export default function NearbySection() {
+  const [mounted, setMounted]     = useState(false);
   const [venues, setVenues]       = useState<NearbyVenueItem[]>([]);
   const [caterers, setCaterers]   = useState<NearbyCatererItem[]>([]);
-  const [loading, setLoading]     = useState(true);  // true immediately → skeleton on first paint
+  const [loading, setLoading]     = useState(false);
   const [activeTab, setActiveTab] = useState<"venues" | "caterers">("venues");
   const [hidden, setHidden]       = useState(false);
   const abortRef                  = useRef<AbortController | null>(null);
@@ -47,7 +48,7 @@ export default function NearbySection() {
 
   useEffect(() => {
     const loc = getBmvLocation();
-    if (!loc) { setLoading(false); setHidden(true); return; }
+    if (!loc) { setMounted(true); setHidden(true); return; }
     locRef.current = loc;
 
     function runFetch(fetchLoc: StoredLocation) {
@@ -86,13 +87,13 @@ export default function NearbySection() {
         if (same && Date.now() - ts < CACHE_TTL) {
           setVenues(data.venues || []);
           setCaterers(data.caterers || []);
-          setLoading(false);
           if (!data.venues?.length && !data.caterers?.length) setHidden(true);
           cacheHit = true;
         }
       }
     } catch {}
 
+    setMounted(true); // show section now — either cached data or skeleton+fetch below
     if (!cacheHit) runFetch(loc);
 
     const handler = (e: Event) => {
@@ -111,7 +112,7 @@ export default function NearbySection() {
     };
   }, []);
 
-  if (hidden) return null;
+  if (!mounted || hidden) return null;
 
   const hasVenues     = venues.length > 0;
   const hasCaterers   = caterers.length > 0;
