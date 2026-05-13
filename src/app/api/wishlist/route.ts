@@ -44,6 +44,7 @@ export async function GET() {
             slug: true,
             name: true,
             city: true,
+            area: true,
             minPlatePrice: true,
             coverImage: true,
             images: true,

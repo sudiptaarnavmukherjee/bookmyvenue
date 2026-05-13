@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { CatererCard } from "@/components/catering/CatererCard";
 import { useLocation } from "@/hooks/useLocation";
+import { useSession } from "next-auth/react";
 
 type Caterer = {
   id: string;
@@ -55,8 +56,24 @@ export default function CateringPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"default" | "price-low" | "price-high" | "veg-first" | "nearby">("default");
   const { location, loading: locationLoading, isPermissionDenied } = useLocation();
+  const { data: session } = useSession();
   const [selectedArea, setSelectedArea] = useState<string>("");
   const [pureVegOnly, setPureVegOnly] = useState(false);
+  const [wishlistCatererIds, setWishlistCatererIds] = useState<Set<string>>(new Set());
+
+  // Fetch user's wishlisted caterer IDs once session is loaded
+  useEffect(() => {
+    if (!session) { setWishlistCatererIds(new Set()); return; }
+    fetch("/api/wishlist", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        const ids = new Set<string>();
+        (d.wishlist || []).forEach((item: any) => { if (item.catererId) ids.add(item.catererId); });
+        setWishlistCatererIds(ids);
+      })
+      .catch(() => {});
+  }, [session]);
+
 
   useEffect(() => {
     if (locationLoading) return;
@@ -352,6 +369,7 @@ export default function CateringPage() {
                 contactName={caterer.contactName}
                 viewCount={caterer.viewCount}
                 distanceText={caterer.distanceText || undefined}
+                inWishlist={wishlistCatererIds.has(caterer.id)}
               />
             ))}
           </div>

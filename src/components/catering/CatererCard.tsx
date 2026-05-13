@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Star, MapPin, Leaf, Heart, Phone, Medal, Award, Crown, CheckCircle2, Eye, GitCompare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api-client";
@@ -59,6 +60,7 @@ export function CatererCard({
   distanceText,
 }: CatererCardProps) {
   const { data: session } = useSession();
+  const router = useRouter();
   const { isCatererSelected, addCaterer, removeCaterer } = useCompare();
   const [isInWishlist, setIsInWishlist] = useState(inWishlist);
   const [wishlistLoading, setWishlistLoading] = useState(false);
@@ -81,25 +83,30 @@ export function CatererCard({
   const handleWishlistToggle = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (!session) {
-      alert("Please sign in to add to wishlist");
+      router.push("/auth/signin");
       return;
     }
 
     const targetId = catererId || id;
-    if (!targetId) return;
+    if (!targetId || wishlistLoading) return;
+
+    const prev = isInWishlist;
+    setIsInWishlist(!prev); // optimistic update
+    setWishlistLoading(true);
 
     try {
-      setWishlistLoading(true);
-      if (isInWishlist) {
-        await api.removeFromWishlist(undefined, targetId);
-        setIsInWishlist(false);
-      } else {
-        await api.addToWishlist({ catererId: targetId });
-        setIsInWishlist(true);
+      const { error } = prev
+        ? await api.removeFromWishlist(undefined, targetId)
+        : await api.addToWishlist({ catererId: targetId });
+
+      if (error) {
+        setIsInWishlist(prev); // revert on error
+        console.error("Wishlist error:", error);
       }
     } catch (err) {
+      setIsInWishlist(prev); // revert on exception
       console.error("Wishlist error:", err);
     } finally {
       setWishlistLoading(false);
