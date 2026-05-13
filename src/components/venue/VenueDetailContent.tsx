@@ -75,6 +75,8 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
   const [message, setMessage] = useState("");
   const [bookingLoading, setBookingLoading] = useState(false);
   const [stickyNav, setStickyNav] = useState(false);
+  const [isInWishlist, setIsInWishlist] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
   const heroRef = useRef<HTMLDivElement>(null);
   const overviewRef = useRef<HTMLDivElement>(null);
   const amenitiesRef = useRef<HTMLDivElement>(null);
@@ -84,6 +86,43 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
   useEffect(() => {
     fetch(`/api/venues/${venue.id}/views`, { method: "POST" }).catch(() => {});
   }, [venue.id]);
+
+  // Load wishlist state on mount
+  useEffect(() => {
+    if (!session) return;
+    fetch("/api/wishlist", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        const wishlisted = (d.wishlist || []).some((item: any) => item.venueId === venue.id);
+        setIsInWishlist(wishlisted);
+      })
+      .catch(() => {});
+  }, [session, venue.id]);
+
+  const handleWishlistToggle = async () => {
+    if (!session) {
+      router.push("/auth/signin");
+      return;
+    }
+    if (wishlistLoading) return;
+    const prev = isInWishlist;
+    setIsInWishlist(!prev);
+    setWishlistLoading(true);
+    try {
+      const { error } = prev
+        ? await api.removeFromWishlist(venue.id)
+        : await api.addToWishlist({ venueId: venue.id });
+      if (error) {
+        setIsInWishlist(prev);
+        console.error("Wishlist error:", error);
+      }
+    } catch (err) {
+      setIsInWishlist(prev);
+      console.error("Wishlist error:", err);
+    } finally {
+      setWishlistLoading(false);
+    }
+  };
 
   useEffect(() => {
     const hero = heroRef.current;
@@ -369,10 +408,16 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
                     <Share2 className="h-5 w-5 text-gray-600" />
                   </button>
                   <button
-                    className="rounded-xl border border-gray-200 p-2.5 hover:bg-gray-50 transition-colors"
-                    title="Save"
+                    onClick={handleWishlistToggle}
+                    disabled={wishlistLoading}
+                    className="rounded-xl border border-gray-200 p-2.5 hover:bg-rose-50 transition-colors disabled:opacity-50"
+                    title={isInWishlist ? "Remove from wishlist" : "Save to wishlist"}
                   >
-                    <Heart className="h-5 w-5 text-gray-600" />
+                    <Heart
+                      className={`h-5 w-5 transition-colors ${
+                        isInWishlist ? "fill-rose-500 text-rose-500" : "text-gray-600"
+                      }`}
+                    />
                   </button>
                 </div>
               </div>
@@ -709,8 +754,17 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
 
                   {/* Save & Share */}
                   <div className="flex gap-2 mt-4">
-                    <button className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border-2 border-gray-200 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
-                      <Heart className="h-4 w-4" /> Save
+                    <button
+                      onClick={handleWishlistToggle}
+                      disabled={wishlistLoading}
+                      className={`flex-1 flex items-center justify-center gap-1.5 rounded-xl border-2 py-2.5 text-sm font-medium transition-colors disabled:opacity-50 ${
+                        isInWishlist
+                          ? "border-rose-400 bg-rose-50 text-rose-600"
+                          : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      <Heart className={`h-4 w-4 ${isInWishlist ? "fill-rose-500 text-rose-500" : ""}`} />
+                      {isInWishlist ? "Saved" : "Save"}
                     </button>
                     <button
                       onClick={handleShare}
