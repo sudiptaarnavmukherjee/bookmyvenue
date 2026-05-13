@@ -53,6 +53,11 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (request.method !== 'GET') return;
 
+  // Skip all auth-related routes - must not be intercepted
+  if (url.pathname.startsWith('/api/auth/') || url.pathname.startsWith('/auth/')) {
+    return;
+  }
+
   // Skip external requests
   if (!url.origin.includes(self.location.origin) && 
       !url.hostname.includes('cloudinary.com') &&
