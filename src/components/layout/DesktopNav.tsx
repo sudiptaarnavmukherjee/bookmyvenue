@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
-import { Building2, Heart, Calendar, User, LogOut, Settings, LayoutDashboard, Search, MapPin, ChevronDown, ChefHat, Ticket } from "lucide-react";
+import { Building2, Heart, Calendar, User, LogOut, Settings, LayoutDashboard, Search, MapPin, ChevronDown, ChefHat, Ticket, LineChart } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { getBmvLocation, markBmvLocationPrompted, shouldPromptBmvLocation } from "@/components/home/LocationPermissionModal";
 
@@ -94,6 +94,9 @@ export default function DesktopNav() {
             {user && user.role !== "ADMIN" && (
               <NavLink href="/bookings" exact><Calendar className="h-4 w-4" /> My Bookings</NavLink>
             )}
+            {user && user.role === "USER" && (
+              <NavLink href="/trips" exact><LineChart className="h-4 w-4" /> My Trips</NavLink>
+            )}
           </div>
 
           <button onClick={() => setShowLocationModal(true)} className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-left transition-colors hover:border-[#0b5fab]/30 hover:bg-[#0b5fab]/5">
@@ -136,6 +139,7 @@ export default function DesktopNav() {
 
                     <div className="p-1.5">
                       <Link href="/profile" onClick={() => setShowProfileMenu(false)} className="menu-item"><User className="h-4 w-4" /> My Profile</Link>
+                      {user.role === "USER" && <Link href="/trips" onClick={() => setShowProfileMenu(false)} className="menu-item"><LineChart className="h-4 w-4" /> My Trips</Link>}
                       {user.role === "ADMIN" && <Link href="/admin" onClick={() => setShowProfileMenu(false)} className="menu-item"><LayoutDashboard className="h-4 w-4" /> Admin Dashboard</Link>}
                       {user.role === "VENUE_OWNER" && <Link href="/venue-owner" onClick={() => setShowProfileMenu(false)} className="menu-item"><LayoutDashboard className="h-4 w-4" /> Venue Dashboard</Link>}
                       {user.role === "CATERING_OWNER" && <Link href="/catering-owner" onClick={() => setShowProfileMenu(false)} className="menu-item"><LayoutDashboard className="h-4 w-4" /> Catering Dashboard</Link>}

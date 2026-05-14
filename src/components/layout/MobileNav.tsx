@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Building2, Calendar, User, LayoutDashboard, Heart } from "lucide-react";
+import { Home, Building2, Calendar, User, LayoutDashboard, Heart, LineChart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 
@@ -17,7 +17,7 @@ export function MobileNav() {
     { href: "/", icon: Home, label: "Home" },
     { href: "/venues", icon: Building2, label: "Venues" },
     { href: "/bookings", icon: Calendar, label: "Bookings" },
-    { href: "/wishlist", icon: Heart, label: "Saved" },
+    { href: "/trips", icon: LineChart, label: "Trips" },
     { href: "/profile", icon: User, label: "Profile" },
   ];
 
