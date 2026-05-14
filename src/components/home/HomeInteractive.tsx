@@ -2,47 +2,44 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Search, MapPin, ChevronDown, Heart, Building2, ChefHat, Calendar, Users } from "lucide-react";
+import { Search, MapPin, ChevronDown, Heart, Building2, ChefHat, Calendar, Users, Ticket } from "lucide-react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import Logo from "@/components/layout/Logo";
 import { getBmvLocation } from "@/components/home/LocationPermissionModal";
+import { useSession } from "next-auth/react";
 
-// Dynamically import SearchModal to reduce initial bundle
 const SearchModal = dynamic(() => import("@/components/home/SearchModal"), {
   ssr: false,
   loading: () => null,
 });
 
-// Dynamically import LocationPermissionModal (GPS + Ola Maps)
 const LocationModal = dynamic(
   () => import("@/components/home/LocationPermissionModal"),
   { ssr: false, loading: () => null }
 );
 
-// ============================================
-// Main Interactive Header & Search
-// ============================================
-export default function HomeInteractive({ 
-  initialMode = "venues" 
-}: { 
-  initialMode?: "venues" | "catering" 
-}) {
+const EVENT_CATEGORIES = [
+  { label: "Wedding", href: "/venues?search=wedding" },
+  { label: "Birthday", href: "/venues?search=birthday" },
+  { label: "Corporate", href: "/venues?search=corporate" },
+  { label: "Engagement", href: "/venues?search=engagement" },
+  { label: "Catering", href: "/catering" },
+];
+
+export default function HomeInteractive({ initialMode = "venues" }: { initialMode?: "venues" | "catering" }) {
   const router = useRouter();
-  
-  // Use initialMode directly - no useSearchParams() which forces dynamic rendering
+  const { data: session } = useSession();
+
   const [activeTab, setActiveTab] = useState<"venues" | "catering">(initialMode);
   const [location, setLocation] = useState("Kolkata");
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
 
-  // On mount: read stored location + auto-show modal for first-time visitors
   useEffect(() => {
     const stored = getBmvLocation();
     if (stored) {
       setLocation(stored.label);
     } else {
-      // Only auto-show once per session
       const prompted = sessionStorage.getItem("bmv_loc_prompted");
       if (!prompted) {
         const timer = setTimeout(() => {
@@ -53,16 +50,15 @@ export default function HomeInteractive({
       }
     }
 
-    // Keep header in sync when location is set from NearbySection or elsewhere
     const handler = (e: Event) => {
       const d = (e as CustomEvent<{ label: string }>).detail;
       if (d?.label) setLocation(d.label);
     };
+
     window.addEventListener("bmv:locationUpdated", handler);
     return () => window.removeEventListener("bmv:locationUpdated", handler);
   }, []);
 
-  // Tab change handler â€” update URL silently + notify HomeTabContent via event
   const handleTabChange = useCallback((tab: "venues" | "catering") => {
     setActiveTab(tab);
     const url = new URL(window.location.href);
@@ -71,159 +67,131 @@ export default function HomeInteractive({
     window.dispatchEvent(new CustomEvent("home:tabChanged", { detail: { tab } }));
   }, []);
 
-  // Search handler
-  const handleSearch = useCallback((params: {
-    search: string;
-    date?: string;
-    guests?: number;
-    isNearby?: boolean;
-    lat?: number;
-    lng?: number;
-  }) => {
-    const urlParams = new URLSearchParams();
-    if (params.search) urlParams.set("search", params.search);
-    if (params.date) urlParams.set("date", params.date);
-    if (params.guests) urlParams.set("minGuests", params.guests.toString());
-    if (params.isNearby && params.lat && params.lng) {
-      urlParams.set("lat", params.lat.toString());
-      urlParams.set("lng", params.lng.toString());
-      urlParams.set("sort", "nearby");
-    }
-    router.push(`/${activeTab === "venues" ? "venues" : "catering"}?${urlParams.toString()}`);
-  }, [activeTab, router]);
-
-  // Quick search
-  const handleQuickSearch = useCallback((area: string) => {
-    router.push(`/${activeTab === "venues" ? "venues" : "catering"}?search=${encodeURIComponent(area)}`);
-  }, [activeTab, router]);
-
-  const quickAreas = ["Salt Lake", "New Town", "Rajarhat", "Howrah"];
-  const accentBg = activeTab === "venues" ? "bg-purple-600" : "bg-orange-500";
+  const handleSearch = useCallback(
+    (params: {
+      search: string;
+      date?: string;
+      guests?: number;
+      isNearby?: boolean;
+      lat?: number;
+      lng?: number;
+    }) => {
+      const urlParams = new URLSearchParams();
+      if (params.search) urlParams.set("search", params.search);
+      if (params.date) urlParams.set("date", params.date);
+      if (params.guests) urlParams.set("minGuests", params.guests.toString());
+      if (params.isNearby && params.lat && params.lng) {
+        urlParams.set("lat", params.lat.toString());
+        urlParams.set("lng", params.lng.toString());
+        urlParams.set("sort", "nearby");
+      }
+      const target = activeTab === "venues" ? "venues" : "catering";
+      router.push(`/${target}?${urlParams.toString()}`);
+    },
+    [activeTab, router]
+  );
 
   return (
     <>
-      {/* Sticky Header — mobile only; DesktopNav handles lg+ */}
-      <header className="lg:hidden sticky top-0 z-50 bg-white border-b shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-2.5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Logo size="sm" />
-              <button
-                onClick={() => setShowLocationModal(true)}
-                className="flex items-center gap-1 text-left"
-              >
-                <MapPin className="w-4 h-4 text-purple-600" />
-                <div>
-                  <p className="text-[10px] text-gray-400 leading-none">Location</p>
-                  <p className="text-sm font-semibold text-gray-900 flex items-center gap-0.5">
-                    {location}
-                    <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
-                  </p>
-                </div>
-              </button>
+      <header className="lg:hidden sticky top-0 z-50 border-b border-slate-200 bg-white">
+        <div className="flex items-center justify-between px-4 py-3">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#0b5fab] text-white">
+              <Ticket className="h-4.5 w-4.5" />
             </div>
-            <div className="flex items-center gap-1">
-              <Link href="/wishlist" className="p-2 hover:bg-gray-100 rounded-full" prefetch={false}>
-                <Heart className="w-5 h-5 text-gray-600" />
+            <div className="leading-none">
+              <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#0b5fab]">Book</p>
+              <p className="text-lg font-extrabold text-slate-900">MyVenue</p>
+            </div>
+          </Link>
+
+          <div className="flex items-center gap-1">
+            <Link href="/wishlist" className="rounded-full p-2 hover:bg-slate-100" prefetch={false}>
+              <Heart className="h-5 w-5 text-slate-600" />
+            </Link>
+            {session?.user ? (
+              <Link href="/profile" className="rounded-full p-1" prefetch={false}>
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#0b5fab] text-xs font-bold text-white">
+                  {(session.user.name || "U")[0].toUpperCase()}
+                </div>
               </Link>
-              <Link
-                href="/auth/signin"
-                className={`text-xs font-semibold px-3 py-1.5 rounded-lg ${
-                  activeTab === "venues" ? "text-purple-600 bg-purple-50" : "text-orange-600 bg-orange-50"
-                }`}
-                prefetch={false}
-              >
+            ) : (
+              <Link href="/auth/signin" className="rounded-full bg-[#ff7a00] px-3 py-1.5 text-xs font-bold text-white" prefetch={false}>
                 Login
               </Link>
-            </div>
+            )}
           </div>
         </div>
       </header>
 
-      {/* Tab Switcher */}
-      <div className="bg-white border-b sticky top-[52px] lg:top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex">
-            <button
-              onClick={() => handleTabChange("venues")}
-              className={`flex-1 py-3 text-center text-sm font-semibold border-b-2 transition-colors flex items-center justify-center gap-1.5 ${
-                activeTab === "venues"
-                  ? "text-purple-600 border-purple-600"
-                  : "text-gray-500 border-transparent"
-              }`}
-            >
-              <Building2 className="w-4 h-4" />
-              Venues
+      <div className="travel-hero px-4 pb-8 pt-5 lg:px-6 lg:pb-12 lg:pt-9">
+        <div className="mx-auto mb-6 max-w-4xl text-center lg:mb-7">
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-sky-100">Venue and catering marketplace</p>
+          <h1 className="text-3xl font-extrabold leading-tight text-white lg:text-5xl">Plan Events Like a Trip</h1>
+          <p className="mx-auto mt-2 max-w-2xl text-sm text-sky-100 lg:text-base">
+            Discover verified venues and caterers with transparent pricing, instant booking, and location-first search.
+          </p>
+        </div>
+
+        <div className="travel-search-card mx-auto max-w-4xl">
+          <div className="flex border-b border-slate-200">
+            <button onClick={() => handleTabChange("venues")} className={`travel-tab ${activeTab === "venues" ? "travel-tab-active" : ""}`}>
+              <Building2 className="h-4 w-4" /> Venues
             </button>
-            <button
-              onClick={() => handleTabChange("catering")}
-              className={`flex-1 py-3 text-center text-sm font-semibold border-b-2 transition-colors flex items-center justify-center gap-1.5 ${
-                activeTab === "catering"
-                  ? "text-orange-600 border-orange-600"
-                  : "text-gray-500 border-transparent"
-              }`}
-            >
-              <ChefHat className="w-4 h-4" />
-              Catering
+            <button onClick={() => handleTabChange("catering")} className={`travel-tab ${activeTab === "catering" ? "travel-tab-active" : ""}`}>
+              <ChefHat className="h-4 w-4" /> Catering
             </button>
           </div>
-        </div>
-      </div>
 
-      {/* Search Bar */}
-      <div className={`px-4 py-4 ${accentBg}`}>
-        <div className="max-w-3xl mx-auto">
-          <button
-            onClick={() => setShowSearchModal(true)}
-            className="w-full bg-white rounded-full p-2 pr-4 flex items-center gap-3 shadow-lg hover:shadow-xl transition-shadow"
-          >
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${accentBg}`}>
-              <Search className="w-5 h-5 text-white" />
-            </div>
-            <div className="text-left flex-1">
-              <p className="text-sm font-semibold text-gray-900">
-                {activeTab === "venues" ? "Where to celebrate?" : "What&apos;s cooking?"}
-              </p>
-              <p className="text-xs text-gray-500">
-                {activeTab === "venues"
-                  ? "Search venues · Add dates · Add guests"
-                  : "Search caterers · Cuisine · Location"}
-              </p>
-            </div>
-            {activeTab === "venues" && (
-              <div className="flex items-center gap-2">
-                <div className="w-px h-6 bg-gray-200" />
-                <Calendar className="w-4 h-4 text-gray-400" />
-                <div className="w-px h-6 bg-gray-200" />
-                <Users className="w-4 h-4 text-gray-400" />
+          <div className="grid gap-2 p-3 md:grid-cols-[1.2fr_1fr_1fr_auto] md:gap-0 md:p-0">
+            <button onClick={() => setShowLocationModal(true)} className="travel-search-field md:rounded-none md:border-r md:border-b-0">
+              <MapPin className="h-4.5 w-4.5 text-[#0b5fab]" />
+              <div className="min-w-0 text-left">
+                <p className="travel-label">City</p>
+                <p className="truncate text-sm font-bold text-slate-900">{location}</p>
               </div>
-            )}
-          </button>
+              <ChevronDown className="ml-auto h-4 w-4 text-slate-400" />
+            </button>
 
-          {/* Quick area chips */}
-          <div className="flex gap-2 mt-3 overflow-x-auto pb-1 scrollbar-hide">
-            {quickAreas.map(area => (
-              <button
-                key={area}
-                onClick={() => handleQuickSearch(area)}
-                className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 bg-white/15 backdrop-blur-sm text-white text-xs rounded-full border border-white/30 hover:bg-white/25 font-medium transition-colors"
-              >
-                <MapPin className="w-2.5 h-2.5 opacity-70" />
-                {area}
-              </button>
-            ))}
-            <button
-              onClick={() => setShowSearchModal(true)}
-              className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 bg-white text-gray-700 text-xs rounded-full hover:bg-gray-50 font-semibold transition-colors shadow-sm"
-            >
-              <Search className="w-3 h-3" />
-              More
+            <button onClick={() => setShowSearchModal(true)} className="travel-search-field md:rounded-none md:border-r md:border-b-0">
+              <Calendar className="h-4.5 w-4.5 text-[#0b5fab]" />
+              <div className="text-left">
+                <p className="travel-label">Date</p>
+                <p className="text-sm font-bold text-slate-900">Select date</p>
+              </div>
+            </button>
+
+            <button onClick={() => setShowSearchModal(true)} className="travel-search-field md:rounded-none md:border-r md:border-b-0">
+              <Users className="h-4.5 w-4.5 text-[#0b5fab]" />
+              <div className="text-left">
+                <p className="travel-label">Guests</p>
+                <p className="text-sm font-bold text-slate-900">Add count</p>
+              </div>
+            </button>
+
+            <button onClick={() => setShowSearchModal(true)} className="travel-search-button">
+              <Search className="h-4.5 w-4.5" /> Search
             </button>
           </div>
         </div>
+
+        <div className="mx-auto mt-4 flex max-w-4xl gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          {EVENT_CATEGORIES.map((cat) => (
+            <Link
+              key={cat.label}
+              href={cat.href}
+              onClick={() => {
+                if (cat.href.startsWith("/catering")) handleTabChange("catering");
+                else handleTabChange("venues");
+              }}
+              className="flex-shrink-0 rounded-full border border-white/30 bg-white/10 px-3.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-white/20"
+            >
+              {cat.label}
+            </Link>
+          ))}
+        </div>
       </div>
 
-      {/* Location Modal */}
       {showLocationModal && (
         <LocationModal
           onLocationSet={(_lat, _lng, label) => {
@@ -245,4 +213,3 @@ export default function HomeInteractive({
     </>
   );
 }
-

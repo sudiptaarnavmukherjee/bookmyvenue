@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import Image from "next/image";
 import { Calendar, Users, MapPin, Heart, X, Check, Clock, Loader2, AlertCircle, CreditCard } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -164,14 +165,14 @@ export default function MyBookingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 pb-24 pt-8">
+    <div className="min-h-screen bg-[#f4f7fb] pb-24 pt-8">
       <div className="mx-auto max-w-4xl px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="text-4xl font-bold text-gradient mb-2">{getPageTitle()}</h1>
+          <h1 className="text-4xl font-bold text-[#0b5fab] mb-2">{getPageTitle()}</h1>
           <p className="text-gray-600">{getPageSubtitle()}</p>
         </motion.div>
 
@@ -183,8 +184,8 @@ export default function MyBookingsPage() {
               onClick={() => setFilter(tab as typeof filter)}
               className={`rounded-full px-6 py-2.5 font-medium transition-all whitespace-nowrap ${
                 filter === tab
-                  ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
-                  : "glass-card hover:bg-white/80"
+                  ? "bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] text-white shadow-lg"
+                  : "bg-white border border-slate-200 shadow-sm hover:bg-white/80"
               }`}
             >
               {tab === "ALL" ? "All Bookings" : tab === "VENUE" ? "Venues" : "Catering"}
@@ -195,20 +196,20 @@ export default function MyBookingsPage() {
         {/* Loading State */}
         {loading && (
           <div className="flex flex-col items-center justify-center py-20">
-            <Loader2 className="h-12 w-12 animate-spin text-purple-600 mb-4" />
+            <Loader2 className="h-12 w-12 animate-spin text-[#0b5fab] mb-4" />
             <p className="text-gray-600">Loading bookings...</p>
           </div>
         )}
 
         {/* Error State */}
         {error && !loading && (
-          <div className="glass-card rounded-3xl p-8 text-center">
+          <div className="bg-white border border-slate-200 shadow-sm rounded-3xl p-8 text-center">
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <h3 className="text-xl font-bold mb-2">Failed to Load Bookings</h3>
             <p className="text-gray-600 mb-6">{error}</p>
             <button
               onClick={loadBookings}
-              className="rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-3 font-semibold text-white shadow-lg hover:shadow-xl transition-all"
+              className="rounded-xl bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] px-6 py-3 font-semibold text-white shadow-lg hover:shadow-xl transition-all"
             >
               Retry
             </button>
@@ -222,14 +223,14 @@ export default function MyBookingsPage() {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="glass-card rounded-3xl p-12 text-center"
+              className="bg-white border border-slate-200 shadow-sm rounded-3xl p-12 text-center"
             >
               <Heart className="mx-auto h-16 w-16 text-gray-400 mb-4" />
               <h3 className="text-xl font-semibold text-gray-700 mb-2">No bookings yet</h3>
               <p className="text-gray-600 mb-6">Start planning your dream wedding!</p>
               <button
                 onClick={() => router.push("/")}
-                className="mx-auto rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-8 py-3 font-semibold text-white shadow-lg hover:shadow-xl transition-all"
+                className="mx-auto rounded-full bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] px-8 py-3 font-semibold text-white shadow-lg hover:shadow-xl transition-all"
               >
                 Explore Venues & Catering
               </button>
@@ -252,14 +253,16 @@ export default function MyBookingsPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="glass-card overflow-hidden rounded-3xl hover-lift"
+                className="bg-white border border-slate-200 shadow-sm overflow-hidden rounded-3xl hover-lift"
               >
                 <div className="flex flex-col sm:flex-row gap-4">
                   <div className="relative h-48 sm:h-auto sm:w-48 overflow-hidden">
-                    <img
+                    <Image
                       src={image}
                       alt={name}
-                      className="h-full w-full object-cover"
+                      fill
+                      sizes="(max-width: 640px) 100vw, 192px"
+                      className="object-cover"
                     />
                     <div className="absolute top-3 right-3">
                       <span className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold ${getStatusColor(booking.status)}`}>
@@ -272,7 +275,7 @@ export default function MyBookingsPage() {
                   <div className="flex-1 p-4 sm:p-6">
                     <div className="mb-4">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-purple-600 uppercase tracking-wide">
+                        <span className="text-xs font-semibold text-[#0b5fab] uppercase tracking-wide">
                           {booking.type}
                         </span>
                         <span className="text-xs text-gray-500">{booking.bookingNumber}</span>
@@ -285,15 +288,15 @@ export default function MyBookingsPage() {
 
                     <div className="space-y-2 mb-4">
                       <div className="flex items-center gap-2 text-gray-600">
-                        <MapPin className="h-4 w-4 text-purple-600" />
+                        <MapPin className="h-4 w-4 text-[#0b5fab]" />
                         <span className="text-sm">{location}</span>
                       </div>
                       <div className="flex items-center gap-2 text-gray-600">
-                        <Calendar className="h-4 w-4 text-purple-600" />
+                        <Calendar className="h-4 w-4 text-[#0b5fab]" />
                         <span className="text-sm">{new Date(booking.eventDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
                       </div>
                       <div className="flex items-center gap-2 text-gray-600">
-                        <Users className="h-4 w-4 text-purple-600" />
+                        <Users className="h-4 w-4 text-[#0b5fab]" />
                         <span className="text-sm">{booking.guests || 0} Guests</span>
                       </div>
                     </div>
@@ -301,7 +304,7 @@ export default function MyBookingsPage() {
                     <div className="flex items-center justify-between border-t border-gray-200 pt-4">
                       <div>
                         <span className="text-sm text-gray-600">Total Amount</span>
-                        <p className="text-2xl font-bold text-gradient">₹{(booking.totalAmount || 0).toLocaleString('en-IN')}</p>
+                        <p className="text-2xl font-bold text-[#0b5fab]">₹{(booking.totalAmount || 0).toLocaleString('en-IN')}</p>
                         {booking.advanceAmount && booking.advanceAmount > 0 && (
                           <p className="text-xs text-green-600">
                             Paid: ₹{booking.advanceAmount.toLocaleString('en-IN')}
@@ -315,7 +318,7 @@ export default function MyBookingsPage() {
                               const path = booking.type === "VENUE" ? `/venues/${slug}` : `/catering/${slug}`;
                               router.push(path);
                             }}
-                            className="rounded-xl border-2 border-purple-600 px-4 py-2 font-semibold text-purple-600 hover:bg-purple-50 transition-colors"
+                            className="rounded-xl border-2 border-[#0b5fab] px-4 py-2 font-semibold text-[#0b5fab] hover:bg-[#0b5fab]/5 transition-colors"
                           >
                             View Details
                           </button>
@@ -363,3 +366,6 @@ export default function MyBookingsPage() {
     </div>
   );
 }
+
+
+

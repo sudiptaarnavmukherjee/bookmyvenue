@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { api } from "@/lib/api-client";
@@ -232,11 +233,15 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
               </button>
             </>
           )}
-          <img
-            src={venue.images[selectedImage]}
-            alt={venue.name}
-            className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg"
-          />
+          <div className="relative h-[90vh] w-[90vw]">
+            <Image
+              src={venue.images[selectedImage]}
+              alt={venue.name}
+              fill
+              sizes="90vw"
+              className="rounded-lg object-contain"
+            />
+          </div>
           <div className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-4 py-1.5 text-sm text-white">
             {selectedImage + 1} / {venue.images.length}
           </div>
@@ -248,7 +253,7 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 pt-4 pb-2">
           <button
             onClick={() => router.back()}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-purple-700 transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-[#0b5fab] transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Venues
@@ -263,15 +268,18 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
             onClick={() => setShowLightbox(true)}
           >
             {venue.images.length > 0 ? (
-              <img
-                src={venue.images[selectedImage]}
-                alt={venue.name}
-                className="w-full h-auto block"
-                style={{ maxHeight: '520px', objectFit: 'cover', objectPosition: 'center' }}
-              />
+              <div className="relative h-[300px] w-full sm:h-[420px] lg:h-[520px]">
+                <Image
+                  src={venue.images[selectedImage]}
+                  alt={venue.name}
+                  fill
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 768px, 1200px"
+                  className="object-cover object-center"
+                />
+              </div>
             ) : (
-              <div className="h-64 flex items-center justify-center bg-purple-50 rounded-2xl">
-                <Grid3x3 className="h-16 w-16 text-purple-300" />
+              <div className="h-64 flex items-center justify-center bg-[#0b5fab]/5 rounded-2xl">
+                <Grid3x3 className="h-16 w-16 text-sky-300" />
               </div>
             )}
             {venue.images.length > 1 && (
@@ -302,10 +310,12 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
                   key={idx}
                   onClick={() => setSelectedImage(idx)}
                   className={`flex-shrink-0 h-16 w-24 rounded-xl overflow-hidden border-2 transition-all ${
-                    selectedImage === idx ? 'border-purple-600' : 'border-transparent opacity-70 hover:opacity-100'
+                    selectedImage === idx ? 'border-[#0b5fab]' : 'border-transparent opacity-70 hover:opacity-100'
                   }`}
                 >
-                  <img src={img} alt="" className="h-full w-full object-cover" />
+                  <div className="relative h-full w-full">
+                    <Image src={img} alt="" fill sizes="96px" className="object-cover" />
+                  </div>
                 </button>
               ))}
             </div>
@@ -328,7 +338,7 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
             {venue.images.length > 1 && (
               <button
                 onClick={() => setShowLightbox(true)}
-                className="text-xs font-medium text-purple-700 hover:text-purple-900 underline underline-offset-2"
+                className="text-xs font-medium text-[#0b5fab] hover:text-[#084a86] underline underline-offset-2"
               >
                 View all {venue.images.length} photos
               </button>
@@ -354,7 +364,7 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
                   <button
                     key={label}
                     onClick={() => scrollTo(ref)}
-                    className="px-3 py-1.5 rounded-lg text-gray-600 hover:bg-purple-50 hover:text-purple-700 font-medium transition-colors"
+                    className="px-3 py-1.5 rounded-lg text-gray-600 hover:bg-[#0b5fab]/5 hover:text-[#0b5fab] font-medium transition-colors"
                   >
                     {label}
                   </button>
@@ -362,7 +372,7 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
               </div>
               <button
                 onClick={() => scrollTo(bookingCardRef)}
-                className="rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-1.5 text-sm font-bold text-white shadow hover:shadow-md transition-all"
+                className="rounded-xl bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] px-4 py-1.5 text-sm font-bold text-white shadow hover:shadow-md transition-all"
               >
                 {isFishbowl ? "Contact" : "Book Now"}
               </button>
@@ -385,7 +395,7 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
                   </h1>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-gray-500 text-sm">
                     <span className="flex items-center gap-1.5">
-                      <MapPin className="h-4 w-4 text-purple-500" />
+                      <MapPin className="h-4 w-4 text-[#0b5fab]" />
                       {venue.area ? `${venue.area}, ${venue.city}` : venue.city}
                     </span>
                     {venue.reviewCount !== undefined && venue.reviewCount > 0 && (
@@ -425,8 +435,8 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
               {/* Quick stats strip */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
                 <div className="flex items-center gap-3 rounded-2xl bg-white border border-gray-100 shadow-sm p-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100">
-                    <Users className="h-5 w-5 text-purple-600" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0b5fab]/10">
+                    <Users className="h-5 w-5 text-[#0b5fab]" />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Max Capacity</p>
@@ -462,7 +472,7 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
 
               {/* Hosted by */}
               <div className="flex items-center gap-3 mb-6">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-white font-bold text-lg">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#0b5fab] to-[#1f86d9] text-white font-bold text-lg">
                   {(venue.ownerName || venue.contactName || "V")[0].toUpperCase()}
                 </div>
                 <div>
@@ -488,10 +498,10 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
                     return (
                       <div
                         key={idx}
-                        className="flex items-center gap-3 rounded-2xl bg-white border border-gray-100 shadow-sm px-4 py-3 hover:border-purple-200 hover:shadow-md transition-all"
+                        className="flex items-center gap-3 rounded-2xl bg-white border border-gray-100 shadow-sm px-4 py-3 hover:border-[#0b5fab]/20 hover:shadow-md transition-all"
                       >
-                        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-purple-50">
-                          <Icon className="h-4.5 w-4.5 text-purple-600 h-5 w-5" />
+                        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-[#0b5fab]/5">
+                          <Icon className="h-4.5 w-4.5 text-[#0b5fab] h-5 w-5" />
                         </div>
                         <span className="font-medium text-gray-700">{amenity}</span>
                       </div>
@@ -531,7 +541,7 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
                     </div>
                   )}
                   {venue.otherEventPrice && (
-                    <div className="flex items-center justify-between rounded-2xl bg-white border border-purple-100 shadow-sm px-5 py-4">
+                    <div className="flex items-center justify-between rounded-2xl bg-white border border-[#0b5fab]/15 shadow-sm px-5 py-4">
                       <div className="flex items-center gap-3">
                         <span className="text-2xl">🙏</span>
                         <div>
@@ -539,7 +549,7 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
                           <p className="text-xs text-gray-400">Shradh, Corporate, etc.</p>
                         </div>
                       </div>
-                      <p className="text-xl font-extrabold text-purple-700">₹{venue.otherEventPrice.toLocaleString("en-IN")}</p>
+                      <p className="text-xl font-extrabold text-[#0b5fab]">₹{venue.otherEventPrice.toLocaleString("en-IN")}</p>
                     </div>
                   )}
                   {venue.primeDayPrice && (
@@ -581,7 +591,7 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
                 <h2 className="text-xl font-bold text-gray-900 mb-2">Location</h2>
                 {venue.address && (
                   <p className="flex items-start gap-1.5 text-sm text-gray-500 mb-4">
-                    <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-purple-500" />
+                    <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-[#0b5fab]" />
                     {venue.address}
                   </p>
                 )}
@@ -603,10 +613,10 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
             <div ref={bookingCardRef} className="sticky top-[72px] scroll-mt-20">
               <div className="rounded-3xl bg-white border border-gray-200 shadow-xl overflow-hidden">
                 {/* Card header */}
-                <div className="bg-gradient-to-r from-purple-600 to-pink-500 px-6 py-5">
+                <div className="bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] px-6 py-5">
                   {isFishbowl ? (
                     <div>
-                      <p className="text-purple-100 text-xs font-medium uppercase tracking-wider mb-1">Starting from</p>
+                      <p className="text-sky-100 text-xs font-medium uppercase tracking-wider mb-1">Starting from</p>
                       {venue.estimatedMinPrice ? (
                         <p className="text-3xl font-extrabold text-white">
                           ₹{venue.estimatedMinPrice.toLocaleString("en-IN")}
@@ -617,13 +627,13 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
                       ) : (
                         <p className="text-3xl font-extrabold text-white">₹{(venue.price || 0).toLocaleString("en-IN")}</p>
                       )}
-                      <p className="text-purple-200 text-xs mt-1">per event · call to confirm</p>
+                      <p className="text-sky-200 text-xs mt-1">per event · call to confirm</p>
                     </div>
                   ) : (
                     <div>
-                      <p className="text-purple-100 text-xs font-medium uppercase tracking-wider mb-1">Price</p>
+                      <p className="text-sky-100 text-xs font-medium uppercase tracking-wider mb-1">Price</p>
                       <p className="text-3xl font-extrabold text-white">₹{displayPrice.toLocaleString("en-IN")}</p>
-                      <p className="text-purple-200 text-xs mt-1">per event</p>
+                      <p className="text-sky-200 text-xs mt-1">per event</p>
                     </div>
                   )}
                 </div>
@@ -641,7 +651,7 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
                         {venue.contactNumber && (
                           <a
                             href={`tel:${venue.contactNumber}`}
-                            className="flex items-center gap-2 text-base font-bold text-purple-700 hover:text-purple-900"
+                            className="flex items-center gap-2 text-base font-bold text-[#0b5fab] hover:text-[#084a86]"
                           >
                             <Phone className="h-4 w-4" />
                             {venue.contactNumber}
@@ -690,7 +700,7 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
                           value={bookingDate}
                           onChange={(e) => setBookingDate(e.target.value)}
                           min={new Date().toISOString().split("T")[0]}
-                          className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm focus:border-purple-500 outline-none transition-colors"
+                          className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm focus:border-[#0b5fab]/100 outline-none transition-colors"
                         />
                         {bookingDate && isDateBooked(bookingDate) && (
                           <p className="mt-1.5 text-xs text-red-600 font-medium">⚠️ This date is already booked</p>
@@ -707,7 +717,7 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
                           onChange={(e) => setGuests(e.target.value)}
                           placeholder={`Up to ${venue.capacity}`}
                           max={venue.capacity}
-                          className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm focus:border-purple-500 outline-none transition-colors"
+                          className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm focus:border-[#0b5fab]/100 outline-none transition-colors"
                         />
                       </div>
 
@@ -718,14 +728,14 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
                           onChange={(e) => setMessage(e.target.value)}
                           placeholder="Any special requirements..."
                           rows={3}
-                          className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm focus:border-purple-500 outline-none resize-none transition-colors"
+                          className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm focus:border-[#0b5fab]/100 outline-none resize-none transition-colors"
                         />
                       </div>
 
                       <button
                         onClick={handleBooking}
                         disabled={!bookingDate || !guests || isDateBooked(bookingDate) || bookingLoading}
-                        className="w-full rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 py-4 font-bold text-white shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+                        className="w-full rounded-2xl bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] py-4 font-bold text-white shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
                       >
                         {bookingLoading ? (
                           <>
@@ -790,7 +800,7 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
         </div>
         <button
           onClick={() => scrollTo(bookingCardRef)}
-          className="rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-3 font-bold text-white shadow-lg"
+          className="rounded-2xl bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] px-6 py-3 font-bold text-white shadow-lg"
         >
           {isFishbowl ? "Contact" : "Book Now"}
         </button>
@@ -798,3 +808,7 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
     </>
   );
 }
+
+
+
+

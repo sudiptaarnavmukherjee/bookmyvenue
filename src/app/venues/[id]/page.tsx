@@ -149,13 +149,13 @@ export default async function VenueDetailPage({ params }: { params: Promise<{ id
 
   if (!venue) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
-        <div className="glass-card rounded-3xl p-8 text-center">
+      <div className="min-h-screen flex items-center justify-center bg-[#f4f7fb]">
+        <div className="bg-white border border-slate-200 shadow-sm rounded-3xl p-8 text-center">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold mb-2">Venue not found</h2>
           <Link
             href="/venues"
-            className="mt-4 inline-block rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-2 font-semibold text-white"
+            className="mt-4 inline-block rounded-full bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] px-6 py-2 font-semibold text-white"
           >
             Back to Venues
           </Link>
@@ -166,3 +166,4 @@ export default async function VenueDetailPage({ params }: { params: Promise<{ id
 
   return <VenueDetailContent venue={venue} />;
 }
+

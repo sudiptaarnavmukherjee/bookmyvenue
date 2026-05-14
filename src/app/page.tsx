@@ -16,18 +16,18 @@ export const revalidate = 300;
 // ============================================
 function Footer() {
   return (
-    <footer className="bg-white border-t py-6 px-4 mt-8">
+    <footer className="mt-8 border-t border-slate-200 bg-white py-6 px-4">
       <div className="max-w-7xl mx-auto text-center">
         <Logo size="sm" className="mx-auto mb-3" />
-        <p className="text-gray-500 text-xs mb-3">
-          Find the perfect venue and catering for your events
+        <p className="mb-3 text-xs text-slate-500">
+          Discover and book venues and caterers across Kolkata.
         </p>
-        <div className="flex justify-center gap-4 text-xs text-gray-400">
-          <Link href="/venues" className="hover:text-gray-600" prefetch={true}>Venues</Link>
-          <Link href="/catering" className="hover:text-gray-600" prefetch={true}>Catering</Link>
-          <Link href="/bookings" className="hover:text-gray-600" prefetch={false}>Bookings</Link>
+        <div className="flex justify-center gap-4 text-xs text-slate-400">
+          <Link href="/venues" className="hover:text-[#0b5fab]" prefetch={true}>Venues</Link>
+          <Link href="/catering" className="hover:text-[#0b5fab]" prefetch={true}>Catering</Link>
+          <Link href="/bookings" className="hover:text-[#0b5fab]" prefetch={false}>Bookings</Link>
         </div>
-        <p className="text-gray-300 text-[10px] mt-4">© 2024 BookMyVenue</p>
+        <p className="mt-4 text-[10px] text-slate-300">© 2026 BookMyVenue</p>
       </div>
     </footer>
   );
@@ -57,7 +57,7 @@ export default async function HomePage({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#f4f7fb]">
       {/* Interactive Header - Client Component */}
       <Suspense fallback={<div className="h-[52px] bg-white border-b" />}>
         <HomeInteractive initialMode={mode as "venues" | "catering"} />

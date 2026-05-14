@@ -1,6 +1,7 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { api } from "@/lib/api-client";
@@ -58,7 +59,7 @@ const TIER_COLORS = {
   SILVER: "from-gray-400 to-gray-600",
   GOLD: "from-yellow-400 to-yellow-600",
   DIAMOND: "from-blue-400 to-blue-600",
-  PLATINUM: "from-purple-500 to-pink-600"
+  PLATINUM: "from-[#0b5fab] to-[#1f86d9]"
 };
 
 const VARIANT_LABELS: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -111,7 +112,7 @@ function MenuItemList({ items }: { items: Record<string, string[]> | string[] })
               {dishes.map((dish) => (
                 <span
                   key={dish}
-                  className="text-xs bg-purple-50 text-purple-700 px-2.5 py-1 rounded-full border border-purple-100"
+                  className="text-xs bg-[#0b5fab]/5 text-[#0b5fab] px-2.5 py-1 rounded-full border border-[#0b5fab]/15"
                 >
                   {dish}
                 </span>
@@ -265,7 +266,7 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
         alert(`Booking failed: ${bookingError}`);
       } else {
         const totalAmount = selectedPackage.pricePerPlate * guestCount;
-        alert(`Booking request sent! Total: ₹${totalAmount.toLocaleString('en-IN')}`);
+        alert(`Booking request sent! Total: Rs ${totalAmount.toLocaleString('en-IN')}`);
         router.push("/bookings");
       }
     } catch {
@@ -280,7 +281,7 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
 
   return (
     <>
-      {/* ── Lightbox ─────────────────────────────────────────────── */}
+      {/* -- Lightbox ----------------------------------------------- */}
       {showLightbox && caterer.images.length > 0 && (
         <div className="fixed inset-0 z-[60] bg-black/95 flex items-center justify-center">
           <button
@@ -299,7 +300,15 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
               </button>
             </>
           )}
-          <img src={caterer.images[selectedImage]} alt={caterer.name} className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg" />
+          <div className="relative h-[90vh] w-[90vw]">
+            <Image
+              src={caterer.images[selectedImage]}
+              alt={caterer.name}
+              fill
+              sizes="90vw"
+              className="rounded-lg object-contain"
+            />
+          </div>
           <div className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-4 py-1.5 text-sm text-white">
             {selectedImage + 1} / {caterer.images.length}
           </div>
@@ -307,18 +316,18 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
       )}
 
       <div className="min-h-screen bg-gray-50">
-        {/* ── Breadcrumb ───────────────────────────────────────────── */}
+        {/* -- Breadcrumb --------------------------------------------- */}
         <div className="mx-auto max-w-7xl px-4 sm:px-6 pt-4 pb-2">
           <button
             onClick={() => router.back()}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-purple-700 transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-[#0b5fab] transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Catering
           </button>
         </div>
 
-        {/* ── Hero Gallery ─────────────────────────────────────────── */}
+        {/* -- Hero Gallery ------------------------------------------- */}
         <div ref={heroRef} className="mx-auto max-w-7xl px-4 sm:px-6">
           {/* Main image */}
           <div
@@ -326,12 +335,15 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
             onClick={() => setShowLightbox(true)}
           >
             {caterer.images.length > 0 ? (
-              <img
-                src={caterer.images[selectedImage]}
-                alt={caterer.name}
-                className="w-full h-auto block"
-                style={{ maxHeight: '520px', objectFit: 'cover', objectPosition: 'center' }}
-              />
+              <div className="relative h-[300px] w-full sm:h-[420px] lg:h-[520px]">
+                <Image
+                  src={caterer.images[selectedImage]}
+                  alt={caterer.name}
+                  fill
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 768px, 1200px"
+                  className="object-cover object-center"
+                />
+              </div>
             ) : (
               <div className="h-64 flex items-center justify-center bg-green-50 rounded-2xl">
                 <Grid3x3 className="h-16 w-16 text-green-300" />
@@ -365,10 +377,12 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
                   key={idx}
                   onClick={() => setSelectedImage(idx)}
                   className={`flex-shrink-0 h-16 w-24 rounded-xl overflow-hidden border-2 transition-all ${
-                    selectedImage === idx ? 'border-purple-600' : 'border-transparent opacity-70 hover:opacity-100'
+                    selectedImage === idx ? 'border-[#0b5fab]' : 'border-transparent opacity-70 hover:opacity-100'
                   }`}
                 >
-                  <img src={img} alt="" className="h-full w-full object-cover" />
+                  <div className="relative h-full w-full">
+                    <Image src={img} alt="" fill sizes="96px" className="object-cover" />
+                  </div>
                 </button>
               ))}
             </div>
@@ -390,7 +404,7 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
             {caterer.images.length > 1 && (
               <button
                 onClick={() => setShowLightbox(true)}
-                className="text-xs font-medium text-purple-700 hover:text-purple-900 underline underline-offset-2"
+                className="text-xs font-medium text-[#0b5fab] hover:text-[#084a86] underline underline-offset-2"
               >
                 View all {caterer.images.length} photos
               </button>
@@ -398,7 +412,7 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
           </div>
         </div>
 
-        {/* ── Sticky Sub-nav ───────────────────────────────────────── */}
+        {/* -- Sticky Sub-nav ----------------------------------------- */}
         <div
           className={`sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm transition-all duration-300 ${
             stickyNav ? "translate-y-0 opacity-100" : "opacity-0 -translate-y-4 pointer-events-none"
@@ -416,7 +430,7 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
                   <button
                     key={label}
                     onClick={() => scrollTo(ref)}
-                    className="px-3 py-1.5 rounded-lg text-gray-600 hover:bg-purple-50 hover:text-purple-700 font-medium transition-colors"
+                    className="px-3 py-1.5 rounded-lg text-gray-600 hover:bg-[#0b5fab]/5 hover:text-[#0b5fab] font-medium transition-colors"
                   >
                     {label}
                   </button>
@@ -424,7 +438,7 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
               </div>
               <button
                 onClick={() => scrollTo(bookingCardRef)}
-                className="rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-1.5 text-sm font-bold text-white shadow hover:shadow-md transition-all"
+                className="rounded-xl bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] px-4 py-1.5 text-sm font-bold text-white shadow hover:shadow-md transition-all"
               >
                 {isFishbowl ? "Contact" : "Book Now"}
               </button>
@@ -432,9 +446,9 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
           </div>
         </div>
 
-        {/* ── Main Grid ────────────────────────────────────────────── */}
+        {/* -- Main Grid ---------------------------------------------- */}
         <div className="mx-auto max-w-7xl px-4 sm:px-6 grid gap-8 lg:grid-cols-3 py-8">
-          {/* ── LEFT ────────────────────────────────────────────────── */}
+          {/* -- LEFT -------------------------------------------------- */}
           <div className="lg:col-span-2 space-y-10">
 
             {/* Overview */}
@@ -444,7 +458,7 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
                   <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 leading-tight">{caterer.name}</h1>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-gray-500 text-sm">
                     <span className="flex items-center gap-1.5">
-                      <MapPin className="h-4 w-4 text-purple-500" />
+                      <MapPin className="h-4 w-4 text-[#0b5fab]" />
                       {caterer.area ? `${caterer.area}, ${caterer.city}` : caterer.city}
                     </span>
                     {caterer.reviewCount !== undefined && caterer.reviewCount > 0 && (
@@ -489,8 +503,8 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
                   </div>
                 </div>
                 <div className="flex items-center gap-3 rounded-2xl bg-white border border-gray-100 shadow-sm p-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100">
-                    <BadgeCheck className="h-5 w-5 text-purple-600" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0b5fab]/10">
+                    <BadgeCheck className="h-5 w-5 text-[#0b5fab]" />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Packages</p>
@@ -543,8 +557,8 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
                         onClick={() => setSelectedPackage(pkg)}
                         className={`text-left rounded-2xl border-2 p-5 transition-all hover:shadow-md ${
                           selectedPackage?.id === pkg.id
-                            ? "border-purple-500 bg-purple-50 shadow-lg"
-                            : "border-gray-100 bg-white shadow-sm hover:border-purple-200"
+                            ? "border-[#0b5fab]/100 bg-[#0b5fab]/5 shadow-lg"
+                            : "border-gray-100 bg-white shadow-sm hover:border-[#0b5fab]/20"
                         }`}
                       >
                         <div className="flex items-center gap-2 mb-3 flex-wrap">
@@ -557,11 +571,11 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
                             </span>
                           )}
                           {selectedPackage?.id === pkg.id && (
-                            <span className="ml-auto text-xs font-semibold text-purple-600">Selected ✓</span>
+                            <span className="ml-auto text-xs font-semibold text-[#0b5fab]">Selected</span>
                           )}
                         </div>
                         <p className="text-2xl font-extrabold text-gray-900 mb-1">
-                          ₹{pkg.pricePerPlate}<span className="text-sm font-medium text-gray-500">/plate</span>
+                          Rs {pkg.pricePerPlate}<span className="text-sm font-medium text-gray-500">/plate</span>
                         </p>
                         {pkg.description && (
                           <p className="text-xs text-gray-500 mb-3">{pkg.description}</p>
@@ -580,7 +594,7 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
                 <h2 className="text-xl font-bold text-gray-900 mb-2">Location</h2>
                 {caterer.address && (
                   <p className="flex items-start gap-1.5 text-sm text-gray-500 mb-4">
-                    <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-purple-500" />
+                    <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-[#0b5fab]" />
                     {caterer.address}
                   </p>
                 )}
@@ -597,22 +611,22 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
             )}
           </div>
 
-          {/* ── RIGHT: Booking Card ───────────────────────────────── */}
+          {/* -- RIGHT: Booking Card --------------------------------- */}
           <div className="lg:col-span-1">
             <div ref={bookingCardRef} className="sticky top-[72px] scroll-mt-20">
               <div className="rounded-3xl bg-white border border-gray-200 shadow-xl overflow-hidden">
                 {/* Card header */}
-                <div className="bg-gradient-to-r from-purple-600 to-pink-500 px-6 py-5">
-                  <p className="text-purple-100 text-xs font-medium uppercase tracking-wider mb-1">Starting from</p>
+                <div className="bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] px-6 py-5">
+                  <p className="text-sky-100 text-xs font-medium uppercase tracking-wider mb-1">Starting from</p>
                   <p className="text-3xl font-extrabold text-white">
-                    ₹{caterer.pricePerPlate.toLocaleString("en-IN")}
+                    Rs {caterer.pricePerPlate.toLocaleString("en-IN")}
                   </p>
-                  <p className="text-purple-200 text-xs mt-1">per plate · {caterer.minGuests}+ guests min</p>
+                  <p className="text-sky-200 text-xs mt-1">per plate | {caterer.minGuests}+ guests min</p>
                 </div>
 
                 <div className="p-6">
                   {isFishbowl ? (
-                    /* ── Fishbowl ─────────────────────────────────── */
+                    /* -- Fishbowl ----------------------------------- */
                     <div className="space-y-4">
                       {/* Tier pricing */}
                       <div className="space-y-2">
@@ -628,8 +642,8 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
                               <span className="font-medium text-gray-700 text-sm">Silver</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="font-bold text-gray-900">₹{caterer.silverPrice}/plate</span>
-                              <span className="text-xs text-gray-400 group-hover:text-gray-600">View →</span>
+                              <span className="font-bold text-gray-900">Rs {caterer.silverPrice}/plate</span>
+                              <span className="text-xs text-gray-400 group-hover:text-gray-600">View menu</span>
                             </div>
                           </button>
                         )}
@@ -645,25 +659,25 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
                               <span className="font-medium text-amber-700 text-sm">Gold</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="font-bold text-amber-900">₹{caterer.goldPrice}/plate</span>
-                              <span className="text-xs text-amber-400 group-hover:text-amber-600">View →</span>
+                              <span className="font-bold text-amber-900">Rs {caterer.goldPrice}/plate</span>
+                              <span className="text-xs text-amber-400 group-hover:text-amber-600">View menu</span>
                             </div>
                           </button>
                         )}
                         {caterer.platinumPrice && (
                           <button
-                            onClick={() => setMenuModal({ tier: "PLATINUM", label: "Platinum", gradient: "from-purple-500 to-pink-600" })}
-                            className="w-full flex items-center justify-between rounded-xl bg-purple-50 border border-purple-200 px-4 py-3 hover:border-purple-400 hover:shadow-sm transition-all text-left group"
+                            onClick={() => setMenuModal({ tier: "PLATINUM", label: "Platinum", gradient: "from-[#0b5fab] to-[#1f86d9]" })}
+                            className="w-full flex items-center justify-between rounded-xl bg-[#0b5fab]/5 border border-[#0b5fab]/20 px-4 py-3 hover:border-[#0b5fab]/40 hover:shadow-sm transition-all text-left group"
                           >
                             <div className="flex items-center gap-2">
-                              <div className="h-7 w-7 rounded-full bg-gradient-to-r from-purple-500 to-pink-600 flex items-center justify-center">
+                              <div className="h-7 w-7 rounded-full bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] flex items-center justify-center">
                                 <span className="text-white text-xs font-bold">P</span>
                               </div>
-                              <span className="font-medium text-purple-700 text-sm">Platinum</span>
+                              <span className="font-medium text-[#0b5fab] text-sm">Platinum</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="font-bold text-purple-900">₹{caterer.platinumPrice}/plate</span>
-                              <span className="text-xs text-purple-400 group-hover:text-purple-600">View →</span>
+                              <span className="font-bold text-[#084a86]">Rs {caterer.platinumPrice}/plate</span>
+                              <span className="text-xs text-[#0b5fab]/60 group-hover:text-[#0b5fab]">View menu</span>
                             </div>
                           </button>
                         )}
@@ -673,7 +687,7 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
                       {caterer.menuPackages.length > 0 && (
                         <a
                           href={`/catering/${caterer.id}/customize`}
-                          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 py-3.5 font-bold text-white shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all text-sm"
+                          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] py-3.5 font-bold text-white shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all text-sm"
                         >
                           <UtensilsCrossed className="h-4 w-4" />
                           Customize Menu & Get Quote
@@ -687,7 +701,7 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
                           <p className="font-semibold text-gray-900 mb-1">{caterer.contactName}</p>
                         )}
                         {caterer.contactNumber && (
-                          <a href={`tel:${caterer.contactNumber}`} className="flex items-center gap-2 text-base font-bold text-purple-700 hover:text-purple-900">
+                          <a href={`tel:${caterer.contactNumber}`} className="flex items-center gap-2 text-base font-bold text-[#0b5fab] hover:text-[#084a86]">
                             <Phone className="h-4 w-4" />
                             {caterer.contactNumber}
                           </a>
@@ -719,17 +733,17 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
                       )}
 
                       <p className="text-center text-xs text-gray-400">
-                        Online booking coming soon ·{" "}
-                        <span className="text-green-600 font-medium">● Available now</span>
+                        Online booking coming soon |{" "}
+                        <span className="text-green-600 font-medium">Available now</span>
                       </p>
                     </div>
                   ) : (
-                    /* ── Online booking ───────────────────────────── */
+                    /* -- Online booking ----------------------------- */
                     selectedPackage ? (
                       <div className="space-y-4">
                         <div className={`rounded-xl bg-gradient-to-r ${TIER_COLORS[selectedPackage.tier]} p-3 flex items-center justify-between`}>
                           <span className="text-sm font-bold text-white">{selectedPackage.name || selectedPackage.tier} Package</span>
-                          <span className="text-white font-extrabold">₹{selectedPackage.pricePerPlate}/plate</span>
+                          <span className="text-white font-extrabold">Rs {selectedPackage.pricePerPlate}/plate</span>
                         </div>
 
                         <div>
@@ -739,7 +753,7 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
                             value={bookingDate}
                             onChange={(e) => setBookingDate(e.target.value)}
                             min={new Date().toISOString().split("T")[0]}
-                            className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm focus:border-purple-500 outline-none transition-colors"
+                            className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm focus:border-[#0b5fab]/100 outline-none transition-colors"
                           />
                         </div>
 
@@ -753,7 +767,7 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
                             onChange={(e) => setGuests(e.target.value)}
                             placeholder={`Min ${caterer.minGuests}`}
                             min={caterer.minGuests}
-                            className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm focus:border-purple-500 outline-none transition-colors"
+                            className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm focus:border-[#0b5fab]/100 outline-none transition-colors"
                           />
                         </div>
 
@@ -764,19 +778,19 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
                             onChange={(e) => setMessage(e.target.value)}
                             placeholder="Dietary restrictions, special items..."
                             rows={3}
-                            className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm focus:border-purple-500 outline-none resize-none transition-colors"
+                            className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm focus:border-[#0b5fab]/100 outline-none resize-none transition-colors"
                           />
                         </div>
 
                         {guests && parseInt(guests) >= caterer.minGuests && (
                           <div className="rounded-xl bg-gray-50 p-4 space-y-1.5 text-sm">
                             <div className="flex justify-between text-gray-600">
-                              <span>₹{selectedPackage.pricePerPlate} × {guests} guests</span>
-                              <span>₹{totalPrice.toLocaleString("en-IN")}</span>
+                              <span>Rs {selectedPackage.pricePerPlate} x {guests} guests</span>
+                              <span>Rs {totalPrice.toLocaleString("en-IN")}</span>
                             </div>
                             <div className="flex justify-between font-bold text-gray-900 pt-1.5 border-t border-gray-200">
                               <span>Total</span>
-                              <span>₹{totalPrice.toLocaleString("en-IN")}</span>
+                              <span>Rs {totalPrice.toLocaleString("en-IN")}</span>
                             </div>
                           </div>
                         )}
@@ -784,12 +798,12 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
                         <button
                           onClick={handleBooking}
                           disabled={!bookingDate || !guests || parseInt(guests || "0") < caterer.minGuests || bookingLoading}
-                          className="w-full rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 py-4 font-bold text-white shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+                          className="w-full rounded-2xl bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] py-4 font-bold text-white shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
                         >
                           {bookingLoading ? (
                             <>
                               <Loader2 className="h-5 w-5 animate-spin" />
-                              Creating booking…
+                              Creating booking...
                             </>
                           ) : (
                             "Request Booking"
@@ -826,21 +840,21 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
         </div>
       </div>
 
-      {/* ── Mobile sticky bar ────────────────────────────────────── */}
+      {/* -- Mobile sticky bar -------------------------------------- */}
       <div className="fixed bottom-0 left-0 right-0 z-40 lg:hidden border-t border-gray-200 bg-white/95 backdrop-blur-md px-4 py-3 flex items-center gap-3 shadow-2xl">
         <div className="flex-1 min-w-0">
           <p className="text-xs text-gray-500">Starting from</p>
-          <p className="text-lg font-extrabold text-gray-900 leading-none">₹{caterer.pricePerPlate.toLocaleString("en-IN")}/plate</p>
+          <p className="text-lg font-extrabold text-gray-900 leading-none">Rs {caterer.pricePerPlate.toLocaleString("en-IN")}/plate</p>
         </div>
         <button
           onClick={() => scrollTo(bookingCardRef)}
-          className="rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-3 font-bold text-white shadow-lg"
+          className="rounded-2xl bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] px-6 py-3 font-bold text-white shadow-lg"
         >
           {isFishbowl ? "Contact" : "Book Now"}
         </button>
       </div>
 
-      {/* ── Menu Package Modal ─────────────────────────────────────── */}
+      {/* -- Menu Package Modal --------------------------------------- */}
       {menuModal && (
         <div
           className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 p-4"
@@ -861,7 +875,7 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
                 </button>
               </div>
               {menuModalPkg && (
-                <p className="text-3xl font-bold text-white mt-3">₹{menuModalPkg.pricePerPlate}/plate</p>
+                <p className="text-3xl font-bold text-white mt-3">Rs {menuModalPkg.pricePerPlate}/plate</p>
               )}
             </div>
             <div className="p-6">
@@ -913,3 +927,8 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
     </>
   );
 }
+
+
+
+
+

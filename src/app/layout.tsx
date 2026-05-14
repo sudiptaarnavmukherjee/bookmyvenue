@@ -1,12 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "@/components/providers/SessionProvider";
 import { CompareProvider } from "@/components/providers/CompareProvider";
 import { generateOrganizationSchema, generateSearchActionSchema, JsonLd } from "@/lib/structured-data";
 import { LayoutShell, FooterShell } from "@/components/layout/LayoutShell";
 
-const inter = Inter({ 
+const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
   display: "swap",
   preload: true,
@@ -96,7 +96,7 @@ export default function RootLayout({
         <JsonLd data={generateOrganizationSchema()} />
         <JsonLd data={generateSearchActionSchema()} />
       </head>
-      <body className={`${inter.className} overflow-x-hidden antialiased`}>
+      <body className={`${plusJakartaSans.className} overflow-x-hidden antialiased`}>
         <SessionProvider>
           <CompareProvider>
             {/* Main content renders IMMEDIATELY - no blocking */}

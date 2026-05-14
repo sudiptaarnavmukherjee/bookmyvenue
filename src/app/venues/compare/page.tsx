@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { 
   X, 
   Check, 
@@ -124,7 +125,7 @@ function CompareVenuesContent() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin h-8 w-8 border-4 border-purple-600 border-t-transparent rounded-full" />
+        <div className="animate-spin h-8 w-8 border-4 border-[#0b5fab] border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -138,7 +139,7 @@ function CompareVenuesContent() {
           <p className="text-gray-600 mb-6">Add venues to compare from the listing page</p>
           <Link 
             href="/venues" 
-            className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl font-semibold hover:opacity-90"
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] text-white px-6 py-3 rounded-xl font-semibold hover:opacity-90"
           >
             <ChevronLeft className="h-5 w-5" />
             Browse Venues
@@ -156,7 +157,7 @@ function CompareVenuesContent() {
           <div>
             <Link 
               href="/venues"
-              className="text-purple-600 hover:underline flex items-center gap-1 text-sm mb-2"
+              className="text-[#0b5fab] hover:underline flex items-center gap-1 text-sm mb-2"
             >
               <ChevronLeft className="h-4 w-4" />
               Back to Venues
@@ -208,15 +209,19 @@ function CompareVenuesContent() {
                         {/* Venue Card */}
                         <div className="text-left">
                           {venue.coverImage && (
-                            <img 
-                              src={venue.coverImage} 
-                              alt={venue.name}
-                              className="w-full h-32 object-cover rounded-xl mb-3"
-                            />
+                            <div className="relative mb-3 h-32 w-full overflow-hidden rounded-xl">
+                              <Image
+                                src={venue.coverImage}
+                                alt={venue.name}
+                                fill
+                                sizes="280px"
+                                className="object-cover"
+                              />
+                            </div>
                           )}
                           <Link 
                             href={`/venues/${venue.slug || venue.id}`}
-                            className="font-bold text-gray-900 hover:text-purple-600 text-lg block"
+                            className="font-bold text-gray-900 hover:text-[#0b5fab] text-lg block"
                           >
                             {venue.name}
                           </Link>
@@ -246,7 +251,7 @@ function CompareVenuesContent() {
                   {venues.map((venue) => (
                     <td key={venue.id} className="p-4">
                       <div className="flex items-center gap-2">
-                        <span className="text-lg font-bold text-purple-600">
+                        <span className="text-lg font-bold text-[#0b5fab]">
                           {formatPrice(venue)}
                         </span>
                         {getPrice(venue) === lowestPrice && lowestPrice > 0 && (
@@ -345,14 +350,14 @@ function CompareVenuesContent() {
                       {venue.contactPhone ? (
                         <a 
                           href={`tel:${venue.contactPhone}`}
-                          className="text-purple-600 hover:underline"
+                          className="text-[#0b5fab] hover:underline"
                         >
                           {venue.contactPhone}
                         </a>
                       ) : (
                         <Link 
                           href={`/venues/${venue.slug || venue.id}`}
-                          className="text-purple-600 hover:underline"
+                          className="text-[#0b5fab] hover:underline"
                         >
                           View Details
                         </Link>
@@ -396,7 +401,7 @@ function CompareVenuesContent() {
             <Link
               key={venue.id}
               href={`/venues/${venue.slug || venue.id}`}
-              className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:opacity-90 transition-opacity"
+              className="px-6 py-3 bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] text-white rounded-xl font-semibold hover:opacity-90 transition-opacity"
             >
               Book {venue.name}
             </Link>
@@ -411,7 +416,7 @@ function LoadingFallback() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="text-center">
-        <Loader2 className="h-8 w-8 animate-spin text-purple-600 mx-auto mb-4" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#0b5fab] mx-auto mb-4" />
         <p className="text-gray-600">Loading comparison...</p>
       </div>
     </div>
@@ -425,3 +430,6 @@ export default function CompareVenuesPage() {
     </Suspense>
   );
 }
+
+
+

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Heart, Calendar, User, LayoutDashboard } from "lucide-react";
+import { Home, Building2, Calendar, User, LayoutDashboard, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 
@@ -15,8 +15,9 @@ export function MobileNav() {
 
   const defaultNavItems = [
     { href: "/", icon: Home, label: "Home" },
-    { href: "/wishlist", icon: Heart, label: "Wishlist" },
+    { href: "/venues", icon: Building2, label: "Venues" },
     { href: "/bookings", icon: Calendar, label: "Bookings" },
+    { href: "/wishlist", icon: Heart, label: "Saved" },
     { href: "/profile", icon: User, label: "Profile" },
   ];
 
@@ -37,16 +38,13 @@ export function MobileNav() {
       { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
       { href: "/profile", icon: User, label: "Profile" },
     ];
-    return [
-      { href: "/", icon: Home, label: "Home" },
-      { href: "/profile", icon: User, label: "Profile" },
-    ];
+    return defaultNavItems;
   };
 
   const navItems = getNavItems();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-gray-100 shadow-[0_-1px_12px_rgba(0,0,0,0.06)] md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white/95 backdrop-blur-md shadow-[0_-4px_20px_rgba(15,23,42,0.08)] md:hidden">
       <div
         className="flex items-stretch"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
@@ -63,22 +61,23 @@ export function MobileNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-semibold transition-colors relative",
-                isActive ? "text-purple-600" : "text-gray-400 hover:text-gray-600"
+                "relative flex flex-1 flex-col items-center justify-center gap-0.5 py-3 text-[10px] font-semibold transition-all",
+                isActive ? "text-[#0b5fab]" : "text-slate-400 hover:text-slate-600"
               )}
             >
-              {/* Active background pill */}
+              {/* Active top indicator line */}
               {isActive && (
-                <div className="absolute top-1.5 w-10 h-7 bg-purple-100 rounded-full -z-0" />
+                <div className="absolute top-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-b-full bg-[#0b5fab]" />
               )}
               <Icon
                 className={cn(
-                  "h-5 w-5 relative z-10 transition-transform",
+                  "h-5 w-5 transition-transform",
                   isActive && "scale-110"
                 )}
                 strokeWidth={isActive ? 2.5 : 1.75}
+                fill={isActive ? "currentColor" : "none"}
               />
-              <span className="relative z-10">{item.label}</span>
+              <span className={cn("transition-all", isActive ? "font-bold" : "")}>{item.label}</span>
             </Link>
           );
         })}

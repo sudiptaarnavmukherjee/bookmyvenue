@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import Image from "next/image";
 import { Heart, MapPin, Users, Star, X, Loader2, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -111,9 +112,9 @@ export default function WishlistPage() {
 
   if (loading || status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
-        <div className="glass-card rounded-3xl p-8 flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+      <div className="min-h-screen flex items-center justify-center bg-[#f4f7fb]">
+        <div className="bg-white border border-slate-200 shadow-sm rounded-3xl p-8 flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-[#0b5fab]" />
           <p className="text-gray-600">Loading wishlist...</p>
         </div>
       </div>
@@ -122,15 +123,15 @@ export default function WishlistPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
-        <div className="glass-card rounded-3xl p-8">
+      <div className="min-h-screen flex items-center justify-center bg-[#f4f7fb]">
+        <div className="bg-white border border-slate-200 shadow-sm rounded-3xl p-8">
           <div className="flex items-center gap-3 mb-4">
             <AlertCircle className="h-6 w-6 text-red-500" />
-            <h2 className="text-2xl font-bold text-gradient">{error}</h2>
+            <h2 className="text-2xl font-bold text-[#0b5fab]">{error}</h2>
           </div>
           <button
             onClick={fetchWishlist}
-            className="rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-2 font-semibold text-white"
+            className="rounded-full bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] px-6 py-2 font-semibold text-white"
           >
             Retry
           </button>
@@ -140,14 +141,14 @@ export default function WishlistPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 pb-24 pt-8">
+    <div className="min-h-screen bg-[#f4f7fb] pb-24 pt-8">
       <div className="mx-auto max-w-6xl px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="text-4xl font-bold text-gradient mb-2">My Wishlist</h1>
+          <h1 className="text-4xl font-bold text-[#0b5fab] mb-2">My Wishlist</h1>
           <p className="text-gray-600">Your saved venues and caterers</p>
         </motion.div>
 
@@ -155,14 +156,14 @@ export default function WishlistPage() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="glass-card rounded-3xl p-12 text-center"
+            className="bg-white border border-slate-200 shadow-sm rounded-3xl p-12 text-center"
           >
             <Heart className="mx-auto h-16 w-16 text-gray-400 mb-4" />
             <h3 className="text-xl font-semibold text-gray-700 mb-2">Your wishlist is empty</h3>
             <p className="text-gray-600 mb-6">Start adding venues and caterers you love!</p>
             <button
               onClick={() => router.push("/")}
-              className="mx-auto rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-8 py-3 font-semibold text-white shadow-lg hover:shadow-xl transition-all"
+              className="mx-auto rounded-full bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] px-8 py-3 font-semibold text-white shadow-lg hover:shadow-xl transition-all"
             >
               Browse Listings
             </button>
@@ -189,7 +190,7 @@ export default function WishlistPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="glass-card overflow-hidden rounded-3xl hover-lift relative group"
+                  className="bg-white border border-slate-200 shadow-sm overflow-hidden rounded-3xl hover-lift relative group"
                 >
                   <button
                     onClick={() => removeFromWishlist(item)}
@@ -204,13 +205,15 @@ export default function WishlistPage() {
                   </button>
 
                   <div className="relative h-48">
-                    <img
+                    <Image
                       src={image}
                       alt={name}
-                      className="h-full w-full object-cover"
+                      fill
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      className="object-cover"
                     />
                     <div className="absolute top-3 left-3">
-                      <span className="rounded-full bg-purple-600 px-3 py-1 text-xs font-semibold text-white">
+                      <span className="rounded-full bg-[#0b5fab] px-3 py-1 text-xs font-semibold text-white">
                         {isVenue ? "VENUE" : "CATERING"}
                       </span>
                     </div>
@@ -221,7 +224,7 @@ export default function WishlistPage() {
                     
                     <div className="space-y-2 mb-4">
                       <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <MapPin className="h-4 w-4 text-purple-600" />
+                        <MapPin className="h-4 w-4 text-[#0b5fab]" />
                         <span>{location}</span>
                       </div>
                       {data?._count && data._count.reviews > 0 && (
@@ -235,14 +238,14 @@ export default function WishlistPage() {
                     <div className="flex items-end justify-between border-t border-gray-200 pt-4">
                       <div>
                         <span className="text-xs text-gray-600">Starting from</span>
-                        <p className="text-xl font-bold text-gradient">
+                        <p className="text-xl font-bold text-[#0b5fab]">
                           ₹{price.toLocaleString('en-IN')}
                           {!isVenue && "/plate"}
                         </p>
                       </div>
                       <button 
                         onClick={() => handleBookNow(item)}
-                        className="rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2 text-sm font-semibold text-white shadow-lg hover:shadow-xl transition-all"
+                        className="rounded-xl bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] px-4 py-2 text-sm font-semibold text-white shadow-lg hover:shadow-xl transition-all"
                       >
                         Book Now
                       </button>
@@ -257,3 +260,6 @@ export default function WishlistPage() {
     </div>
   );
 }
+
+
+

@@ -4,7 +4,17 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Users, MapPin, CheckCircle2, Heart, Phone, Calendar, Eye, GitCompare } from "lucide-react";
+import {
+  Users,
+  MapPin,
+  CheckCircle2,
+  Heart,
+  Phone,
+  Calendar,
+  GitCompare,
+  Star,
+  Zap,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api-client";
 import { useSession } from "next-auth/react";
@@ -37,6 +47,8 @@ interface VenueCardProps {
   inWishlist?: boolean;
   slug?: string;
   distanceText?: string;
+  rating?: number;
+  reviewCount?: number;
 }
 
 export function VenueCard({
@@ -62,10 +74,11 @@ export function VenueCard({
   isAdminListed = true,
   contactNumber,
   contactName,
-  viewCount,
   inWishlist = false,
   slug,
   distanceText,
+  rating,
+  reviewCount,
 }: VenueCardProps) {
   const { data: session } = useSession();
   const router = useRouter();
@@ -73,7 +86,6 @@ export function VenueCard({
   const [isInWishlist, setIsInWishlist] = useState(inWishlist);
   const [wishlistLoading, setWishlistLoading] = useState(false);
 
-  // Determine if this is a fishbowl listing (admin added, no online booking)
   const isFishbowl = isAdminListed && !bookingEnabled;
   const isSelected = isVenueSelected(venueId || id);
 
@@ -81,11 +93,8 @@ export function VenueCard({
     e.preventDefault();
     e.stopPropagation();
     const targetId = venueId || id;
-    if (isSelected) {
-      removeVenue(targetId);
-    } else {
-      addVenue(targetId, name);
-    }
+    if (isSelected) removeVenue(targetId);
+    else addVenue(targetId, name);
   };
 
   const handleWishlistToggle = async (e: React.MouseEvent) => {
@@ -101,7 +110,7 @@ export function VenueCard({
     if (!targetId || wishlistLoading) return;
 
     const prev = isInWishlist;
-    setIsInWishlist(!prev); // optimistic update
+    setIsInWishlist(!prev);
     setWishlistLoading(true);
 
     try {
@@ -110,12 +119,10 @@ export function VenueCard({
         : await api.addToWishlist({ venueId: targetId });
 
       if (error) {
-        setIsInWishlist(prev); // revert on error
-        console.error("Wishlist error:", error);
+        setIsInWishlist(prev);
       }
-    } catch (err) {
-      setIsInWishlist(prev); // revert on exception
-      console.error("Wishlist error:", err);
+    } catch {
+      setIsInWishlist(prev);
     } finally {
       setWishlistLoading(false);
     }
@@ -124,181 +131,105 @@ export function VenueCard({
   const handleCall = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (contactNumber) {
-      window.location.href = `tel:${contactNumber}`;
-    }
+    if (contactNumber) window.location.href = `tel:${contactNumber}`;
   };
 
   const formatPrice = (price: number) => {
-    if (price >= 100000) {
-      return `₹${(price / 100000).toFixed(1)}L`;
-    }
+    if (price >= 100000) return `Rs ${(price / 100000).toFixed(1)}L`;
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
       maximumFractionDigits: 0,
-    }).format(price);
+    })
+      .format(price)
+      .replace("₹", "Rs ");
   };
 
   const normalizedPriceMode = priceMode?.toUpperCase();
   const venueUrl = slug ? `/venues/${slug}` : `/venues/${id}`;
 
+  const startingPrice = (() => {
+    const prices = [marriagePrice, birthdayPrice, otherEventPrice, exactPrice, estimatedMinPrice].filter(Boolean) as number[];
+    if (prices.length) return Math.min(...prices);
+    if (primeDayPrice) return primeDayPrice;
+    if (nonPrimeDayPrice) return nonPrimeDayPrice;
+    return null;
+  })();
+
   return (
-    <div className="bg-white rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200 overflow-hidden border border-gray-100">
-      <Link href={venueUrl}>
-        {/* Image Section */}
-        <div className="relative aspect-[16/10] overflow-hidden">
-          <Image
-            src={coverImage || "/placeholder-venue.jpg"}
-            alt={name}
-            fill
-            className="object-cover transition-transform duration-500 hover:scale-105"
-          />
-          
-          {/* Top Left - Wishlist & Compare */}
-          <div className="absolute left-3 top-3 flex flex-col gap-2 z-10">
-            <button
-              onClick={handleWishlistToggle}
-              disabled={wishlistLoading}
-              className="rounded-full bg-white/95 p-2 shadow-lg hover:bg-white transition-all disabled:opacity-50"
-            >
-              <Heart
-                className={cn(
-                  "h-5 w-5 transition-colors",
-                  isInWishlist ? "fill-rose-500 text-rose-500" : "text-gray-600"
-                )}
-              />
+    <div className={cn("overflow-hidden rounded-xl border bg-white transition-all duration-200 group", isSelected ? "border-[#ff7a00] shadow-md ring-2 ring-[#ff7a00]/25" : "border-slate-200 shadow-sm hover:-translate-y-0.5 hover:shadow-md")}>
+      <Link href={venueUrl} className="block">
+        <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
+          <Image src={coverImage || "/placeholder-venue.jpg"} alt={name} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
+
+          <div className="absolute right-3 top-3 z-10 flex flex-col gap-2">
+            <button onClick={handleWishlistToggle} disabled={wishlistLoading} className="flex h-9 w-9 items-center justify-center rounded-full bg-white/95 shadow-md transition-colors hover:bg-white disabled:opacity-50">
+              <Heart className={cn("h-[18px] w-[18px] transition-colors", isInWishlist ? "fill-rose-500 text-rose-500" : "text-slate-700")} />
             </button>
-            <button
-              onClick={handleCompareToggle}
-              className={cn(
-                "rounded-full p-2 shadow-lg transition-all",
-                isSelected 
-                  ? "bg-purple-600 text-white" 
-                  : "bg-white/95 text-gray-600 hover:bg-white"
-              )}
-              title={isSelected ? "Remove from compare" : "Add to compare"}
-            >
-              <GitCompare className="h-5 w-5" />
+            <button onClick={handleCompareToggle} className={cn("flex h-9 w-9 items-center justify-center rounded-full shadow-md transition-colors", isSelected ? "bg-[#ff7a00] text-white" : "bg-white/95 text-slate-700 hover:bg-white")} title={isSelected ? "Remove from compare" : "Add to compare"}>
+              <GitCompare className="h-4 w-4" />
             </button>
           </div>
-          
-          {/* Top Right - Badges */}
-          <div className="absolute right-3 top-3 flex flex-col gap-2 z-10">
-            {isVerified && bookingEnabled ? (
-              <div className="flex items-center gap-1 px-2.5 py-1 bg-green-500 text-white text-xs font-semibold rounded-full shadow-lg">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                Verified
-              </div>
-            ) : isFishbowl ? (
-              <div className="flex items-center gap-1 px-2.5 py-1 bg-amber-500 text-white text-xs font-semibold rounded-full shadow-lg">
-                <Phone className="h-3.5 w-3.5" />
-                Call to Book
-              </div>
+
+          <div className="absolute left-3 top-3 z-10 flex flex-col gap-1.5">
+            {isVerified && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white shadow"><CheckCircle2 className="h-2.5 w-2.5" /> Verified</span>}
+            {distanceText && <span className="rounded-full bg-[#0b5fab] px-2 py-0.5 text-[10px] font-bold text-white shadow">{distanceText}</span>}
+          </div>
+
+          <div className="absolute bottom-3 left-3">
+            {bookingEnabled ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#ff7a00] px-2 py-0.5 text-[10px] font-bold text-white shadow"><Zap className="h-2.5 w-2.5" /> Instant Book</span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white shadow"><Phone className="h-2.5 w-2.5" /> Call to Book</span>
+            )}
+          </div>
+        </div>
+
+        <div className="p-3.5">
+          <div className="mb-1 flex items-start justify-between gap-2">
+            <h3 className="line-clamp-1 flex-1 text-[15px] font-extrabold leading-snug text-slate-900">{name}</h3>
+            {rating && rating > 0 ? (
+              <span className={cn("flex flex-shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-bold text-white", rating >= 4 ? "bg-emerald-600" : rating >= 3 ? "bg-amber-500" : "bg-rose-500")}>
+                <Star className="h-[11px] w-[11px] fill-current" />
+                {rating.toFixed(1)}
+                {reviewCount ? <span className="ml-0.5 text-[9px] opacity-80">({reviewCount})</span> : null}
+              </span>
             ) : null}
           </div>
 
-          {/* Bottom - Price Badges */}
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3 pt-8">
-            {marriagePrice || birthdayPrice || otherEventPrice ? (
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {marriagePrice && (
-                  <div className="bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-lg text-center">
-                    <p className="text-[9px] text-rose-500 font-bold uppercase">💍 Marriage</p>
-                    <p className="text-sm font-bold text-gray-900">{formatPrice(marriagePrice)}</p>
-                  </div>
-                )}
-                {birthdayPrice && (
-                  <div className="bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-lg text-center">
-                    <p className="text-[9px] text-yellow-600 font-bold uppercase">🎂 Birthday</p>
-                    <p className="text-sm font-bold text-gray-900">{formatPrice(birthdayPrice)}</p>
-                  </div>
-                )}
-                {otherEventPrice && (
-                  <div className="bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-lg text-center">
-                    <p className="text-[9px] text-purple-600 font-bold uppercase">🙏 Others</p>
-                    <p className="text-sm font-bold text-gray-900">{formatPrice(otherEventPrice)}</p>
-                  </div>
-                )}
-              </div>
-            ) : primeDayPrice && nonPrimeDayPrice ? (
-              <div className="flex items-center gap-3">
-                <div className="bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg">
-                  <p className="text-[10px] text-gray-500 font-medium">PRIME</p>
-                  <p className="text-sm font-bold text-rose-600">{formatPrice(primeDayPrice)}</p>
-                </div>
-                <div className="bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg">
-                  <p className="text-[10px] text-gray-500 font-medium">REGULAR</p>
-                  <p className="text-sm font-bold text-gray-800">{formatPrice(nonPrimeDayPrice)}</p>
-                </div>
-              </div>
-            ) : normalizedPriceMode === "EXACT" && exactPrice ? (
-              <div className="bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg inline-block">
-                <p className="text-lg font-bold text-gray-900">{formatPrice(exactPrice)}</p>
-              </div>
-            ) : (
-              <div className="bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg inline-block">
-                <p className="text-[10px] text-gray-500 font-medium">APPROX.</p>
-                <p className="text-sm font-bold text-gray-800">
-                  {formatPrice(estimatedMinPrice || 0)} - {formatPrice(estimatedMaxPrice || 0)}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
+          <p className="mb-2.5 flex items-center gap-1 truncate text-xs text-slate-500"><MapPin className="h-3 w-3 flex-shrink-0 text-[#0b5fab]" />{area ? `${area}, ${city}` : city}</p>
 
-        {/* Content Section */}
-        <div className="p-4">
-          <h3 className="text-lg font-bold text-gray-900 mb-1.5 line-clamp-1">{name}</h3>
-
-          <div className="flex items-center justify-between gap-2 text-gray-600 mb-2">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <MapPin className="h-4 w-4 text-rose-500 flex-shrink-0" />
-              <span className="text-sm font-medium truncate">
-                {area ? `${area}, ${city}` : city}
-              </span>
+          <div className="flex items-center justify-between border-t border-slate-100 pt-2.5">
+            <div className="flex items-center gap-1 text-xs text-slate-500"><Users className="h-3 w-3" /><span>{minGuests}-{maxGuests} guests</span></div>
+            <div className="text-right">
+              {startingPrice ? (
+                <>
+                  <p className="text-[10px] leading-none text-slate-400">Starting from</p>
+                  <p className="text-base font-extrabold leading-none text-[#0b5fab]">{formatPrice(startingPrice)}</p>
+                </>
+              ) : normalizedPriceMode === "ESTIMATED" && estimatedMinPrice ? (
+                <>
+                  <p className="text-[10px] leading-none text-slate-400">Approx.</p>
+                  <p className="text-sm font-extrabold leading-none text-[#0b5fab]">{formatPrice(estimatedMinPrice)}-{formatPrice(estimatedMaxPrice || 0)}</p>
+                </>
+              ) : (
+                <p className="text-sm font-semibold text-slate-500">Call for price</p>
+              )}
             </div>
-            {distanceText && (
-              <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">
-                {distanceText}
-              </span>
-            )}
           </div>
-
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-1.5 text-gray-600">
-              <Users className="h-4 w-4 text-purple-500" />
-              <span className="text-sm">{minGuests}-{maxGuests} guests</span>
-            </div>
-            {viewCount !== undefined && viewCount > 0 && (
-              <div className="flex items-center gap-1 text-gray-400 text-xs">
-                <Eye className="h-3.5 w-3.5" />
-                <span>{viewCount > 100 ? `${Math.floor(viewCount/100)*100}+` : viewCount} views</span>
-              </div>
-            )}
-          </div>
-
-          {/* CTA Button */}
-          {isFishbowl ? (
-            <button
-              onClick={handleCall}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
-            >
-              <Phone className="h-4 w-4" />
-              Call {contactName || "to Book"}
-            </button>
-          ) : bookingEnabled ? (
-            <button className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all">
-              <Calendar className="h-4 w-4" />
-              Book Online
-            </button>
-          ) : (
-            <button className="w-full flex items-center justify-center gap-2 py-3 border-2 border-rose-500 text-rose-600 rounded-xl font-semibold hover:bg-rose-50 transition-all">
-              View Details
-            </button>
-          )}
         </div>
       </Link>
+
+      <div className="px-3.5 pb-3.5">
+        {isFishbowl ? (
+          <button onClick={handleCall} className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 py-2.5 text-sm font-bold text-white transition-colors hover:bg-amber-600"><Phone className="h-[15px] w-[15px]" />Call {contactName || "to Book"}</button>
+        ) : bookingEnabled ? (
+          <Link href={venueUrl} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#ff7a00] py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#e86f00]"><Calendar className="h-[15px] w-[15px]" />Book Now</Link>
+        ) : (
+          <Link href={venueUrl} className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-[#0b5fab] py-2.5 text-sm font-bold text-[#0b5fab] transition-colors hover:bg-[#0b5fab]/5">View Details</Link>
+        )}
+      </div>
     </div>
   );
 }

@@ -4,31 +4,35 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
+    --background: 210 33% 98%;
+    --foreground: 218 35% 13%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --primary: 262 83% 58%;
+    --primary: 207 86% 36%;
     --primary-foreground: 0 0% 100%;
     --secondary: 210 40% 96%;
     --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 96%;
+    --muted: 220 13% 95%;
     --muted-foreground: 215 16% 47%;
-    --accent: 262 83% 58%;
+    --accent: 24 100% 50%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 262 83% 58%;
+    --ring: 207 86% 36%;
     --radius: 0.75rem;
-    --chart-1: 262 83% 58%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
+    --chart-1: 24 100% 50%;
+    --chart-2: 207 100% 40%;
+    --chart-3: 173 58% 39%;
     --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+    --chart-5: 142 71% 45%;
+    --travel-blue: #0b5fab;
+    --travel-blue-dark: #084a86;
+    --travel-orange: #ff7a00;
+    --travel-bg: #f4f7fb;
   }
 
   .dark {
@@ -38,24 +42,24 @@
     --card-foreground: 0 0% 100%;
     --popover: 223 47% 14%;
     --popover-foreground: 0 0% 100%;
-    --primary: 262 83% 58%;
+    --primary: 24 100% 50%;
     --primary-foreground: 0 0% 100%;
     --secondary: 217 33% 17%;
     --secondary-foreground: 0 0% 100%;
     --muted: 217 33% 17%;
     --muted-foreground: 215 20% 65%;
-    --accent: 262 83% 58%;
+    --accent: 24 100% 50%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 62% 30%;
     --destructive-foreground: 0 0% 100%;
     --border: 217 33% 17%;
     --input: 217 33% 17%;
-    --ring: 262 83% 58%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
+    --ring: 24 100% 50%;
+    --chart-1: 24 100% 50%;
+    --chart-2: 207 100% 40%;
     --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 142 71% 45%;
   }
 }
 
@@ -73,6 +77,7 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
+    letter-spacing: -0.01em;
     overflow-x: hidden;
     min-height: 100vh;
     min-height: 100dvh;
@@ -612,6 +617,117 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+  }
+
+  .travel-hero {
+    background:
+      radial-gradient(circle at 10% 20%, rgba(143, 204, 255, 0.35), transparent 34%),
+      radial-gradient(circle at 88% 10%, rgba(255, 195, 120, 0.28), transparent 30%),
+      linear-gradient(132deg, #0b5fab 0%, #0f73c6 56%, #178adf 100%);
+  }
+
+  .travel-search-card {
+    border-radius: 20px;
+    border: 1px solid rgba(15, 23, 42, 0.1);
+    background: #ffffff;
+    box-shadow: 0 22px 48px -20px rgba(2, 8, 23, 0.45);
+    overflow: hidden;
+  }
+
+  .travel-tab {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-bottom: 2px solid transparent;
+    padding: 13px 10px;
+    font-size: 0.875rem;
+    font-weight: 800;
+    color: #64748b;
+    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+  }
+
+  .travel-tab-active {
+    border-color: #0b5fab;
+    color: #0b5fab;
+    background: rgba(11, 95, 171, 0.06);
+  }
+
+  .travel-search-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    border: 1px solid #dbe3ee;
+    border-radius: 12px;
+    background: #ffffff;
+    padding: 12px 13px;
+    min-height: 64px;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+
+  .travel-search-field:hover {
+    border-color: rgba(11, 95, 171, 0.35);
+    background: rgba(11, 95, 171, 0.03);
+  }
+
+  .travel-label {
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #94a3b8;
+  }
+
+  .travel-search-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 12px;
+    background: #ff7a00;
+    color: #ffffff;
+    font-size: 0.875rem;
+    font-weight: 800;
+    padding: 14px 18px;
+    transition: background-color 0.2s ease;
+  }
+
+  .travel-search-button:hover {
+    background: #e86f00;
+  }
+
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-radius: 0.75rem;
+    padding: 10px 12px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #334155;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  .menu-item:hover {
+    background: rgba(11, 95, 171, 0.08);
+    color: #0b5fab;
+  }
+}
+
+@media (min-width: 768px) {
+  .travel-search-field {
+    border: 0;
+    border-radius: 0;
+    min-height: 84px;
+    padding: 16px;
+  }
+
+  .travel-search-button {
+    border-radius: 0;
+    min-height: 84px;
+    min-width: 152px;
   }
 }
 
