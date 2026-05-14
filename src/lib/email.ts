@@ -19,7 +19,10 @@ type EmailTemplate =
   | "owner_new_booking"
   | "owner_booking_reminder"
   | "review_request"
-  | "welcome";
+  | "welcome"
+  | "event_reminder"
+  | "post_event_feedback"
+  | "re_engagement";
 
 interface SendEmailParams {
   to: string;
@@ -71,6 +74,21 @@ function getEmailContent(template: EmailTemplate, data: Record<string, unknown>)
       return {
         subject: `Welcome to ${APP_NAME}!`,
         html: welcomeTemplate(data),
+      };
+    case "event_reminder":
+      return {
+        subject: `🎉 Your event is coming up - ${data.eventDate}`,
+        html: eventReminderTemplate(data),
+      };
+    case "post_event_feedback":
+      return {
+        subject: `How was your celebration at ${data.venueName}?`,
+        html: postEventFeedbackTemplate(data),
+      };
+    case "re_engagement":
+      return {
+        subject: `Come back to ${APP_NAME} - plan your next celebration!`,
+        html: reEngagementTemplate(data),
       };
     default:
       throw new Error(`Unknown email template: ${template}`);
@@ -448,6 +466,110 @@ function welcomeTemplate(data: Record<string, unknown>) {
   `);
 }
 
+// ==================== PHASE 3: RETENTION EMAIL TEMPLATES ====================
+
+function eventReminderTemplate(data: Record<string, unknown>) {
+  const daysUntil = data.daysUntil || "upcoming";
+  return baseTemplate(`
+    <h1>🎉 Your event is ${daysUntil === 1 ? 'tomorrow' : daysUntil === 3 ? 'in 3 days' : 'coming up'}!</h1>
+    <p>Hi ${data.customerName},</p>
+    <p>Get ready to celebrate! Your event at <strong>${data.venueName}</strong> is almost here.</p>
+    
+    <div class="info-box">
+      <div class="info-row">
+        <span class="info-label">Event Date</span>
+        <span class="info-value warning">${data.eventDate}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Booking Number</span>
+        <span class="info-value">${data.bookingNumber}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Guest Count</span>
+        <span class="info-value">${data.guestCount || 'TBD'}</span>
+      </div>
+    </div>
+    
+    <h2>Quick Checklist:</h2>
+    <ul>
+      <li>✅ Confirm final guest count with the venue</li>
+      <li>✅ Review special requests and dietary preferences</li>
+      <li>✅ Arrange accommodation for out-of-town guests</li>
+      <li>✅ Plan your pre-event schedule</li>
+    </ul>
+    
+    <center>
+      <a href="${APP_URL}/bookings" class="button">View Booking Details</a>
+    </center>
+    
+    <p>If you have any questions or last-minute changes, contact the venue owner immediately.</p>
+    <p>We're excited to make your celebration special! 🎊</p>
+  `);
+}
+
+function postEventFeedbackTemplate(data: Record<string, unknown>) {
+  return baseTemplate(`
+    <h1>⭐ How was your celebration?</h1>
+    <p>Hi ${data.customerName},</p>
+    <p>We hope you had an amazing time at <strong>${data.venueName}</strong>! Your feedback helps us ensure the best experiences for future celebrations.</p>
+    
+    <div class="info-box">
+      <p><strong>Share your experience:</strong></p>
+      <ul style="margin: 12px 0; padding-left: 20px;">
+        <li>⭐ Rate your experience</li>
+        <li>💬 Share what you loved</li>
+        <li>🎯 Suggest improvements</li>
+        <li>👥 Recommend to friends</li>
+      </ul>
+    </div>
+    
+    <center>
+      <a href="${APP_URL}/bookings/${data.bookingId}" class="button">Leave a Review</a>
+    </center>
+    
+    <p style="margin-top: 20px;">Your feedback is valuable and helps the venue owners serve you better. Thank you for celebrating with us! 💜</p>
+    
+    <h2 style="margin-top: 24px; font-size: 16px;">Planning another event?</h2>
+    <center>
+      <a href="${APP_URL}/venues" class="button">Browse Venues</a>
+    </center>
+  `);
+}
+
+function reEngagementTemplate(data: Record<string, unknown>) {
+  return baseTemplate(`
+    <h1>💜 Come back and plan something special!</h1>
+    <p>Hi ${data.name},</p>
+    <p>It's been a while! We've added amazing new venues and offers since we last saw you on ${APP_NAME}.</p>
+    
+    <div class="info-box">
+      <h2 style="margin-top: 0;">What's new:</h2>
+      <ul style="margin: 12px 0; padding-left: 20px;">
+        <li>✨ 50+ new premium venues added</li>
+        <li>🎯 Special discounts on selected properties</li>
+        <li>🏆 Top-rated caterers with new packages</li>
+        <li>📅 Flexible booking options</li>
+      </ul>
+    </div>
+    
+    <p>Whether it's a wedding, birthday, corporate event, or intimate gathering—we've got the perfect venue for you!</p>
+    
+    <center>
+      <a href="${APP_URL}/venues" class="button">Explore New Venues</a>
+    </center>
+    
+    <p>Or maybe you already have a favorite? Check your wishlist for personalized offers:</p>
+    
+    <center>
+      <a href="${APP_URL}/wishlist" class="button">View Saved Venues</a>
+    </center>
+    
+    <p style="margin-top: 20px; font-size: 14px; color: #6b7280;">
+      We miss you and can't wait to help you create your next unforgettable memory! 🎉
+    </p>
+  `);
+}
+
 // Notification helper functions
 export async function sendBookingConfirmation(booking: {
   id: string;
@@ -574,6 +696,84 @@ export async function sendWelcomeEmail(email: string, name: string, userId: stri
     userId,
     data: {
       name,
+    },
+  });
+}
+
+// ==================== PHASE 3: RETENTION EMAIL HELPERS ====================
+
+/**
+ * Send event reminder email (1, 3, or 7 days before event)
+ */
+export async function sendEventReminder(
+  customerEmail: string,
+  customerName: string,
+  venueName: string,
+  bookingNumber: string,
+  eventDate: Date,
+  guestCount: number | null,
+  bookingId: string,
+  daysUntil: number = 1
+) {
+  return sendEmail({
+    to: customerEmail,
+    template: "event_reminder",
+    bookingId,
+    data: {
+      customerName,
+      venueName,
+      bookingNumber,
+      eventDate: eventDate.toLocaleDateString("en-IN", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }),
+      guestCount: guestCount || "TBD",
+      daysUntil,
+    },
+  });
+}
+
+/**
+ * Send post-event feedback request email
+ */
+export async function sendPostEventFeedback(
+  customerEmail: string,
+  customerName: string,
+  venueName: string,
+  bookingId: string,
+  userId: string
+) {
+  return sendEmail({
+    to: customerEmail,
+    template: "post_event_feedback",
+    bookingId,
+    userId,
+    data: {
+      customerName,
+      venueName,
+      bookingId,
+    },
+  });
+}
+
+/**
+ * Send re-engagement email to inactive users
+ */
+export async function sendReEngagementEmail(
+  email: string,
+  name: string,
+  userId: string,
+  daysInactive: number = 60
+) {
+  return sendEmail({
+    to: email,
+    template: "re_engagement",
+    userId,
+    data: {
+      name,
+      daysInactive,
     },
   });
 }

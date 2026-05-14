@@ -115,6 +115,7 @@ model User {
   sessions     Session[]
   inquiries    UserInquiry[] @relation("UserInquiries")
   metrics      OwnerMetrics? @relation("OwnerMetrics")
+  retentionCampaigns RetentionCampaign[] @relation("RetentionCampaigns")
 
   @@index([email])
 }
@@ -386,6 +387,10 @@ model Booking {
   completedAt        DateTime?
   cancellationReason String?
 
+  // Retention Email Tracking
+  reminderEmailSentAt DateTime?   // Pre-event reminder (7 days, 3 days, or 1 day before)
+  feedbackEmailSentAt DateTime?   // Post-event feedback request (1-2 days after event)
+
   // Notes
   ownerNotes String?
   adminNotes String?
@@ -399,6 +404,7 @@ model Booking {
   payments Payment[]
   review   Review?
   cancellationRequest CancellationRequest?
+  retentionCampaigns RetentionCampaign[] @relation("BookingRetention")
 
   @@index([eventDate])
   @@index([status])
@@ -1026,4 +1032,43 @@ model EmailTemplate {
 
   @@index([name])
   @@index([category])
+}
+
+// ==================== PHASE 3: RETENTION AUTOMATION ====================
+
+// Track retention emails sent to users (reminders, feedback requests, re-engagement)
+model RetentionCampaign {
+  id            String    @id @default(cuid())
+  
+  // Campaign details
+  userId        String
+  user          User      @relation("RetentionCampaigns", fields: [userId], references: [id])
+  
+  // Related to booking if applicable
+  bookingId     String?
+  booking       Booking?  @relation("BookingRetention", fields: [bookingId], references: [id])
+  
+  // Campaign type
+  campaignType  String    // EVENT_REMINDER, POST_EVENT_FEEDBACK, RE_ENGAGEMENT, BIRTHDAY_OFFER
+  
+  // Email tracking
+  emailSentAt   DateTime?
+  emailOpenedAt DateTime?
+  emailClickedAt DateTime?
+  
+  // Status
+  status        String    @default("PENDING")  // PENDING, SENT, OPENED, CLICKED, BOUNCED, FAILED
+  emailId       String?   // External email provider ID
+  
+  // Campaign metadata
+  metadata      Json?     // triggeredOn, eventDate, daysInactive, etc.
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@index([userId])
+  @@index([bookingId])
+  @@index([campaignType])
+  @@index([status])
+  @@index([emailSentAt])
 }
