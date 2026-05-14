@@ -10,6 +10,7 @@ import { Calendar, CheckCircle2, Clock, Users, Loader2, Building, MapPin, X, Cal
 const AvailabilityCalendar = dynamic(() => import("@/components/calendar/AvailabilityCalendar"));
 const BlockDateModal = dynamic(() => import("@/components/calendar/BlockDateModal"));
 const EarningsDashboard = dynamic(() => import("@/components/owner/EarningsDashboard"));
+const EngagementDashboard = dynamic(() => import("@/components/owner/EngagementDashboard"));
 
 type Venue = {
   id: string;
@@ -49,7 +50,7 @@ export default function VenueOwnerDashboard() {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"venues" | "bookings" | "calendar" | "earnings">("venues");
+  const [activeTab, setActiveTab] = useState<"venues" | "bookings" | "calendar" | "earnings" | "insights">("venues");
   const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
   const [showBlockModal, setShowBlockModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -156,6 +157,17 @@ export default function VenueOwnerDashboard() {
           >
             <Wallet className="inline h-5 w-5 mr-2" />
             Earnings
+          </button>
+          <button
+            onClick={() => setActiveTab("insights")}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+              activeTab === "insights"
+                ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
+                : "bg-white text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            <Eye className="inline h-5 w-5 mr-2" />
+            Insights
           </button>
         </div>
 
@@ -342,6 +354,14 @@ export default function VenueOwnerDashboard() {
           <div className="bg-white rounded-2xl p-6 shadow-sm">
             <h2 className="text-xl font-bold text-gray-900 mb-6">Earnings & Payouts</h2>
             <EarningsDashboard />
+          </div>
+        )}
+
+        {/* Insights Tab */}
+        {activeTab === "insights" && (
+          <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <h2 className="text-xl font-bold text-gray-900 mb-6">Engagement Insights</h2>
+            <EngagementDashboard />
           </div>
         )}
 

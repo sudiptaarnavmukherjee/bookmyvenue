@@ -8,6 +8,7 @@ import { api } from "@/lib/api-client";
 
 const AvailabilityCalendar = dynamic(() => import("@/components/calendar/AvailabilityCalendar"));
 const BlockDateModal = dynamic(() => import("@/components/calendar/BlockDateModal"));
+const EngagementDashboard = dynamic(() => import("@/components/owner/EngagementDashboard"));
 import { 
   Calendar, 
   CheckCircle2,
@@ -92,7 +93,7 @@ export default function CateringOwnerDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"bookings" | "calendar" | "menus" | "profile">("bookings");
+  const [activeTab, setActiveTab] = useState<"bookings" | "calendar" | "menus" | "profile" | "insights">("bookings");
 
   // Profile / verification state
   const [ownedCaterers, setOwnedCaterers] = useState<Caterer[]>([]);
@@ -456,6 +457,17 @@ export default function CateringOwnerDashboard() {
               <span className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full border-2 border-white" />
             )}
           </button>
+          <button
+            onClick={() => setActiveTab("insights")}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+              activeTab === "insights"
+                ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
+                : "bg-white text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            <Eye className="inline h-5 w-5 mr-2" />
+            Insights
+          </button>
         </div>
 
         {/* Bookings Tab */}
@@ -717,6 +729,14 @@ export default function CateringOwnerDashboard() {
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {/* Insights Tab */}
+        {activeTab === "insights" && (
+          <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <h2 className="text-xl font-bold text-gray-900 mb-6">Engagement Insights</h2>
+            <EngagementDashboard />
           </div>
         )}
 

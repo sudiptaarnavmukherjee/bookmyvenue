@@ -311,6 +311,7 @@ model Caterer {
   wishlist       Wishlist[]
   blockedDates   BlockedDate[]
   viewAnalytics  ViewAnalytics[]
+  inquiries      UserInquiry[]   @relation("CatererInquiries")
 
   @@index([city])
   @@index([area])
@@ -811,12 +812,13 @@ model AnalyticsEvent {
   // Event metadata
   metadata    Json?     // Additional context (search params, filter values, etc.)
   timestamp   DateTime  @default(now())
+  createdAt   DateTime  @default(now())
   
   @@index([eventType])
   @@index([entityType, entityId])
   @@index([userId])
   @@index([timestamp])
-  @@index([createdAt: desc])
+  @@index([createdAt])
 }
 
 // Track user inquiries and follow-ups
@@ -824,8 +826,8 @@ model UserInquiry {
   id          String    @id @default(cuid())
   
   // Inquiry details
-  userId      String
-  user        User      @relation("UserInquiries", fields: [userId], references: [id])
+  userId      String?
+  user        User?     @relation("UserInquiries", fields: [userId], references: [id])
   
   venueId     String?
   venue       Venue?    @relation("VenueInquiries", fields: [venueId], references: [id])

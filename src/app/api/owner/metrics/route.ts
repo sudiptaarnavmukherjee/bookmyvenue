@@ -11,11 +11,10 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   try {
     const token = await getToken({ req });
-    if (!token) {
+    const ownerId = typeof token?.sub === "string" ? token.sub : null;
+    if (!ownerId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const ownerId = token.sub;
 
     // Get owner metrics
     let metrics = await prisma.ownerMetrics.findUnique({
@@ -41,7 +40,7 @@ export async function GET(req: NextRequest) {
       select: { role: true },
     });
 
-    let properties = [];
+    let properties: Array<{ id: string; name: string; slug: string; city: string; area: string | null }> = [];
 
     if (owner?.role === "VENUE_OWNER") {
       properties = await prisma.venue.findMany({
@@ -67,15 +66,20 @@ export async function GET(req: NextRequest) {
         : 0;
 
     // Get recent inquiries
-    const recentInquiries = await prisma.userInquiry.findMany({
-      where: {
-        OR: properties.map((p) =>
-          "venueId" in p ? { venueId: p.id } : { catererId: p.id }
-        ),
-      },
-      take: 10,
-      orderBy: { createdAt: "desc" },
-    });
+    const inquiryWhere =
+      owner?.role === "VENUE_OWNER"
+        ? { venueId: { in: properties.map((p) => p.id) } }
+        : owner?.role === "CATERING_OWNER"
+          ? { catererId: { in: properties.map((p) => p.id) } }
+          : undefined;
+
+    const recentInquiries = inquiryWhere
+      ? await prisma.userInquiry.findMany({
+          where: inquiryWhere,
+          take: 10,
+          orderBy: { createdAt: "desc" },
+        })
+      : [];
 
     // Get recent analytics events
     const recentEvents = await prisma.analyticsEvent.findMany({
@@ -118,11 +122,11 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const token = await getToken({ req });
-    if (!token) {
+    const ownerId = typeof token?.sub === "string" ? token.sub : null;
+    if (!ownerId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const ownerId = token.sub;
     const body = await req.json();
 
     const updated = await prisma.ownerMetrics.upsert({
