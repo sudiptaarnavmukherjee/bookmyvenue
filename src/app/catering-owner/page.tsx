@@ -234,16 +234,18 @@ export default function CateringOwnerDashboard() {
 
   const updateKycDraft = (catererId: string, patch: Partial<KycDraft>) => {
     setKycDrafts((prev) => ({
-      ...prev,
-      [catererId]: {
-        ownerNote: "",
-        aadhaarUrl: "",
-        panUrl: "",
-        uploadingAadhaar: false,
-        uploadingPan: false,
-        ...(prev[catererId] || {}),
-        ...patch,
-      },
+      ...(prev || {}),
+      [catererId]: Object.assign(
+        {
+          ownerNote: "",
+          aadhaarUrl: "",
+          panUrl: "",
+          uploadingAadhaar: false,
+          uploadingPan: false,
+        } as KycDraft,
+        prev[catererId] || {},
+        patch
+      ),
     }));
   };
 
