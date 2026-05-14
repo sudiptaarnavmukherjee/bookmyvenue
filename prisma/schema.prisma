@@ -113,6 +113,8 @@ model User {
   auditLogs    AuditLog[]    @relation("AuditLogs")
   accounts     Account[]
   sessions     Session[]
+  inquiries    UserInquiry[] @relation("UserInquiries")
+  metrics      OwnerMetrics? @relation("OwnerMetrics")
 
   @@index([email])
 }
@@ -233,6 +235,7 @@ model Venue {
   wishlist       Wishlist[]
   blockedDates   BlockedDate[]
   viewAnalytics  ViewAnalytics[]
+  inquiries      UserInquiry[]   @relation("VenueInquiries")
 
   @@index([city])
   @@index([area])
@@ -790,6 +793,102 @@ model PromoCodeUsage {
   @@index([userId])
   @@index([promoCodeId])
 }
+
+// ==================== PHASE 2: ANALYTICS & ENGAGEMENT ====================
+
+// Track user interactions for analytics and insights
+model AnalyticsEvent {
+  id          String    @id @default(cuid())
+  
+  // Event details
+  eventType   String    // VIEW, SEARCH, INQUIRY, BOOKING, SHARE, WISHLIST_ADD, COMPARE, FILTER
+  entityType  String    // VENUE, CATERER, BOOKING, SEARCH
+  entityId    String    // ID of the venue/caterer/booking being tracked
+  
+  // User context
+  userId      String?   // Anonymous if not logged in
+  
+  // Event metadata
+  metadata    Json?     // Additional context (search params, filter values, etc.)
+  timestamp   DateTime  @default(now())
+  
+  @@index([eventType])
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([timestamp])
+  @@index([createdAt: desc])
+}
+
+// Track user inquiries and follow-ups
+model UserInquiry {
+  id          String    @id @default(cuid())
+  
+  // Inquiry details
+  userId      String
+  user        User      @relation("UserInquiries", fields: [userId], references: [id])
+  
+  venueId     String?
+  venue       Venue?    @relation("VenueInquiries", fields: [venueId], references: [id])
+  
+  catererId   String?
+  caterer     Caterer?  @relation("CatererInquiries", fields: [catererId], references: [id])
+  
+  // Inquiry content
+  message     String
+  eventType   String    // WEDDING, BIRTHDAY, CORPORATE, etc.
+  eventDate   DateTime?
+  guestCount  Int?
+  budget      Float?
+  
+  // Status tracking
+  status      String    @default("PENDING") // PENDING, CONTACTED, INTERESTED, BOOKED, REJECTED
+  
+  // Contact details
+  phoneNumber String?
+  email       String?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([userId])
+  @@index([venueId])
+  @@index([catererId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// Owner engagement metrics (denormalized for fast dashboards)
+model OwnerMetrics {
+  id          String    @id @default(cuid())
+  
+  ownerId     String    @unique
+  owner       User      @relation("OwnerMetrics", fields: [ownerId], references: [id])
+  
+  // Aggregated metrics
+  totalViews  Int       @default(0)
+  totalInquiries Int    @default(0)
+  totalBookings Int     @default(0)
+  totalRevenue Float    @default(0)
+  
+  // Time-based metrics
+  viewsThisMonth Int    @default(0)
+  inquiriesThisMonth Int @default(0)
+  bookingsThisMonth Int  @default(0)
+  
+  // Engagement rates
+  conversionRate Float? // inquiries / views
+  bookingRate    Float? // bookings / inquiries
+  
+  // Last activity
+  lastViewAt     DateTime?
+  lastInquiryAt  DateTime?
+  lastBookingAt  DateTime?
+  
+  updatedAt      DateTime @updatedAt
+  
+  @@index([ownerId])
+}
+
 
 // Invoice/Receipt Storage
 model Invoice {
