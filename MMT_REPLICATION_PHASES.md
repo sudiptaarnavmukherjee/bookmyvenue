@@ -12,7 +12,7 @@ Replicate the MakeMyTrip-style UX patterns across the full app (not homepage-onl
 - Consistent typography, spacing, and icon rhythm across pages
 
 ## Phase 1: Shell, Branding, Typography, Header Controls
-Status: In progress
+Status: Complete
 
 Scope:
 - Restore product name to Happily Eated in main shell
@@ -27,7 +27,7 @@ Deliverables:
 - Listing pages cleaned for consistent labels and color language
 
 ## Phase 2: Listings (Venues + Catering) Full MMT-Style Replication
-Status: Planned
+Status: Complete
 
 Scope:
 - Unified sticky listing header with editable destination/date/guests summary
@@ -43,7 +43,7 @@ Deliverables:
 - Shared listing UI components to keep behavior consistent
 
 ## Phase 3: Detail Pages (Venue + Catering) Full Replication
-Status: Planned
+Status: Complete
 
 Scope:
 - Top image hero + sticky tab nav (overview, amenities, reviews, dining/rules)
@@ -57,7 +57,7 @@ Deliverables:
 - Unified detail action/footer CTA behavior on mobile
 
 ## Phase 4: Utility Pages + End-to-End Consistency
-Status: Planned
+Status: Complete
 
 Scope:
 - Wishlist, bookings, compare flows updated to same design system
@@ -70,7 +70,7 @@ Deliverables:
 - Final QA checklist and regression validation
 
 ## Phase 5: QA and Hardening
-Status: Planned
+Status: Complete
 
 Scope:
 - Responsive audits across common mobile breakpoints
@@ -80,3 +80,39 @@ Scope:
 Deliverables:
 - Release-ready replication baseline
 - Hand-off notes for future enhancements
+
+## Phase 6: Cross-Browser Test Stabilization
+Status: Complete
+
+Scope:
+- Stabilize flaky e2e selectors across Chromium, Firefox, WebKit, and mobile projects
+- Handle non-deterministic overlays and modal interactions in tests
+- Ensure listing pages pass under degraded backend conditions by validating fallback states
+
+Deliverables:
+- Stable smoke suite across desktop and mobile browsers
+- Repeatable CI-friendly Playwright behavior
+
+## Phase 7: Release Hygiene and Deployment Reliability
+Status: Complete
+
+Scope:
+- Exclude generated test artifacts from git tracking
+- Keep deployment trigger flow clean and reproducible
+- Validate production build pipeline after redesign rollout
+
+Deliverables:
+- Clean git status by default
+- Predictable deployment triggers
+
+## Phase 8: Performance and Bundle Optimization
+Status: In progress
+
+Scope:
+- Production build profiling and route-level bundle review
+- Targeted image and client-component optimization
+- Lighthouse baseline for mobile and desktop
+
+Deliverables:
+- Performance baseline report
+- Prioritized optimization patch list
