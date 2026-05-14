@@ -1,18 +1,9 @@
-import { Suspense } from "react";
-import VerifyPhoneClient from "./VerifyPhoneClient";
+import { redirect } from "next/navigation";
 
-function VerifyPhoneLoading() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
-      <p className="text-gray-600">Loading verification...</p>
-    </div>
-  );
-}
-
+/**
+ * Legacy OTP verification route - retired after reverting to classic login/signup flow
+ * Redirects to home
+ */
 export default function VerifyPhonePage() {
-  return (
-    <Suspense fallback={<VerifyPhoneLoading />}>
-      <VerifyPhoneClient />
-    </Suspense>
-  );
+  redirect("/");
 }
