@@ -1,7 +1,7 @@
-const CACHE_NAME = 'bookmyvenue-v1';
-const STATIC_CACHE = 'bookmyvenue-static-v1';
-const DYNAMIC_CACHE = 'bookmyvenue-dynamic-v1';
-const IMAGE_CACHE = 'bookmyvenue-images-v1';
+const CACHE_NAME = 'bookmyvenue-v2';
+const STATIC_CACHE = 'bookmyvenue-static-v2';
+const DYNAMIC_CACHE = 'bookmyvenue-dynamic-v2';
+const IMAGE_CACHE = 'bookmyvenue-images-v2';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [
@@ -130,14 +130,20 @@ async function networkFirst(request, cacheName) {
 
 async function staleWhileRevalidate(request, cacheName) {
   const cached = await caches.match(request);
-  
-  const fetchPromise = fetch(request).then((response) => {
-    if (response.ok) {
-      const cache = caches.open(cacheName);
-      cache.then((c) => c.put(request, response.clone()));
+
+  const fetchPromise = (async () => {
+    try {
+      const response = await fetch(request);
+      if (response && response.ok) {
+        const responseToCache = response.clone();
+        const cache = await caches.open(cacheName);
+        await cache.put(request, responseToCache);
+      }
+      return response;
+    } catch {
+      return cached;
     }
-    return response;
-  }).catch(() => cached);
+  })();
 
   return cached || fetchPromise;
 }
