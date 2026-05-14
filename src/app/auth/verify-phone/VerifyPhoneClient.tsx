@@ -43,11 +43,6 @@ export default function VerifyPhoneClient() {
       return;
     }
 
-    if (session.user.phoneVerified) {
-      router.push(callbackUrl || roleHome(session.user.role));
-      return;
-    }
-
     const loadPhone = async () => {
       try {
         const res = await fetch("/api/users/me");
@@ -122,7 +117,6 @@ export default function VerifyPhoneClient() {
         user: {
           id: session?.user?.id || "",
           role: session?.user?.role || "USER",
-          phoneVerified: true,
         },
       });
 

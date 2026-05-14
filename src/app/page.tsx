@@ -4,6 +4,7 @@ import { getFeaturedVenues, getFeaturedCaterers } from "@/lib/home-data";
 import HomeInteractive from "@/components/home/HomeInteractive";
 import HomeTabContent from "@/components/home/HomeTabContent";
 import NearbySection from "@/components/home/NearbySection";
+import BusinessValueSection from "@/components/home/BusinessValueSection";
 import Logo from "@/components/layout/Logo";
 
 // ============================================
@@ -62,6 +63,9 @@ export default async function HomePage({
       <Suspense fallback={<div className="h-[52px] bg-white border-b" />}>
         <HomeInteractive initialMode={mode as "venues" | "catering"} />
       </Suspense>
+
+      {/* Phase 1 foundation: clear value proposition for users and owners */}
+      <BusinessValueSection />
 
       {/* Nearby Section - Client-side, reads GPS from localStorage */}
       <NearbySection />

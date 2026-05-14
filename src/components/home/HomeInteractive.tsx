@@ -130,7 +130,7 @@ export default function HomeInteractive({ initialMode = "venues" }: { initialMod
           <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-sky-100">Venue and catering marketplace</p>
           <h1 className="text-3xl font-extrabold leading-tight text-white lg:text-5xl">Plan Events Like a Trip</h1>
           <p className="mx-auto mt-2 max-w-2xl text-sm text-sky-100 lg:text-base">
-            Discover verified venues and caterers with transparent pricing, instant booking, and location-first search.
+            Discover venues and caterers with transparent pricing insights, location-first search, and confident shortlist planning.
           </p>
         </div>
 
