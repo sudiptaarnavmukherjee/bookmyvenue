@@ -6,6 +6,7 @@ import HomeTabContent from "@/components/home/HomeTabContent";
 import NearbySection from "@/components/home/NearbySection";
 import BusinessValueSection from "@/components/home/BusinessValueSection";
 import TrustSignalsSection from "@/components/home/TrustSignalsSection";
+import CallToActionSection from "@/components/home/CallToActionSection";
 import Logo from "@/components/layout/Logo";
 
 // ============================================
@@ -72,6 +73,9 @@ export default async function HomePage({
 
       {/* Trust signals: showcase verified partners and completed events */}
       <TrustSignalsSection stats={stats} />
+
+      {/* CTA: dual conversion funnel for users and owners */}
+      <CallToActionSection />
 
       {/* Nearby Section - Client-side, reads GPS from localStorage */}
       <NearbySection />
