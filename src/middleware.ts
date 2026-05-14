@@ -14,62 +14,22 @@ function roleHome(role?: string) {
   return "/";
 }
 
-function verifyPhoneRedirect(req: NextRequest, callbackUrl?: string) {
-  const verifyUrl = new URL("/auth/verify-phone", req.url);
-  if (callbackUrl && callbackUrl.startsWith("/")) {
-    verifyUrl.searchParams.set("callbackUrl", callbackUrl);
-  }
-  return NextResponse.redirect(verifyUrl);
-}
-
 export default async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
   const token = await getToken({ req });
   const role = token?.role as string | undefined;
-  const phoneVerified = Boolean(token?.phoneVerified);
 
-  const isAuthRoute =
-    path === "/auth/signin" || path === "/auth/signup" || path === "/auth/verify-phone";
+  const isAuthRoute = path === "/auth/signin" || path === "/auth/signup";
 
   if (isAuthRoute) {
     if (token) {
-      if (path === "/auth/verify-phone") {
-        if (phoneVerified) {
-          return NextResponse.redirect(new URL(roleHome(role), req.url));
-        }
-        return NextResponse.next();
-      }
-
-      if (!phoneVerified) {
-        const callbackUrl = req.nextUrl.searchParams.get("callbackUrl") || roleHome(role);
-        return verifyPhoneRedirect(req, callbackUrl);
-      }
-
       return NextResponse.redirect(new URL(roleHome(role), req.url));
     }
-
-    if (path === "/auth/verify-phone") {
-      return signInRedirect(req);
-    }
-
     return NextResponse.next();
   }
 
   if (!token) {
     return signInRedirect(req);
-  }
-
-  const requiresPhoneVerification =
-    path.startsWith("/dashboard") ||
-    path.startsWith("/admin") ||
-    path.startsWith("/venue-owner") ||
-    path.startsWith("/catering-owner") ||
-    path.startsWith("/bookings") ||
-    path.startsWith("/profile") ||
-    path.startsWith("/wishlist");
-
-  if (requiresPhoneVerification && !phoneVerified) {
-    return verifyPhoneRedirect(req, `${req.nextUrl.pathname}${req.nextUrl.search}`);
   }
 
   if (path.startsWith("/dashboard")) {
@@ -106,6 +66,5 @@ export const config = {
     "/wishlist/:path*",
     "/auth/signin",
     "/auth/signup",
-    "/auth/verify-phone",
   ],
 };

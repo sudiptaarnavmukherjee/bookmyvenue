@@ -52,15 +52,8 @@ export default function SignInClient() {
       // Fetch fresh session to get the user's role, then redirect directly
       const session = await getSession();
       const role = session?.user?.role;
-      const isPhoneVerified = Boolean(session?.user?.phoneVerified);
       const defaultRedirect = roleHome(role);
       const finalCallback = callbackUrl || defaultRedirect;
-
-      if (!isPhoneVerified) {
-        router.push(`/auth/verify-phone?callbackUrl=${encodeURIComponent(finalCallback)}`);
-        router.refresh();
-        return;
-      }
 
       router.push(finalCallback);
       router.refresh();
