@@ -181,8 +181,8 @@ export default function VenuesPage() {
             <button onClick={() => window.history.back()} className="flex items-center gap-2 rounded-full px-1 py-1 text-left">
               <ChevronLeft className="h-5 w-5 text-slate-600" />
               <div>
-                <h1 className="text-lg font-extrabold leading-tight text-slate-900">Venues in {currentLocationLabel}</h1>
-                {!loading && <p className="text-xs text-slate-400">{filteredVenues.length} venue{filteredVenues.length !== 1 ? "s" : ""} found</p>}
+                <h1 className="text-lg font-extrabold leading-tight text-slate-900">Compare Venues in {currentLocationLabel}</h1>
+                {!loading && <p className="text-xs text-slate-400">{filteredVenues.length} venue{filteredVenues.length !== 1 ? "s" : ""} • Research & shortlist</p>}
               </div>
             </button>
             <button
