@@ -100,8 +100,8 @@ export default function HomeInteractive({ initialMode = "venues" }: { initialMod
               <Ticket className="h-4.5 w-4.5" />
             </div>
             <div className="leading-none">
-              <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#0b5fab]">Book</p>
-              <p className="text-lg font-extrabold text-slate-900">MyVenue</p>
+              <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#0b5fab]">Happily</p>
+              <p className="text-lg font-extrabold text-slate-900">Eated</p>
             </div>
           </Link>
 
@@ -121,6 +121,20 @@ export default function HomeInteractive({ initialMode = "venues" }: { initialMod
               </Link>
             )}
           </div>
+        </div>
+
+        <div className="px-4 pb-3">
+          <button
+            onClick={() => setShowLocationModal(true)}
+            className="flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left"
+          >
+            <MapPin className="h-4 w-4 text-[#0b5fab]" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Current location</p>
+              <p className="truncate text-sm font-bold text-slate-900">{location}</p>
+            </div>
+            <ChevronDown className="h-4 w-4 text-slate-400" />
+          </button>
         </div>
       </header>
 

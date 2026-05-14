@@ -150,16 +150,29 @@ function CompareCaterersContent() {
           <div>
             <Link 
               href="/catering"
-              className="text-[#0b5fab] hover:underline flex items-center gap-1 text-sm mb-2"
+              className="text-[#0b5fab] hover:underline flex items-center gap-1 text-sm mb-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b5fab] focus-visible:ring-offset-2 rounded-md w-fit"
             >
               <ChevronLeft className="h-4 w-4" />
               Back to Caterers
             </Link>
             <h1 className="text-3xl font-bold text-gray-900">Compare Caterers</h1>
             <p className="text-gray-600">Comparing {caterers.length} caterers side by side</p>
+
+            <div className="mt-4 rounded-2xl border border-[#0b5fab]/15 bg-gradient-to-r from-[#0b5fab]/5 via-white to-emerald-50 p-4">
+              <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
+                <span className="rounded-full bg-white border border-gray-200 px-3 py-1 text-gray-700">Options: {caterers.length}</span>
+                {lowestPrice > 0 && (
+                  <span className="rounded-full bg-green-100 px-3 py-1 text-green-700">Best price from ₹{lowestPrice.toLocaleString("en-IN")}/plate</span>
+                )}
+                {highestRating > 0 && (
+                  <span className="rounded-full bg-yellow-100 px-3 py-1 text-yellow-700">Top rating {highestRating.toFixed(1)}</span>
+                )}
+              </div>
+              <p className="mt-2 text-xs text-gray-600">Switch package tier and guest count to compare final cost quickly.</p>
+            </div>
           </div>
           
-          <div className="flex items-center gap-4 flex-wrap">
+          <div className="sticky top-16 z-20 flex items-center gap-4 flex-wrap bg-white/95 backdrop-blur-md rounded-xl px-3 py-3 border border-gray-200 shadow-sm">
             {/* Package Selector */}
             <div className="flex bg-white rounded-xl shadow-sm overflow-hidden">
               {(["silver", "gold", "platinum"] as const).map((pkg) => (
@@ -171,6 +184,7 @@ function CompareCaterersContent() {
                       ? "bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] text-white"
                       : "text-gray-700 hover:bg-gray-100"
                   }`}
+                  aria-label={`Select ${pkg} package`}
                 >
                   {pkg.charAt(0).toUpperCase() + pkg.slice(1)}
                 </button>
@@ -183,14 +197,16 @@ function CompareCaterersContent() {
               <span className="text-sm text-gray-600">Guests:</span>
               <button
                 onClick={() => setGuestCount(Math.max(50, guestCount - 50))}
-                className="p-1 hover:bg-gray-100 rounded"
+                className="p-1 hover:bg-gray-100 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b5fab]"
+                aria-label="Decrease guest count"
               >
                 <Minus className="h-4 w-4" />
               </button>
               <span className="font-semibold w-16 text-center">{guestCount}</span>
               <button
                 onClick={() => setGuestCount(Math.min(2000, guestCount + 50))}
-                className="p-1 hover:bg-gray-100 rounded"
+                className="p-1 hover:bg-gray-100 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b5fab]"
+                aria-label="Increase guest count"
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -213,7 +229,8 @@ function CompareCaterersContent() {
                       <div className="relative">
                         <button
                           onClick={() => removeCaterer(caterer.id)}
-                          className="absolute -top-2 -right-2 p-1 bg-red-100 text-red-600 rounded-full hover:bg-red-200"
+                          className="absolute -top-2 -right-2 p-1 bg-red-100 text-red-600 rounded-full hover:bg-red-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                          aria-label="Remove caterer from compare"
                         >
                           <X className="h-4 w-4" />
                         </button>
@@ -433,7 +450,7 @@ function CompareCaterersContent() {
             <Link
               key={caterer.id}
               href={`/catering/${caterer.slug || caterer.id}`}
-              className="px-6 py-3 bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] text-white rounded-xl font-semibold hover:opacity-90 transition-opacity"
+              className="px-6 py-3 bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] text-white rounded-xl font-semibold hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b5fab] focus-visible:ring-offset-2"
             >
               Book {caterer.name}
             </Link>

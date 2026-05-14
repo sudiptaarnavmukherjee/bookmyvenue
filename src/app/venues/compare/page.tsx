@@ -153,11 +153,11 @@ function CompareVenuesContent() {
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col gap-4 mb-6">
           <div>
             <Link 
               href="/venues"
-              className="text-[#0b5fab] hover:underline flex items-center gap-1 text-sm mb-2"
+              className="text-[#0b5fab] hover:underline flex items-center gap-1 text-sm mb-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b5fab] focus-visible:ring-offset-2 rounded-md w-fit"
             >
               <ChevronLeft className="h-4 w-4" />
               Back to Venues
@@ -165,21 +165,36 @@ function CompareVenuesContent() {
             <h1 className="text-3xl font-bold text-gray-900">Compare Venues</h1>
             <p className="text-gray-600">Comparing {venues.length} venues side by side</p>
           </div>
-          
+
+          <div className="rounded-2xl border border-[#0b5fab]/15 bg-gradient-to-r from-[#0b5fab]/5 via-white to-emerald-50 p-4">
+            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
+              <span className="rounded-full bg-white border border-gray-200 px-3 py-1 text-gray-700">Options: {venues.length}</span>
+              {lowestPrice > 0 && (
+                <span className="rounded-full bg-green-100 px-3 py-1 text-green-700">Best price from ₹{lowestPrice.toLocaleString("en-IN")}</span>
+              )}
+              {highestRating > 0 && (
+                <span className="rounded-full bg-yellow-100 px-3 py-1 text-yellow-700">Top rating {highestRating.toFixed(1)}</span>
+              )}
+            </div>
+            <p className="mt-2 text-xs text-gray-600">Adjust guest count to estimate per-guest affordability instantly.</p>
+          </div>
+
           {/* Guest Count Selector */}
-          <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm">
+          <div className="sticky top-16 z-20 flex items-center gap-3 bg-white/95 backdrop-blur-md rounded-xl px-4 py-3 shadow-sm border border-gray-200 w-fit">
             <Users className="h-5 w-5 text-gray-500" />
             <span className="text-sm text-gray-600">Guests:</span>
             <button
               onClick={() => setGuestCount(Math.max(50, guestCount - 50))}
-              className="p-1 hover:bg-gray-100 rounded"
+              className="p-1 hover:bg-gray-100 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b5fab]"
+              aria-label="Decrease guest count"
             >
               <Minus className="h-4 w-4" />
             </button>
             <span className="font-semibold w-16 text-center">{guestCount}</span>
             <button
               onClick={() => setGuestCount(Math.min(2000, guestCount + 50))}
-              className="p-1 hover:bg-gray-100 rounded"
+              className="p-1 hover:bg-gray-100 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b5fab]"
+              aria-label="Increase guest count"
             >
               <Plus className="h-4 w-4" />
             </button>
@@ -201,7 +216,8 @@ function CompareVenuesContent() {
                       <div className="relative">
                         <button
                           onClick={() => removeVenue(venue.id)}
-                          className="absolute -top-2 -right-2 p-1 bg-red-100 text-red-600 rounded-full hover:bg-red-200"
+                          className="absolute -top-2 -right-2 p-1 bg-red-100 text-red-600 rounded-full hover:bg-red-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                          aria-label="Remove venue from compare"
                         >
                           <X className="h-4 w-4" />
                         </button>
@@ -401,7 +417,7 @@ function CompareVenuesContent() {
             <Link
               key={venue.id}
               href={`/venues/${venue.slug || venue.id}`}
-              className="px-6 py-3 bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] text-white rounded-xl font-semibold hover:opacity-90 transition-opacity"
+              className="px-6 py-3 bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] text-white rounded-xl font-semibold hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b5fab] focus-visible:ring-offset-2"
             >
               Book {venue.name}
             </Link>

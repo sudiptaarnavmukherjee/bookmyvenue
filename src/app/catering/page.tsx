@@ -8,6 +8,7 @@ import {
 import { CatererCard } from "@/components/catering/CatererCard";
 import { useLocation } from "@/hooks/useLocation";
 import { useSession } from "next-auth/react";
+import { getBmvLocation } from "@/components/home/LocationPermissionModal";
 
 type Caterer = {
   id: string;
@@ -41,11 +42,11 @@ const POPULAR_AREAS = [
 ];
 
 const SORT_OPTIONS = [
-  { value: "default",    label: "ðŸ½ï¸ Featured" },
-  { value: "nearby",    label: "ðŸ§­ Nearest" },
-  { value: "price-low", label: "ðŸ’° Lowâ€“High" },
-  { value: "price-high",label: "ðŸ’° Highâ€“Low" },
-  { value: "veg-first", label: "ðŸ¥¬ Veg First" },
+  { value: "default",    label: "Featured" },
+  { value: "nearby",     label: "Nearest" },
+  { value: "price-low",  label: "Price Low-High" },
+  { value: "price-high", label: "Price High-Low" },
+  { value: "veg-first",  label: "Veg First" },
 ] as const;
 
 export default function CateringPage() {
@@ -53,6 +54,7 @@ export default function CateringPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [showSortSheet, setShowSortSheet] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"default" | "price-low" | "price-high" | "veg-first" | "nearby">("default");
   const { location, loading: locationLoading, isPermissionDenied } = useLocation();
@@ -60,6 +62,18 @@ export default function CateringPage() {
   const [selectedArea, setSelectedArea] = useState<string>("");
   const [pureVegOnly, setPureVegOnly] = useState(false);
   const [wishlistCatererIds, setWishlistCatererIds] = useState<Set<string>>(new Set());
+  const [currentLocationLabel, setCurrentLocationLabel] = useState("Kolkata");
+
+  useEffect(() => {
+    const stored = getBmvLocation();
+    if (stored?.label) setCurrentLocationLabel(stored.label);
+    const handler = (e: Event) => {
+      const d = (e as CustomEvent<{ label: string }>).detail;
+      if (d?.label) setCurrentLocationLabel(d.label);
+    };
+    window.addEventListener("bmv:locationUpdated", handler);
+    return () => window.removeEventListener("bmv:locationUpdated", handler);
+  }, []);
 
   // Fetch user's wishlisted caterer IDs once session is loaded
   useEffect(() => {
@@ -74,62 +88,65 @@ export default function CateringPage() {
       .catch(() => {});
   }, [session]);
 
-
   useEffect(() => {
     if (locationLoading) return;
-    const fetchCaterers = async () => {
+
+    const fetchData = async () => {
       setLoading(true);
       setError(null);
+
       try {
         const params = new URLSearchParams();
+
+        if (selectedArea) params.set("area", selectedArea);
+        if (pureVegOnly) params.set("isPureVeg", "true");
         if (location) {
           params.set("lat", location.lat.toString());
           params.set("lng", location.lng.toString());
         }
-        if (sortBy === "nearby") params.set("sortBy", "nearby");
+
+        if (sortBy === "price-low") params.set("sortBy", "price-low");
+        else if (sortBy === "price-high") params.set("sortBy", "price-high");
+        else if (sortBy === "nearby") params.set("sortBy", "nearby");
+        else if (sortBy === "default") params.set("sortBy", "newest");
+
         const response = await fetch(`/api/catering?${params.toString()}`);
         const data = await response.json();
-        if (data.error) {
-          setError(data.error);
-        } else {
-          const raw = data.caterers || [];
-          setCaterers(raw.map((c: any) => ({
-            ...c,
-            minPlatePrice: c.minPlatePrice || c.pricePerPlate || c.silverPrice || 0,
-          })));
+
+        if (!response.ok || data.error) {
+          throw new Error(data.error || "Failed to load caterers");
         }
+
+        let nextCaterers: Caterer[] = data.caterers || [];
+
+        if (sortBy === "veg-first") {
+          nextCaterers = [...nextCaterers].sort((a, b) => Number(Boolean(b.isPureVeg)) - Number(Boolean(a.isPureVeg)));
+        }
+
+        setCaterers(nextCaterers);
       } catch (err: any) {
-        setError(err.message || "Failed to load caterers");
+        setError(err?.message || "Failed to load caterers");
+        setCaterers([]);
       } finally {
         setLoading(false);
       }
     };
-    fetchCaterers();
-  }, [location, locationLoading, sortBy]);
+
+    fetchData();
+  }, [sortBy, selectedArea, pureVegOnly, location, locationLoading]);
 
   const filteredCaterers = useMemo(() => {
-    let result = caterers.filter((c) => {
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        if (
-          !c.name.toLowerCase().includes(q) &&
-          !c.city.toLowerCase().includes(q) &&
-          !(c.area || "").toLowerCase().includes(q)
-        ) return false;
-      }
-      if (selectedArea && c.area !== selectedArea) return false;
-      if (pureVegOnly && !c.isPureVeg) return false;
-      return true;
-    });
+    if (!searchQuery) return caterers;
 
-    switch (sortBy) {
-      case "nearby":    result.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity)); break;
-      case "price-low": result.sort((a, b) => (a.minPlatePrice || 0) - (b.minPlatePrice || 0)); break;
-      case "price-high":result.sort((a, b) => (b.minPlatePrice || 0) - (a.minPlatePrice || 0)); break;
-      case "veg-first": result.sort((a, b) => (a.isPureVeg === b.isPureVeg ? 0 : a.isPureVeg ? -1 : 1)); break;
-    }
-    return result;
-  }, [caterers, searchQuery, selectedArea, pureVegOnly, sortBy]);
+    const q = searchQuery.toLowerCase();
+    return caterers.filter((caterer) => {
+      return (
+        caterer.name.toLowerCase().includes(q) ||
+        caterer.city.toLowerCase().includes(q) ||
+        (caterer.area || "").toLowerCase().includes(q)
+      );
+    });
+  }, [caterers, searchQuery]);
 
   const clearFilters = useCallback(() => {
     setSearchQuery("");
@@ -148,7 +165,7 @@ export default function CateringPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      {/* â”€â”€ Sticky top bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Sticky top bar */}
       <div className="bg-white border-b sticky top-0 lg:top-16 z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 pt-3 pb-0">
           {/* Title row */}
@@ -158,7 +175,7 @@ export default function CateringPage() {
                 <ChevronLeft className="w-5 h-5 text-gray-600" />
               </button>
               <div>
-                <h1 className="text-lg font-bold text-gray-900 leading-tight">Caterers in Kolkata</h1>
+                <h1 className="text-lg font-bold text-gray-900 leading-tight">Caterers in {currentLocationLabel}</h1>
                 {!loading && (
                   <p className="text-xs text-gray-400">
                     {filteredCaterers.length} caterer{filteredCaterers.length !== 1 ? "s" : ""} found
@@ -192,7 +209,7 @@ export default function CateringPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search caterers, cuisines, areasâ€¦"
+              placeholder="Search caterers, cuisines, areas..."
               className="flex-1 bg-transparent text-sm outline-none placeholder:text-gray-400"
             />
             {searchQuery && (
@@ -227,7 +244,7 @@ export default function CateringPage() {
           <div className="mb-4 flex items-center gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
             <Navigation className="w-4 h-4 flex-shrink-0" />
             <span>
-              Location denied â€” distances from Kolkata centre.{" "}
+              Location denied - distances from Kolkata centre.{" "}
               <button onClick={() => window.location.reload()} className="underline font-semibold">
                 Allow location
               </button>
@@ -241,8 +258,8 @@ export default function CateringPage() {
             onClick={() => setSelectedArea("")}
             className={`flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
               !selectedArea && !pureVegOnly
-                ? "bg-orange-500 text-white border-orange-500"
-                : "bg-white text-gray-600 border-gray-200 hover:border-orange-300"
+                ? "bg-[#0b5fab] text-white border-[#0b5fab]"
+                : "bg-white text-gray-600 border-gray-200 hover:border-[#0b5fab]/40"
             }`}
           >
             All
@@ -252,8 +269,8 @@ export default function CateringPage() {
             onClick={() => setPureVegOnly(!pureVegOnly)}
             className={`flex-shrink-0 flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
               pureVegOnly
-                ? "bg-green-600 text-white border-green-600"
-                : "bg-white text-gray-600 border-gray-200 hover:border-green-400"
+                ? "bg-[#0b5fab] text-white border-[#0b5fab]"
+                : "bg-white text-gray-600 border-gray-200 hover:border-[#0b5fab]/40"
             }`}
           >
             <Leaf className="w-2.5 h-2.5" /> Pure Veg
@@ -264,8 +281,8 @@ export default function CateringPage() {
               onClick={() => setSelectedArea(selectedArea === area ? "" : area)}
               className={`flex-shrink-0 flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
                 selectedArea === area
-                  ? "bg-orange-500 text-white border-orange-500"
-                  : "bg-white text-gray-600 border-gray-200 hover:border-orange-300"
+                  ? "bg-[#0b5fab] text-white border-[#0b5fab]"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-[#0b5fab]/40"
               }`}
             >
               <MapPin className="w-2.5 h-2.5" />
@@ -278,14 +295,14 @@ export default function CateringPage() {
         {(searchQuery || pureVegOnly) && (
           <div className="flex items-center gap-2 mb-4 flex-wrap">
             {searchQuery && (
-              <span className="flex items-center gap-1 text-xs bg-orange-50 text-orange-700 border border-orange-200 px-2.5 py-1 rounded-full font-medium">
+              <span className="flex items-center gap-1 text-xs bg-[#0b5fab]/5 text-[#0b5fab] border border-[#0b5fab]/20 px-2.5 py-1 rounded-full font-medium">
                 &ldquo;{searchQuery}&rdquo;
                 <button onClick={() => setSearchQuery("")}><X className="w-3 h-3" /></button>
               </span>
             )}
             {pureVegOnly && (
-              <span className="flex items-center gap-1 text-xs bg-green-50 text-green-700 border border-green-200 px-2.5 py-1 rounded-full font-medium">
-                ðŸ¥¬ Pure veg only
+              <span className="flex items-center gap-1 text-xs bg-[#0b5fab]/5 text-[#0b5fab] border border-[#0b5fab]/20 px-2.5 py-1 rounded-full font-medium">
+                Pure veg only
                 <button onClick={() => setPureVegOnly(false)}><X className="w-3 h-3" /></button>
               </span>
             )}
@@ -295,7 +312,7 @@ export default function CateringPage() {
           </div>
         )}
 
-        {/* Loading skeletons â€” Zomato list style */}
+        {/* Loading skeletons - list style */}
         {loading && (
           <div className="space-y-3">
             {[...Array(5)].map((_, i) => (
@@ -320,7 +337,7 @@ export default function CateringPage() {
             <p className="text-sm text-gray-500 mb-4">{error}</p>
             <button
               onClick={() => window.location.reload()}
-              className="px-5 py-2 bg-orange-500 text-white rounded-xl text-sm font-semibold hover:bg-orange-600 transition-colors"
+              className="px-5 py-2 bg-[#0b5fab] text-white rounded-xl text-sm font-semibold hover:bg-[#084a86] transition-colors"
             >
               Retry
             </button>
@@ -336,7 +353,7 @@ export default function CateringPage() {
               {searchQuery || selectedArea || pureVegOnly ? "Try adjusting your filters" : "No caterers available yet"}
             </p>
             {(searchQuery || selectedArea || pureVegOnly) && (
-              <button onClick={clearFilters} className="px-5 py-2 bg-orange-500 text-white rounded-xl text-sm font-semibold hover:bg-orange-600 transition-colors">
+              <button onClick={clearFilters} className="px-5 py-2 bg-[#0b5fab] text-white rounded-xl text-sm font-semibold hover:bg-[#084a86] transition-colors">
                 Clear Filters
               </button>
             )}
@@ -376,7 +393,36 @@ export default function CateringPage() {
         )}
       </div>
 
-      {/* â”€â”€ Filter bottom sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {showSortSheet && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/40" onClick={() => setShowSortSheet(false)} />
+          <div className="fixed bottom-0 left-0 right-0 z-50 max-h-[80vh] overflow-y-auto rounded-t-3xl bg-white shadow-2xl">
+            <div className="flex justify-center pt-3 pb-1"><div className="h-1 w-10 rounded-full bg-slate-200" /></div>
+            <div className="px-5 pb-6">
+              <div className="flex items-center justify-between border-b border-slate-200 py-3">
+                <h3 className="text-lg font-bold text-slate-900">Sort By</h3>
+                <button onClick={() => setShowSortSheet(false)} className="text-sm font-semibold text-[#0b5fab]">Done</button>
+              </div>
+              <div className="mt-4 space-y-2">
+                {SORT_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => { setSortBy(opt.value); setShowSortSheet(false); }}
+                    className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left transition-colors ${
+                      sortBy === opt.value ? "border-[#0b5fab] bg-[#0b5fab]/5" : "border-slate-200 bg-white"
+                    }`}
+                  >
+                    <span className="font-semibold text-slate-900">{opt.label}</span>
+                    <span className={`h-4 w-4 rounded-full border-2 ${sortBy === opt.value ? "border-[#0b5fab] bg-[#0b5fab]" : "border-slate-300"}`} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Filter bottom sheet */}
       {showFilters && (
         <>
           <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setShowFilters(false)} />
@@ -388,7 +434,7 @@ export default function CateringPage() {
             <div className="px-5 pb-8">
               <div className="flex items-center justify-between py-3 border-b mb-5">
                 <h3 className="font-bold text-gray-900 text-lg">Filters</h3>
-                <button onClick={clearFilters} className="text-sm text-orange-500 font-semibold">
+                <button onClick={clearFilters} className="text-sm text-[#0b5fab] font-semibold">
                   Clear All
                 </button>
               </div>
@@ -399,15 +445,15 @@ export default function CateringPage() {
                 <button
                   onClick={() => setPureVegOnly(!pureVegOnly)}
                   className={`flex items-center gap-3 w-full p-3 rounded-xl border-2 transition-colors ${
-                    pureVegOnly ? "border-green-500 bg-green-50" : "border-gray-200 bg-white"
+                    pureVegOnly ? "border-[#0b5fab] bg-[#0b5fab]/5" : "border-gray-200 bg-white"
                   }`}
                 >
-                  <div className={`w-5 h-5 rounded-full flex items-center justify-center border-2 ${pureVegOnly ? "bg-green-600 border-green-600" : "border-gray-300"}`}>
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center border-2 ${pureVegOnly ? "bg-[#0b5fab] border-[#0b5fab]" : "border-gray-300"}`}>
                     {pureVegOnly && <CheckCircle className="w-3 h-3 text-white" />}
                   </div>
                   <div className="text-left">
                     <p className="text-sm font-semibold text-gray-900 flex items-center gap-1">
-                      <Leaf className="w-3.5 h-3.5 text-green-600" /> Pure Vegetarian Only
+                      <Leaf className="w-3.5 h-3.5 text-[#0b5fab]" /> Pure Vegetarian Only
                     </p>
                     <p className="text-xs text-gray-500">Show only 100% veg caterers</p>
                   </div>
@@ -424,8 +470,8 @@ export default function CateringPage() {
                       onClick={() => setSortBy(opt.value)}
                       className={`p-3 rounded-xl border-2 text-sm font-medium text-left transition-colors ${
                         sortBy === opt.value
-                          ? "border-orange-400 bg-orange-50 text-orange-700"
-                          : "border-gray-200 text-gray-700 hover:border-orange-200"
+                          ? "border-[#0b5fab] bg-[#0b5fab]/5 text-[#0b5fab]"
+                          : "border-gray-200 text-gray-700 hover:border-[#0b5fab]/40"
                       }`}
                     >
                       {opt.label}
@@ -441,7 +487,7 @@ export default function CateringPage() {
                   <button
                     onClick={() => setSelectedArea("")}
                     className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-                      !selectedArea ? "bg-orange-500 text-white border-orange-500" : "bg-white text-gray-600 border-gray-200"
+                      !selectedArea ? "bg-[#0b5fab] text-white border-[#0b5fab]" : "bg-white text-gray-600 border-gray-200"
                     }`}
                   >
                     All
@@ -451,7 +497,7 @@ export default function CateringPage() {
                       key={area}
                       onClick={() => setSelectedArea(selectedArea === area ? "" : area)}
                       className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-                        selectedArea === area ? "bg-orange-500 text-white border-orange-500" : "bg-white text-gray-600 border-gray-200"
+                        selectedArea === area ? "bg-[#0b5fab] text-white border-[#0b5fab]" : "bg-white text-gray-600 border-gray-200"
                       }`}
                     >
                       {area}
@@ -462,7 +508,7 @@ export default function CateringPage() {
 
               <button
                 onClick={() => setShowFilters(false)}
-                className="w-full py-4 bg-orange-500 text-white rounded-2xl font-bold text-base hover:bg-orange-600 transition-colors"
+                className="w-full py-4 bg-[#0b5fab] text-white rounded-2xl font-bold text-base hover:bg-[#084a86] transition-colors"
               >
                 Show {filteredCaterers.length} Caterer{filteredCaterers.length !== 1 ? "s" : ""}
               </button>

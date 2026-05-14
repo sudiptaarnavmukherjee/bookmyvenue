@@ -139,6 +139,7 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
   const [message, setMessage] = useState("");
   const [menuModal, setMenuModal] = useState<{ tier: "SILVER" | "GOLD" | "PLATINUM"; label: string; gradient: string } | null>(null);
   const [stickyNav, setStickyNav] = useState(false);
+  const [activeSection, setActiveSection] = useState<"overview" | "packages" | "location">("overview");
   const [isInWishlist, setIsInWishlist] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
 
@@ -151,6 +152,8 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
   const menuModalPkg = menuModal
     ? caterer.menuPackages.find((p) => p.tier === menuModal.tier) ?? null
     : null;
+
+  const hasCatererLocation = Boolean(caterer.latitude || caterer.googleMapsUrl);
 
   useEffect(() => {
     fetch(`/api/catering/${caterer.id}/views`, { method: "POST" }).catch(() => {});
@@ -203,6 +206,32 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
     observer.observe(hero);
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    const sections = [
+      { id: "overview" as const, el: overviewRef.current },
+      { id: "packages" as const, el: packagesRef.current },
+      { id: "location" as const, el: locationRef.current },
+    ].filter((s) => s.el);
+
+    if (!sections.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+        if (!visible?.target) return;
+        const matched = sections.find((section) => section.el === visible.target);
+        if (matched) setActiveSection(matched.id);
+      },
+      { rootMargin: "-20% 0px -60% 0px", threshold: [0.2, 0.4, 0.6] }
+    );
+
+    sections.forEach((section) => section.el && observer.observe(section.el));
+    return () => observer.disconnect();
+  }, [caterer.menuPackages.length, hasCatererLocation]);
 
   const scrollTo = (ref: React.RefObject<HTMLDivElement | null>) => {
     ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -423,14 +452,18 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
             <div className="flex items-center gap-2">
               <div className="hidden sm:flex items-center gap-1 text-sm">
                 {[
-                  { label: "Overview", ref: overviewRef },
-                  { label: "Packages", ref: packagesRef },
-                  { label: "Location", ref: locationRef },
-                ].map(({ label, ref }) => (
+                  { id: "overview" as const, label: "Overview", ref: overviewRef },
+                  { id: "packages" as const, label: "Packages", ref: packagesRef },
+                  { id: "location" as const, label: "Location", ref: locationRef },
+                ].map(({ id, label, ref }) => (
                   <button
                     key={label}
                     onClick={() => scrollTo(ref)}
-                    className="px-3 py-1.5 rounded-lg text-gray-600 hover:bg-[#0b5fab]/5 hover:text-[#0b5fab] font-medium transition-colors"
+                    className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                      activeSection === id
+                        ? "bg-[#0b5fab]/10 text-[#0b5fab]"
+                        : "text-gray-600 hover:bg-[#0b5fab]/5 hover:text-[#0b5fab]"
+                    }`}
                   >
                     {label}
                   </button>
@@ -450,6 +483,40 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
         <div className="mx-auto max-w-7xl px-4 sm:px-6 grid gap-8 lg:grid-cols-3 py-8">
           {/* -- LEFT -------------------------------------------------- */}
           <div className="lg:col-span-2 space-y-10">
+
+            {/* Planning summary */}
+            <div className="rounded-3xl border border-[#0b5fab]/15 bg-gradient-to-br from-[#0b5fab]/5 via-white to-emerald-50 p-5 sm:p-6 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#0b5fab]">Plan Snapshot</p>
+                  <h2 className="mt-1 text-xl font-extrabold text-gray-900">Shortlist the right menu in minutes</h2>
+                </div>
+                <button
+                  onClick={() => scrollTo(bookingCardRef)}
+                  className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-[#0b5fab] border border-[#0b5fab]/20 hover:border-[#0b5fab]/40 transition-colors"
+                >
+                  Check Packages
+                </button>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-2xl border border-white bg-white/80 px-4 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Area</p>
+                  <p className="mt-1 text-sm font-bold text-gray-900">{caterer.area || caterer.city}</p>
+                </div>
+                <div className="rounded-2xl border border-white bg-white/80 px-4 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Starting Price</p>
+                  <p className="mt-1 text-sm font-bold text-gray-900">Rs {caterer.pricePerPlate.toLocaleString("en-IN")}/plate</p>
+                </div>
+                <div className="rounded-2xl border border-white bg-white/80 px-4 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Guest Requirement</p>
+                  <p className="mt-1 text-sm font-bold text-gray-900">{caterer.minGuests}+ guests</p>
+                </div>
+                <div className="rounded-2xl border border-white bg-white/80 px-4 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Booking Mode</p>
+                  <p className="mt-1 text-sm font-bold text-gray-900">{isFishbowl ? "Call/WhatsApp" : "Instant Request"}</p>
+                </div>
+              </div>
+            </div>
 
             {/* Overview */}
             <div ref={overviewRef} className="scroll-mt-20">
@@ -524,6 +591,16 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
                 )}
               </div>
 
+              <div className="mb-6 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Why people shortlist this caterer</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="rounded-full bg-[#0b5fab]/10 px-3 py-1 text-xs font-semibold text-[#0b5fab]">Menu tier options</span>
+                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Scales for large events</span>
+                  <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-700">Cuisine flexibility</span>
+                  <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700">Reliable service team</span>
+                </div>
+              </div>
+
               <hr className="border-gray-100 mb-6" />
 
               {/* Catered by */}
@@ -541,6 +618,15 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
               <div>
                 <h2 className="text-xl font-bold text-gray-900 mb-3">About</h2>
                 <p className="text-gray-600 leading-relaxed">{caterer.description}</p>
+              </div>
+
+              <div className="mt-6 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                <h3 className="text-sm font-bold text-gray-900">Booking Policies</h3>
+                <ul className="mt-2 space-y-2 text-sm text-gray-600">
+                  <li>Per-plate pricing changes by package tier and final guest count.</li>
+                  <li>Date is confirmed only after owner acceptance of your request.</li>
+                  <li>Discuss diet preference, service style, and setup requirements before finalizing.</li>
+                </ul>
               </div>
             </div>
 
@@ -625,6 +711,9 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
                 </div>
 
                 <div className="p-6">
+                  <div className="mb-4 rounded-xl border border-[#0b5fab]/15 bg-[#0b5fab]/5 px-4 py-3">
+                    <p className="text-xs font-semibold text-[#0b5fab]">Happily Eated assurance: curated menu partners, transparent per-plate pricing, assisted support.</p>
+                  </div>
                   {isFishbowl ? (
                     /* -- Fishbowl ----------------------------------- */
                     <div className="space-y-4">

@@ -66,6 +66,7 @@ export function CatererCard({
   isAdminListed = true,
   contactNumber,
   contactName,
+  viewCount,
   inWishlist = false,
   slug,
   distanceText,
@@ -129,6 +130,7 @@ export function CatererCard({
   const catererUrl = slug ? `/catering/${slug}` : `/catering/${id}`;
   const ratingColor =
     rating >= 4 ? "bg-emerald-600" : rating >= 3 ? "bg-amber-500" : "bg-rose-500";
+  const popularityLabel = rating && rating >= 4.3 ? "Popular" : null;
 
   return (
     <div
@@ -222,6 +224,24 @@ export function CatererCard({
             <MapPin className="h-3 w-3 flex-shrink-0 text-[#0b5fab]" />
             {area ? `${area}, ${city}` : city}
           </p>
+
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {distanceText && (
+              <span className="rounded-full bg-[#0b5fab]/5 px-2 py-0.5 text-[10px] font-bold text-[#0b5fab]">
+                {distanceText}
+              </span>
+            )}
+            {viewCount !== undefined && viewCount > 0 && (
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+                {viewCount > 999 ? `${(viewCount / 1000).toFixed(1)}K views` : `${viewCount} views`}
+              </span>
+            )}
+            {popularityLabel && (
+              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                {popularityLabel}
+              </span>
+            )}
+          </div>
 
           <div className="mb-2.5 border-t border-slate-100 pt-2.5">
             <p className="mb-0.5 text-[10px] leading-none text-slate-400">Starting price</p>

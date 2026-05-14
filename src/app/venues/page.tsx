@@ -8,6 +8,7 @@ import {
 import { VenueCard } from "@/components/venue/VenueCard";
 import { useLocation } from "@/hooks/useLocation";
 import { useSession } from "next-auth/react";
+import { getBmvLocation } from "@/components/home/LocationPermissionModal";
 
 type Venue = {
   id: string;
@@ -55,6 +56,7 @@ export default function VenuesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [showSortSheet, setShowSortSheet] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"area" | "price-low" | "price-high" | "popular" | "newest" | "nearby">("area");
   const { location, loading: locationLoading, isPermissionDenied } = useLocation();
@@ -62,6 +64,18 @@ export default function VenuesPage() {
   const [selectedArea, setSelectedArea] = useState<string>("");
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [wishlistVenueIds, setWishlistVenueIds] = useState<Set<string>>(new Set());
+  const [currentLocationLabel, setCurrentLocationLabel] = useState("Kolkata");
+
+  useEffect(() => {
+    const stored = getBmvLocation();
+    if (stored?.label) setCurrentLocationLabel(stored.label);
+    const handler = (e: Event) => {
+      const d = (e as CustomEvent<{ label: string }>).detail;
+      if (d?.label) setCurrentLocationLabel(d.label);
+    };
+    window.addEventListener("bmv:locationUpdated", handler);
+    return () => window.removeEventListener("bmv:locationUpdated", handler);
+  }, []);
 
   // Fetch user's wishlisted venue IDs once session is loaded
   useEffect(() => {
@@ -164,73 +178,86 @@ export default function VenuesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      {/* ── Sticky top bar ─────────────────────────────── */}
-      <div className="bg-white border-b sticky top-0 lg:top-16 z-30 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 pt-3 pb-0">
-          {/* Title row */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <button onClick={() => window.history.back()} className="p-1.5 -ml-1.5 rounded-full hover:bg-gray-100">
-                <ChevronLeft className="w-5 h-5 text-gray-600" />
-              </button>
+      <div className="sticky top-0 lg:top-16 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-md shadow-sm">
+        <div className="mx-auto max-w-7xl px-4 py-3">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <button onClick={() => window.history.back()} className="flex items-center gap-2 rounded-full px-1 py-1 text-left">
+              <ChevronLeft className="h-5 w-5 text-slate-600" />
               <div>
-                <h1 className="text-lg font-bold text-gray-900 leading-tight">Venues in Kolkata</h1>
-                {!loading && (
-                  <p className="text-xs text-gray-400">
-                    {filteredVenues.length} venue{filteredVenues.length !== 1 ? "s" : ""} found
-                  </p>
-                )}
+                <h1 className="text-lg font-extrabold leading-tight text-slate-900">Venues in {currentLocationLabel}</h1>
+                {!loading && <p className="text-xs text-slate-400">{filteredVenues.length} venue{filteredVenues.length !== 1 ? "s" : ""} found</p>}
               </div>
-            </div>
-            {/* Filter button */}
+            </button>
             <button
               onClick={() => setShowFilters(true)}
-              className={`relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-colors border ${
+              className={`relative flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-bold transition-colors ${
                 activeFilterCount > 0
-                  ? "bg-purple-600 text-white border-purple-600"
-                  : "bg-white text-gray-700 border-gray-200 hover:border-purple-300"
+                  ? "border-[#0b5fab] bg-[#0b5fab] text-white"
+                  : "border-slate-200 bg-white text-slate-700"
               }`}
             >
-              <SlidersHorizontal className="w-4 h-4" />
-              Filters
+              <SlidersHorizontal className="h-4 w-4" /> Filters
               {activeFilterCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-white text-purple-600 text-[10px] font-bold rounded-full flex items-center justify-center border border-purple-300">
-                  {activeFilterCount}
-                </span>
+                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-[#0b5fab]/30 bg-white text-[10px] font-bold text-[#0b5fab]">{activeFilterCount}</span>
               )}
             </button>
           </div>
 
-          {/* Search bar */}
-          <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5 mb-3">
-            <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search venues, areas…"
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-gray-400"
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery("")}>
-                <X className="w-4 h-4 text-gray-400" />
+          <div className="rounded-2xl border border-slate-200 bg-[#f8fbff] p-3 shadow-sm">
+            <div className="grid gap-2 md:grid-cols-[1.2fr_1fr_1fr_auto] md:items-stretch">
+              <button className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-left" onClick={() => setShowFilters(true)}>
+                <MapPin className="h-4 w-4 text-[#0b5fab]" />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">City</p>
+                  <p className="truncate text-sm font-bold text-slate-900">{currentLocationLabel}</p>
+                </div>
               </button>
-            )}
+              <button className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-left" onClick={() => setShowFilters(true)}>
+                <Search className="h-4 w-4 text-[#0b5fab]" />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Search</p>
+                  <p className="truncate text-sm font-bold text-slate-900">{searchQuery || "Search venues"}</p>
+                </div>
+              </button>
+              <button className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-left" onClick={() => setShowSortSheet(true)}>
+                <Navigation className="h-4 w-4 text-[#0b5fab]" />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Sort</p>
+                  <p className="truncate text-sm font-bold text-slate-900">{SORT_OPTIONS.find((opt) => opt.value === sortBy)?.label}</p>
+                </div>
+              </button>
+              <button onClick={() => setShowFilters(true)} className="travel-search-button min-h-[56px] px-5">All Filters</button>
+            </div>
+
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              {SORT_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setSortBy(opt.value)}
+                  className={`flex-shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    sortBy === opt.value
+                      ? "border-[#0b5fab] bg-[#0b5fab] text-white"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-[#0b5fab]/40 hover:text-[#0b5fab]"
+                  }`}
+                >
+                  {opt.label.replace(/^[^A-Za-z]+\s*/, "")}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Sort chips */}
-          <div className="flex gap-2 overflow-x-auto pb-3 -mx-4 px-4 scrollbar-hide">
-            {SORT_OPTIONS.map((opt) => (
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {popularAreas.slice(0, 6).map((area) => (
               <button
-                key={opt.value}
-                onClick={() => setSortBy(opt.value)}
-                className={`flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
-                  sortBy === opt.value
-                    ? "bg-purple-600 text-white border-purple-600"
-                    : "bg-white text-gray-600 border-gray-200 hover:border-purple-300 hover:text-purple-700"
+                key={area.id}
+                onClick={() => setSelectedArea(selectedArea === area.name ? "" : area.name)}
+                className={`flex-shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  selectedArea === area.name
+                    ? "border-[#0b5fab] bg-[#0b5fab] text-white"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-[#0b5fab]/40"
                 }`}
               >
-                {opt.label}
+                {area.name}
               </button>
             ))}
           </div>
@@ -258,8 +285,8 @@ export default function VenuesPage() {
               onClick={() => setSelectedArea("")}
               className={`flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
                 !selectedArea
-                  ? "bg-purple-600 text-white border-purple-600"
-                  : "bg-white text-gray-600 border-gray-200 hover:border-purple-300"
+                    ? "bg-[#0b5fab] text-white border-[#0b5fab]"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-[#0b5fab]/40"
               }`}
             >
               All Areas
@@ -270,14 +297,14 @@ export default function VenuesPage() {
                 onClick={() => setSelectedArea(selectedArea === area.name ? "" : area.name)}
                 className={`flex-shrink-0 flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
                   selectedArea === area.name
-                    ? "bg-purple-600 text-white border-purple-600"
-                    : "bg-white text-gray-600 border-gray-200 hover:border-purple-300"
+                    ? "bg-[#0b5fab] text-white border-[#0b5fab]"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-[#0b5fab]/40"
                 }`}
               >
                 <MapPin className="w-2.5 h-2.5" />
                 {area.name}
                 {area.venueCount > 0 && (
-                  <span className={`text-[10px] ${selectedArea === area.name ? "text-purple-200" : "text-gray-400"}`}>
+                  <span className={`text-[10px] ${selectedArea === area.name ? "text-sky-100" : "text-gray-400"}`}>
                     ({area.venueCount})
                   </span>
                 )}
@@ -290,7 +317,7 @@ export default function VenuesPage() {
         {(searchQuery || verifiedOnly) && (
           <div className="flex items-center gap-2 mb-4 flex-wrap">
             {searchQuery && (
-              <span className="flex items-center gap-1 text-xs bg-purple-50 text-purple-700 border border-purple-200 px-2.5 py-1 rounded-full font-medium">
+              <span className="flex items-center gap-1 text-xs bg-[#0b5fab]/5 text-[#0b5fab] border border-[#0b5fab]/20 px-2.5 py-1 rounded-full font-medium">
                 &ldquo;{searchQuery}&rdquo;
                 <button onClick={() => setSearchQuery("")}><X className="w-3 h-3" /></button>
               </span>
@@ -332,7 +359,7 @@ export default function VenuesPage() {
             <p className="text-sm text-gray-500 mb-4">{error}</p>
             <button
               onClick={() => window.location.reload()}
-              className="px-5 py-2 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-700 transition-colors"
+              className="px-5 py-2 bg-[#0b5fab] text-white rounded-xl text-sm font-semibold hover:bg-[#084a86] transition-colors"
             >
               Retry
             </button>
@@ -350,7 +377,7 @@ export default function VenuesPage() {
             {(searchQuery || selectedArea || verifiedOnly) && (
               <button
                 onClick={clearFilters}
-                className="px-5 py-2 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-700 transition-colors"
+                className="px-5 py-2 bg-[#0b5fab] text-white rounded-xl text-sm font-semibold hover:bg-[#084a86] transition-colors"
               >
                 Clear Filters
               </button>
@@ -395,7 +422,43 @@ export default function VenuesPage() {
         )}
       </div>
 
-      {/* ── Filter bottom sheet ─────────────────────────────── */}
+      {showSortSheet && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/40" onClick={() => setShowSortSheet(false)} />
+          <div className="fixed bottom-0 left-0 right-0 z-50 max-h-[80vh] overflow-y-auto rounded-t-3xl bg-white shadow-2xl">
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="h-1 w-10 rounded-full bg-slate-200" />
+            </div>
+            <div className="px-5 pb-6">
+              <div className="flex items-center justify-between border-b border-slate-200 py-3">
+                <h3 className="text-lg font-bold text-slate-900">Sort By</h3>
+                <button onClick={() => setShowSortSheet(false)} className="text-sm font-semibold text-[#0b5fab]">Done</button>
+              </div>
+              <div className="mt-4 space-y-2">
+                {SORT_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => {
+                      setSortBy(opt.value);
+                      setShowSortSheet(false);
+                    }}
+                    className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left transition-colors ${
+                      sortBy === opt.value
+                        ? "border-[#0b5fab] bg-[#0b5fab]/5"
+                        : "border-slate-200 bg-white"
+                    }`}
+                  >
+                    <span className="font-semibold text-slate-900">{opt.label.replace(/^[^A-Za-z]+\s*/, "")}</span>
+                    <span className={`h-4 w-4 rounded-full border-2 ${sortBy === opt.value ? "border-[#0b5fab] bg-[#0b5fab]" : "border-slate-300"}`} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Filter bottom sheet */}
       {showFilters && (
         <>
           {/* Backdrop */}
@@ -415,7 +478,7 @@ export default function VenuesPage() {
                 <h3 className="font-bold text-gray-900 text-lg">Filters</h3>
                 <button
                   onClick={clearFilters}
-                  className="text-sm text-purple-600 font-semibold"
+                  className="text-sm text-[#0b5fab] font-semibold"
                 >
                   Clear All
                 </button>
@@ -428,20 +491,20 @@ export default function VenuesPage() {
                   onClick={() => setVerifiedOnly(!verifiedOnly)}
                   className={`flex items-center gap-3 w-full p-3 rounded-xl border-2 transition-colors ${
                     verifiedOnly
-                      ? "border-purple-500 bg-purple-50"
+                      ? "border-[#0b5fab] bg-[#0b5fab]/5"
                       : "border-gray-200 bg-white"
                   }`}
                 >
                   <div
                     className={`w-5 h-5 rounded-full flex items-center justify-center border-2 ${
-                      verifiedOnly ? "bg-purple-600 border-purple-600" : "border-gray-300"
+                      verifiedOnly ? "bg-[#0b5fab] border-[#0b5fab]" : "border-gray-300"
                     }`}
                   >
                     {verifiedOnly && <CheckCircle className="w-3 h-3 text-white" />}
                   </div>
                   <div className="text-left">
                     <p className="text-sm font-semibold text-gray-900">Verified Venues Only</p>
-                    <p className="text-xs text-gray-500">Show venues verified by ShubhSpace</p>
+                    <p className="text-xs text-gray-500">Show venues verified by Happily Eated</p>
                   </div>
                 </button>
               </div>
@@ -456,8 +519,8 @@ export default function VenuesPage() {
                       onClick={() => setSortBy(opt.value)}
                       className={`p-3 rounded-xl border-2 text-sm font-medium text-left transition-colors ${
                         sortBy === opt.value
-                          ? "border-purple-500 bg-purple-50 text-purple-700"
-                          : "border-gray-200 text-gray-700 hover:border-purple-300"
+                          ? "border-[#0b5fab] bg-[#0b5fab]/5 text-[#0b5fab]"
+                          : "border-gray-200 text-gray-700 hover:border-[#0b5fab]/40"
                       }`}
                     >
                       {opt.label}
@@ -475,7 +538,7 @@ export default function VenuesPage() {
                       onClick={() => setSelectedArea("")}
                       className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                         !selectedArea
-                          ? "bg-purple-600 text-white border-purple-600"
+                          ? "bg-[#0b5fab] text-white border-[#0b5fab]"
                           : "bg-white text-gray-600 border-gray-200"
                       }`}
                     >
@@ -487,7 +550,7 @@ export default function VenuesPage() {
                         onClick={() => setSelectedArea(selectedArea === area.name ? "" : area.name)}
                         className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                           selectedArea === area.name
-                            ? "bg-purple-600 text-white border-purple-600"
+                            ? "bg-[#0b5fab] text-white border-[#0b5fab]"
                             : "bg-white text-gray-600 border-gray-200"
                         }`}
                       >
@@ -501,7 +564,7 @@ export default function VenuesPage() {
               {/* Apply button */}
               <button
                 onClick={() => setShowFilters(false)}
-                className="w-full py-4 bg-purple-600 text-white rounded-2xl font-bold text-base hover:bg-purple-700 transition-colors"
+                className="w-full py-4 bg-[#0b5fab] text-white rounded-2xl font-bold text-base hover:bg-[#084a86] transition-colors"
               >
                 Show {filteredVenues.length} Venue{filteredVenues.length !== 1 ? "s" : ""}
               </button>

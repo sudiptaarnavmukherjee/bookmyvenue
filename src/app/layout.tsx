@@ -1,21 +1,22 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Lato } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "@/components/providers/SessionProvider";
 import { CompareProvider } from "@/components/providers/CompareProvider";
 import { generateOrganizationSchema, generateSearchActionSchema, JsonLd } from "@/lib/structured-data";
 import { LayoutShell, FooterShell } from "@/components/layout/LayoutShell";
 
-const plusJakartaSans = Plus_Jakarta_Sans({
+const lato = Lato({
   subsets: ["latin"],
+  weight: ["400", "700", "900"],
   display: "swap",
   preload: true,
 });
 
 export const metadata: Metadata = {
   title: {
-    default: "BookMyVenue - Find Perfect Wedding Venues & Catering in Kolkata",
-    template: "%s | BookMyVenue",
+    default: "Happily Eated - Find Perfect Wedding Venues & Catering in Kolkata",
+    template: "%s | Happily Eated",
   },
   description: "Discover and book the best wedding venues and catering services in Kolkata. Compare prices, amenities, and reviews. Transparent pricing. Trusted by 10,000+ couples.",
   keywords: [
@@ -29,30 +30,30 @@ export const metadata: Metadata = {
     "marriage hall Kolkata",
     "Salt Lake venue",
     "New Town venue",
-    "BookMyVenue",
+    "Happily Eated",
   ],
-  authors: [{ name: "BookMyVenue Team" }],
-  creator: "BookMyVenue",
+  authors: [{ name: "Happily Eated Team" }],
+  creator: "Happily Eated",
   metadataBase: new URL("https://bookmyvenue.in"),
   openGraph: {
     type: "website",
     locale: "en_IN",
     url: "https://bookmyvenue.in",
-    siteName: "BookMyVenue",
-    title: "BookMyVenue - Wedding Venues & Catering Marketplace Kolkata",
+    siteName: "Happily Eated",
+    title: "Happily Eated - Wedding Venues & Catering Marketplace Kolkata",
     description: "Find and book perfect wedding venues and catering services in Kolkata with transparent pricing.",
     images: [
       {
         url: "/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "BookMyVenue - Wedding Venues & Catering Kolkata",
+        alt: "Happily Eated - Wedding Venues & Catering Kolkata",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "BookMyVenue - Wedding Venues & Catering",
+    title: "Happily Eated - Wedding Venues & Catering",
     description: "Find and book perfect wedding venues and catering services.",
     images: ["/og-image.jpg"],
   },
@@ -96,7 +97,7 @@ export default function RootLayout({
         <JsonLd data={generateOrganizationSchema()} />
         <JsonLd data={generateSearchActionSchema()} />
       </head>
-      <body className={`${plusJakartaSans.className} overflow-x-hidden antialiased`}>
+      <body className={`${lato.className} overflow-x-hidden antialiased`}>
         <SessionProvider>
           <CompareProvider>
             {/* Main content renders IMMEDIATELY - no blocking */}

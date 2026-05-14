@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { Heart, MapPin, Users, Star, X, Loader2, AlertCircle } from "lucide-react";
+import { Heart, MapPin, Users, Star, X, Loader2, AlertCircle, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { api } from "@/lib/api-client";
@@ -53,6 +53,9 @@ export default function WishlistPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
+
+  const venueShortlistCount = wishlist.filter((item) => !!item.venue).length;
+  const catererShortlistCount = wishlist.filter((item) => !!item.caterer).length;
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -150,6 +153,24 @@ export default function WishlistPage() {
         >
           <h1 className="text-4xl font-bold text-[#0b5fab] mb-2">My Wishlist</h1>
           <p className="text-gray-600">Your saved venues and caterers</p>
+
+          <div className="mt-4 rounded-2xl border border-[#0b5fab]/15 bg-gradient-to-r from-[#0b5fab]/5 via-white to-orange-50 p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0b5fab]/10 px-3 py-1 text-xs font-semibold text-[#0b5fab]">
+                <Heart className="h-3.5 w-3.5" /> {wishlist.length} saved
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-semibold text-gray-700 border border-gray-200">
+                Venues: {venueShortlistCount}
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-semibold text-gray-700 border border-gray-200">
+                Catering: {catererShortlistCount}
+              </span>
+            </div>
+            <p className="mt-2 flex items-center gap-1.5 text-xs text-gray-600">
+              <Sparkles className="h-3.5 w-3.5 text-[#0b5fab]" />
+              Tip: keep your shortlist to 3-5 options for faster comparison.
+            </p>
+          </div>
         </motion.div>
 
         {wishlist.length === 0 ? (
@@ -163,7 +184,7 @@ export default function WishlistPage() {
             <p className="text-gray-600 mb-6">Start adding venues and caterers you love!</p>
             <button
               onClick={() => router.push("/")}
-              className="mx-auto rounded-full bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] px-8 py-3 font-semibold text-white shadow-lg hover:shadow-xl transition-all"
+              className="mx-auto rounded-full bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] px-8 py-3 font-semibold text-white shadow-lg hover:shadow-xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b5fab] focus-visible:ring-offset-2"
             >
               Browse Listings
             </button>
@@ -195,7 +216,8 @@ export default function WishlistPage() {
                   <button
                     onClick={() => removeFromWishlist(item)}
                     disabled={removing === item.id}
-                    className="absolute top-3 right-3 z-10 rounded-full bg-white/90 p-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 disabled:opacity-50"
+                    aria-label="Remove item from wishlist"
+                    className="absolute top-3 right-3 z-10 rounded-full bg-white/90 p-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 disabled:opacity-50 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
                   >
                     {removing === item.id ? (
                       <Loader2 className="h-4 w-4 text-red-600 animate-spin" />
@@ -245,7 +267,7 @@ export default function WishlistPage() {
                       </div>
                       <button 
                         onClick={() => handleBookNow(item)}
-                        className="rounded-xl bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] px-4 py-2 text-sm font-semibold text-white shadow-lg hover:shadow-xl transition-all"
+                        className="rounded-xl bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] px-4 py-2 text-sm font-semibold text-white shadow-lg hover:shadow-xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b5fab] focus-visible:ring-offset-2"
                       >
                         Book Now
                       </button>

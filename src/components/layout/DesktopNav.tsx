@@ -81,8 +81,8 @@ export default function DesktopNav() {
               <Ticket className="h-5 w-5" />
             </div>
             <div className="leading-none">
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0b5fab]">Book</p>
-              <p className="text-[18px] font-extrabold text-slate-900">MyVenue</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0b5fab]">Happily</p>
+              <p className="text-[18px] font-extrabold text-slate-900">Eated</p>
             </div>
           </Link>
 

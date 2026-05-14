@@ -41,18 +41,28 @@ type Booking = {
 
 export default function MyBookingsPage() {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<"ALL" | "VENUE" | "CATERING">("ALL");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  const pendingCount = bookings.filter((b) => b.status === "PENDING").length;
+  const confirmedCount = bookings.filter((b) => b.status === "CONFIRMED").length;
+  const completedCount = bookings.filter((b) => b.status === "COMPLETED").length;
+
   useEffect(() => {
-    if (session?.user) {
+    if (status === "unauthenticated") {
+      setLoading(false);
+      router.push("/auth/signin");
+      return;
+    }
+
+    if (status === "authenticated") {
       loadBookings();
     }
-  }, [session]);
+  }, [status, router]);
 
   const loadBookings = async () => {
     setLoading(true);
@@ -136,6 +146,8 @@ export default function MyBookingsPage() {
       case "CONFIRMED": return "bg-green-100 text-green-700";
       case "PENDING": return "bg-yellow-100 text-yellow-700";
       case "CANCELLED": return "bg-red-100 text-red-700";
+      case "COMPLETED": return "bg-blue-100 text-blue-700";
+      default: return "bg-gray-100 text-gray-700";
     }
   };
 
@@ -144,6 +156,8 @@ export default function MyBookingsPage() {
       case "CONFIRMED": return <Check className="h-4 w-4" />;
       case "PENDING": return <Clock className="h-4 w-4" />;
       case "CANCELLED": return <X className="h-4 w-4" />;
+      case "COMPLETED": return <Check className="h-4 w-4" />;
+      default: return <Clock className="h-4 w-4" />;
     }
   };
 
@@ -174,6 +188,16 @@ export default function MyBookingsPage() {
         >
           <h1 className="text-4xl font-bold text-[#0b5fab] mb-2">{getPageTitle()}</h1>
           <p className="text-gray-600">{getPageSubtitle()}</p>
+
+          <div className="mt-4 rounded-2xl border border-[#0b5fab]/15 bg-gradient-to-r from-[#0b5fab]/5 via-white to-emerald-50 p-4">
+            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
+              <span className="rounded-full bg-white border border-gray-200 px-3 py-1 text-gray-700">Total: {bookings.length}</span>
+              <span className="rounded-full bg-yellow-100 px-3 py-1 text-yellow-700">Pending: {pendingCount}</span>
+              <span className="rounded-full bg-green-100 px-3 py-1 text-green-700">Confirmed: {confirmedCount}</span>
+              <span className="rounded-full bg-blue-100 px-3 py-1 text-blue-700">Completed: {completedCount}</span>
+            </div>
+            <p className="mt-2 text-xs text-gray-600">Track status, pay advances, and manage changes from one place.</p>
+          </div>
         </motion.div>
 
         {/* Filter Tabs */}
@@ -230,7 +254,7 @@ export default function MyBookingsPage() {
               <p className="text-gray-600 mb-6">Start planning your dream wedding!</p>
               <button
                 onClick={() => router.push("/")}
-                className="mx-auto rounded-full bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] px-8 py-3 font-semibold text-white shadow-lg hover:shadow-xl transition-all"
+                className="mx-auto rounded-full bg-gradient-to-r from-[#0b5fab] to-[#1f86d9] px-8 py-3 font-semibold text-white shadow-lg hover:shadow-xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b5fab] focus-visible:ring-offset-2"
               >
                 Explore Venues & Catering
               </button>

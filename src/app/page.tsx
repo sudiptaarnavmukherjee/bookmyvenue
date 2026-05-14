@@ -27,7 +27,7 @@ function Footer() {
           <Link href="/catering" className="hover:text-[#0b5fab]" prefetch={true}>Catering</Link>
           <Link href="/bookings" className="hover:text-[#0b5fab]" prefetch={false}>Bookings</Link>
         </div>
-        <p className="mt-4 text-[10px] text-slate-300">© 2026 BookMyVenue</p>
+        <p className="mt-4 text-[10px] text-slate-300">© 2026 Happily Eated</p>
       </div>
     </footer>
   );

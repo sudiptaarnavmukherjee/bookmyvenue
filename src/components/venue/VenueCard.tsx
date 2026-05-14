@@ -74,6 +74,7 @@ export function VenueCard({
   isAdminListed = true,
   contactNumber,
   contactName,
+  viewCount,
   inWishlist = false,
   slug,
   distanceText,
@@ -155,6 +156,7 @@ export function VenueCard({
     if (nonPrimeDayPrice) return nonPrimeDayPrice;
     return null;
   })();
+  const popularityLabel = rating && rating >= 4.3 ? "Popular" : null;
 
   return (
     <div className={cn("overflow-hidden rounded-xl border bg-white transition-all duration-200 group", isSelected ? "border-[#ff7a00] shadow-md ring-2 ring-[#ff7a00]/25" : "border-slate-200 shadow-sm hover:-translate-y-0.5 hover:shadow-md")}>
@@ -199,6 +201,24 @@ export function VenueCard({
           </div>
 
           <p className="mb-2.5 flex items-center gap-1 truncate text-xs text-slate-500"><MapPin className="h-3 w-3 flex-shrink-0 text-[#0b5fab]" />{area ? `${area}, ${city}` : city}</p>
+
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {distanceText && (
+              <span className="rounded-full bg-[#0b5fab]/5 px-2 py-0.5 text-[10px] font-bold text-[#0b5fab]">
+                {distanceText}
+              </span>
+            )}
+            {viewCount !== undefined && viewCount > 0 && (
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+                {viewCount > 999 ? `${(viewCount / 1000).toFixed(1)}K views` : `${viewCount} views`}
+              </span>
+            )}
+            {popularityLabel && (
+              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                {popularityLabel}
+              </span>
+            )}
+          </div>
 
           <div className="flex items-center justify-between border-t border-slate-100 pt-2.5">
             <div className="flex items-center gap-1 text-xs text-slate-500"><Users className="h-3 w-3" /><span>{minGuests}-{maxGuests} guests</span></div>
