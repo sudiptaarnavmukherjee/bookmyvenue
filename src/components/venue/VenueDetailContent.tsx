@@ -12,6 +12,7 @@ import {
   ChevronLeft, ChevronRight, X, Grid3x3, BadgeCheck, Clock
 } from "lucide-react";
 import MapEmbed from "@/components/venue/MapEmbed";
+import InquiryForm from "@/components/shared/InquiryForm";
 
 export type VenueData = {
   id: string;
@@ -850,6 +851,12 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
                       )}
                     </div>
                   )}
+
+                  <InquiryForm
+                    entityType="VENUE"
+                    entityId={venue.id}
+                    entityName={venue.name}
+                  />
 
                   {/* Save & Share */}
                   <div className="flex gap-2 mt-4">

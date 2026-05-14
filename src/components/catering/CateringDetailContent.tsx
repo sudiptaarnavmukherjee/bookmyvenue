@@ -12,6 +12,7 @@ import {
   Grid3x3, BadgeCheck, ChevronLeft, ChevronRight
 } from "lucide-react";
 import MapEmbed from "@/components/venue/MapEmbed";
+import InquiryForm from "@/components/shared/InquiryForm";
 
 export type MenuPackageData = {
   id: string;
@@ -903,6 +904,12 @@ export default function CateringDetailContent({ caterer }: { caterer: CatererDat
                       <p className="text-sm text-gray-500 text-center py-4">Select a package above to book</p>
                     )
                   )}
+
+                  <InquiryForm
+                    entityType="CATERER"
+                    entityId={caterer.id}
+                    entityName={caterer.name}
+                  />
 
                   {/* Save & Share */}
                   <div className="flex gap-2 mt-4">
