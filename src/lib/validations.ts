@@ -11,12 +11,16 @@ export const createVenueSchema = z.object({
   pincode: z.string().regex(/^\d{6}$/, "Invalid pincode"),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
+  googleMapsUrl: z.string().url().optional(),
   
   // Pricing
   priceMode: z.enum(["EXACT", "ESTIMATED", "STARTING_FROM"]),
   exactPrice: z.number().positive().optional(),
   estimatedMinPrice: z.number().positive().optional(),
   estimatedMaxPrice: z.number().positive().optional(),
+  marriagePrice: z.number().positive().optional(),
+  birthdayPrice: z.number().positive().optional(),
+  otherEventPrice: z.number().positive().optional(),
   primeDayPrice: z.number().positive().optional(),
   nonPrimeDayPrice: z.number().positive().optional(),
   primeDays: z.string().optional(),

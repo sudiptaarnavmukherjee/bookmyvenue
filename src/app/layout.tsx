@@ -1,10 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import { Lato } from "next/font/google";
 import "./globals.css";
-import { SessionProvider } from "@/components/providers/SessionProvider";
-import { CompareProvider } from "@/components/providers/CompareProvider";
+import { SessionProviderGate } from "@/components/providers/SessionProviderGate";
+import { CompareProviderGate } from "@/components/providers/CompareProviderGate";
 import { generateOrganizationSchema, generateSearchActionSchema, JsonLd } from "@/lib/structured-data";
-import { LayoutShell, FooterShell } from "@/components/layout/LayoutShell";
+import { LayoutShell } from "@/components/layout/LayoutShell";
+import Footer from "@/components/layout/Footer";
 
 const lato = Lato({
   subsets: ["latin"],
@@ -98,8 +99,8 @@ export default function RootLayout({
         <JsonLd data={generateSearchActionSchema()} />
       </head>
       <body className={`${lato.className} overflow-x-hidden antialiased`}>
-        <SessionProvider>
-          <CompareProvider>
+        <SessionProviderGate>
+          <CompareProviderGate>
             {/* Main content renders IMMEDIATELY - no blocking */}
             <main className="min-h-screen pb-16 lg:pt-16 page-enter">
               {children}
@@ -107,9 +108,9 @@ export default function RootLayout({
             
             {/* Non-critical UI loads AFTER content via client component */}
             <LayoutShell />
-            <FooterShell />
-          </CompareProvider>
-        </SessionProvider>
+            <Footer />
+          </CompareProviderGate>
+        </SessionProviderGate>
       </body>
     </html>
   );

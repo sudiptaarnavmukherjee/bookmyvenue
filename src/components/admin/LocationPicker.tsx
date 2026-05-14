@@ -24,6 +24,33 @@ interface LocationPickerProps {
   placeholder?: string;
 }
 
+const KOLKATA_LOCATIONS: PlaceResult[] = [
+  { placeId: "barasat", name: "Barasat", address: "Barasat, North 24 Parganas, Kolkata, West Bengal 700124", coordinates: { lat: 22.7255, lng: 88.4769 } },
+  { placeId: "kalyani", name: "Kalyani", address: "Kalyani, Nadia, West Bengal 741235", coordinates: { lat: 22.9750, lng: 88.4344 } },
+  { placeId: "saltlake", name: "Salt Lake", address: "Salt Lake City, Bidhannagar, Kolkata, West Bengal 700091", coordinates: { lat: 22.5806, lng: 88.4187 } },
+  { placeId: "newtown", name: "New Town", address: "New Town, Rajarhat, Kolkata, West Bengal 700156", coordinates: { lat: 22.5978, lng: 88.4832 } },
+  { placeId: "madhyamgram", name: "Madhyamgram", address: "Madhyamgram, North 24 Parganas, Kolkata, West Bengal 700129", coordinates: { lat: 22.6867, lng: 88.4538 } },
+  { placeId: "rajarhat", name: "Rajarhat", address: "Rajarhat, Kolkata, West Bengal 700135", coordinates: { lat: 22.6370, lng: 88.4953 } },
+  { placeId: "howrah", name: "Howrah", address: "Howrah, West Bengal 711101", coordinates: { lat: 22.5958, lng: 88.2636 } },
+  { placeId: "barrackpore", name: "Barrackpore", address: "Barrackpore, North 24 Parganas, West Bengal 700120", coordinates: { lat: 22.7531, lng: 88.3777 } },
+  { placeId: "dumdum", name: "Dum Dum", address: "Dum Dum, Kolkata, West Bengal 700028", coordinates: { lat: 22.6293, lng: 88.4301 } },
+  { placeId: "tollygunge", name: "Tollygunge", address: "Tollygunge, Kolkata, West Bengal 700033", coordinates: { lat: 22.4997, lng: 88.3467 } },
+  { placeId: "gariahat", name: "Gariahat", address: "Gariahat, Kolkata, West Bengal 700019", coordinates: { lat: 22.5183, lng: 88.3693 } },
+  { placeId: "ballygunge", name: "Ballygunge", address: "Ballygunge, Kolkata, West Bengal 700019", coordinates: { lat: 22.5276, lng: 88.3654 } },
+  { placeId: "parkstreet", name: "Park Street", address: "Park Street, Kolkata, West Bengal 700016", coordinates: { lat: 22.5518, lng: 88.3598 } },
+  { placeId: "alipore", name: "Alipore", address: "Alipore, Kolkata, West Bengal 700027", coordinates: { lat: 22.5315, lng: 88.3312 } },
+  { placeId: "jadavpur", name: "Jadavpur", address: "Jadavpur, Kolkata, West Bengal 700032", coordinates: { lat: 22.4977, lng: 88.3697 } },
+  { placeId: "behala", name: "Behala", address: "Behala, Kolkata, West Bengal 700034", coordinates: { lat: 22.4971, lng: 88.3063 } },
+  { placeId: "kasba", name: "Kasba", address: "Kasba, Kolkata, West Bengal 700042", coordinates: { lat: 22.5108, lng: 88.3871 } },
+  { placeId: "garia", name: "Garia", address: "Garia, Kolkata, West Bengal 700084", coordinates: { lat: 22.4632, lng: 88.3820 } },
+  { placeId: "narendrapur", name: "Narendrapur", address: "Narendrapur, South 24 Parganas, West Bengal 700103", coordinates: { lat: 22.4489, lng: 88.3937 } },
+  { placeId: "sonarpur", name: "Sonarpur", address: "Sonarpur, South 24 Parganas, West Bengal 700150", coordinates: { lat: 22.4430, lng: 88.4098 } },
+  { placeId: "laketown", name: "Lake Town", address: "Lake Town, Kolkata, West Bengal 700089", coordinates: { lat: 22.5912, lng: 88.4003 } },
+  { placeId: "esplanade", name: "Esplanade", address: "Esplanade, Kolkata, West Bengal 700069", coordinates: { lat: 22.5626, lng: 88.3517 } },
+  { placeId: "shyambazar", name: "Shyambazar", address: "Shyambazar, Kolkata, West Bengal 700004", coordinates: { lat: 22.5980, lng: 88.3743 } },
+  { placeId: "ultadanga", name: "Ultadanga", address: "Ultadanga, Kolkata, West Bengal 700067", coordinates: { lat: 22.5848, lng: 88.3921 } },
+];
+
 export default function LocationPicker({ value, onChange, placeholder = "Search for location..." }: LocationPickerProps) {
   const [query, setQuery] = useState(value?.address || "");
   const [results, setResults] = useState<PlaceResult[]>([]);
@@ -60,34 +87,6 @@ export default function LocationPicker({ value, onChange, placeholder = "Search 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  // Kolkata areas with approximate coordinates for fallback
-  const KOLKATA_LOCATIONS: PlaceResult[] = [
-    { placeId: "barasat", name: "Barasat", address: "Barasat, North 24 Parganas, Kolkata, West Bengal 700124", coordinates: { lat: 22.7255, lng: 88.4769 } },
-    { placeId: "kalyani", name: "Kalyani", address: "Kalyani, Nadia, West Bengal 741235", coordinates: { lat: 22.9750, lng: 88.4344 } },
-    { placeId: "saltlake", name: "Salt Lake", address: "Salt Lake City, Bidhannagar, Kolkata, West Bengal 700091", coordinates: { lat: 22.5806, lng: 88.4187 } },
-    { placeId: "newtown", name: "New Town", address: "New Town, Rajarhat, Kolkata, West Bengal 700156", coordinates: { lat: 22.5978, lng: 88.4832 } },
-    { placeId: "madhyamgram", name: "Madhyamgram", address: "Madhyamgram, North 24 Parganas, Kolkata, West Bengal 700129", coordinates: { lat: 22.6867, lng: 88.4538 } },
-    { placeId: "rajarhat", name: "Rajarhat", address: "Rajarhat, Kolkata, West Bengal 700135", coordinates: { lat: 22.6370, lng: 88.4953 } },
-    { placeId: "howrah", name: "Howrah", address: "Howrah, West Bengal 711101", coordinates: { lat: 22.5958, lng: 88.2636 } },
-    { placeId: "barrackpore", name: "Barrackpore", address: "Barrackpore, North 24 Parganas, West Bengal 700120", coordinates: { lat: 22.7531, lng: 88.3777 } },
-    { placeId: "dumdum", name: "Dum Dum", address: "Dum Dum, Kolkata, West Bengal 700028", coordinates: { lat: 22.6293, lng: 88.4301 } },
-    { placeId: "tollygunge", name: "Tollygunge", address: "Tollygunge, Kolkata, West Bengal 700033", coordinates: { lat: 22.4997, lng: 88.3467 } },
-    { placeId: "gariahat", name: "Gariahat", address: "Gariahat, Kolkata, West Bengal 700019", coordinates: { lat: 22.5183, lng: 88.3693 } },
-    { placeId: "ballygunge", name: "Ballygunge", address: "Ballygunge, Kolkata, West Bengal 700019", coordinates: { lat: 22.5276, lng: 88.3654 } },
-    { placeId: "parkstreet", name: "Park Street", address: "Park Street, Kolkata, West Bengal 700016", coordinates: { lat: 22.5518, lng: 88.3598 } },
-    { placeId: "alipore", name: "Alipore", address: "Alipore, Kolkata, West Bengal 700027", coordinates: { lat: 22.5315, lng: 88.3312 } },
-    { placeId: "jadavpur", name: "Jadavpur", address: "Jadavpur, Kolkata, West Bengal 700032", coordinates: { lat: 22.4977, lng: 88.3697 } },
-    { placeId: "behala", name: "Behala", address: "Behala, Kolkata, West Bengal 700034", coordinates: { lat: 22.4971, lng: 88.3063 } },
-    { placeId: "kasba", name: "Kasba", address: "Kasba, Kolkata, West Bengal 700042", coordinates: { lat: 22.5108, lng: 88.3871 } },
-    { placeId: "garia", name: "Garia", address: "Garia, Kolkata, West Bengal 700084", coordinates: { lat: 22.4632, lng: 88.3820 } },
-    { placeId: "narendrapur", name: "Narendrapur", address: "Narendrapur, South 24 Parganas, West Bengal 700103", coordinates: { lat: 22.4489, lng: 88.3937 } },
-    { placeId: "sonarpur", name: "Sonarpur", address: "Sonarpur, South 24 Parganas, West Bengal 700150", coordinates: { lat: 22.4430, lng: 88.4098 } },
-    { placeId: "laketown", name: "Lake Town", address: "Lake Town, Kolkata, West Bengal 700089", coordinates: { lat: 22.5912, lng: 88.4003 } },
-    { placeId: "esplanade", name: "Esplanade", address: "Esplanade, Kolkata, West Bengal 700069", coordinates: { lat: 22.5626, lng: 88.3517 } },
-    { placeId: "shyambazar", name: "Shyambazar", address: "Shyambazar, Kolkata, West Bengal 700004", coordinates: { lat: 22.5980, lng: 88.3743 } },
-    { placeId: "ultadanga", name: "Ultadanga", address: "Ultadanga, Kolkata, West Bengal 700067", coordinates: { lat: 22.5848, lng: 88.3921 } },
-  ];
 
   // Search places with debounce
   const searchLocations = useCallback(async (searchQuery: string) => {

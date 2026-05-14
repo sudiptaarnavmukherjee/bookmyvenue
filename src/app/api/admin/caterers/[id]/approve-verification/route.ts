@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/db";
+import { buildCatererVerificationNotes, parseCatererVerificationNotes } from "@/lib/verification";
 
 // POST - Admin approves a verification request: marks verified + enables booking + clears request timestamp
 export async function POST(
@@ -19,13 +20,28 @@ export async function POST(
     const body = await request.json();
     const { notes } = body as { notes?: string };
 
+    const existing = await prisma.caterer.findUnique({
+      where: { id },
+      select: { verificationNotes: true },
+    });
+
+    const parsed = parseCatererVerificationNotes(existing?.verificationNotes);
+    const reviewedAt = new Date();
+
     const caterer = await prisma.caterer.update({
       where: { id },
       data: {
         isVerified: true,
         bookingEnabled: true,
         verificationRequestedAt: null, // clear the pending flag
-        verificationNotes: notes || "Approved by admin",
+        verificationNotes: buildCatererVerificationNotes({
+          status: "APPROVED",
+          submittedAt: parsed?.submittedAt,
+          approvedAt: reviewedAt.toISOString(),
+          ownerNote: parsed?.ownerNote || "",
+          adminReviewNote: notes || "Approved by admin",
+          kycDocuments: parsed?.kycDocuments || [],
+        }),
       },
     });
 

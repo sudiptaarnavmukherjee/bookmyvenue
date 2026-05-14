@@ -1,73 +1,98 @@
-import { withAuth } from "next-auth/middleware";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 
-export default withAuth(
-  function middleware(req) {
-    const token = req.nextauth.token;
-    const path = req.nextUrl.pathname;
+function signInRedirect(req: NextRequest) {
+  const signInUrl = new URL("/auth/signin", req.url);
+  signInUrl.searchParams.set("callbackUrl", req.nextUrl.pathname);
+  return NextResponse.redirect(signInUrl);
+}
 
-    // Admin only routes
-    if (path.startsWith("/dashboard") && token?.role !== "ADMIN") {
-      return NextResponse.redirect(new URL("/", req.url));
+function roleHome(role?: string) {
+  if (role === "ADMIN") return "/admin";
+  if (role === "VENUE_OWNER") return "/venue-owner";
+  if (role === "CATERING_OWNER") return "/catering-owner";
+  return "/";
+}
+
+function verifyPhoneRedirect(req: NextRequest, callbackUrl?: string) {
+  const verifyUrl = new URL("/auth/verify-phone", req.url);
+  if (callbackUrl && callbackUrl.startsWith("/")) {
+    verifyUrl.searchParams.set("callbackUrl", callbackUrl);
+  }
+  return NextResponse.redirect(verifyUrl);
+}
+
+export default async function middleware(req: NextRequest) {
+  const path = req.nextUrl.pathname;
+  const token = await getToken({ req });
+  const role = token?.role as string | undefined;
+  const phoneVerified = Boolean(token?.phoneVerified);
+
+  const isAuthRoute =
+    path === "/auth/signin" || path === "/auth/signup" || path === "/auth/verify-phone";
+
+  if (isAuthRoute) {
+    if (token) {
+      if (path === "/auth/verify-phone") {
+        if (phoneVerified) {
+          return NextResponse.redirect(new URL(roleHome(role), req.url));
+        }
+        return NextResponse.next();
+      }
+
+      if (!phoneVerified) {
+        const callbackUrl = req.nextUrl.searchParams.get("callbackUrl") || roleHome(role);
+        return verifyPhoneRedirect(req, callbackUrl);
+      }
+
+      return NextResponse.redirect(new URL(roleHome(role), req.url));
     }
 
-    // Owner routes
-    if (path.startsWith("/venue-owner") && token?.role !== "VENUE_OWNER") {
-      return NextResponse.redirect(new URL("/", req.url));
-    }
-
-    if (path.startsWith("/catering-owner") && token?.role !== "CATERING_OWNER") {
-      return NextResponse.redirect(new URL("/", req.url));
-    }
-
-    // Redirect owners/admin from public pages AND auth pages
-    // Use exact match or /catering/ prefix to avoid matching /catering-owner
-    const isPublicBrowsing =
-      path === "/" ||
-      path === "/venues" ||
-      path.startsWith("/venues/") ||
-      path === "/catering" ||
-      path.startsWith("/catering/") ||
-      path === "/auth/signin" ||
-      path === "/auth/signup";
-
-    if (token?.role === "ADMIN" && isPublicBrowsing) {
-      return NextResponse.redirect(new URL("/admin", req.url));
-    }
-
-    if (token?.role === "VENUE_OWNER" && isPublicBrowsing) {
-      return NextResponse.redirect(new URL("/venue-owner", req.url));
-    }
-
-    if (token?.role === "CATERING_OWNER" && isPublicBrowsing) {
-      return NextResponse.redirect(new URL("/catering-owner", req.url));
-    }
-
-    // Redirect USER to homepage (already there, so no extra redirect needed)
-    // Redirect /dashboard to /admin for admin users
-    if (path === "/dashboard" && token?.role === "ADMIN") {
-      return NextResponse.redirect(new URL("/admin", req.url));
+    if (path === "/auth/verify-phone") {
+      return signInRedirect(req);
     }
 
     return NextResponse.next();
-  },
-  {
-    callbacks: {
-      authorized: ({ token, req }) => {
-        const path = req.nextUrl.pathname;
-        
-        // Public routes that don't require auth
-        const publicRoutes = ["/", "/venues", "/catering", "/auth/signin", "/auth/signup"];
-        if (publicRoutes.some(route => path === route || path.startsWith(route + "/"))) {
-          return true;
-        }
-
-        // Protected routes require token
-        return !!token;
-      },
-    },
   }
-);
+
+  if (!token) {
+    return signInRedirect(req);
+  }
+
+  const requiresPhoneVerification =
+    path.startsWith("/dashboard") ||
+    path.startsWith("/admin") ||
+    path.startsWith("/venue-owner") ||
+    path.startsWith("/catering-owner") ||
+    path.startsWith("/bookings") ||
+    path.startsWith("/profile") ||
+    path.startsWith("/wishlist");
+
+  if (requiresPhoneVerification && !phoneVerified) {
+    return verifyPhoneRedirect(req, `${req.nextUrl.pathname}${req.nextUrl.search}`);
+  }
+
+  if (path.startsWith("/dashboard")) {
+    if (role === "ADMIN") {
+      return NextResponse.redirect(new URL("/admin", req.url));
+    }
+    return NextResponse.redirect(new URL("/", req.url));
+  }
+
+  if (path.startsWith("/admin") && role !== "ADMIN") {
+    return NextResponse.redirect(new URL("/", req.url));
+  }
+
+  if (path.startsWith("/venue-owner") && role !== "VENUE_OWNER") {
+    return NextResponse.redirect(new URL("/", req.url));
+  }
+
+  if (path.startsWith("/catering-owner") && role !== "CATERING_OWNER") {
+    return NextResponse.redirect(new URL("/", req.url));
+  }
+
+  return NextResponse.next();
+}
 
 export const config = {
   // Protected routes + auth routes (to redirect already-logged-in users)
@@ -81,5 +106,6 @@ export const config = {
     "/wishlist/:path*",
     "/auth/signin",
     "/auth/signup",
+    "/auth/verify-phone",
   ],
 };

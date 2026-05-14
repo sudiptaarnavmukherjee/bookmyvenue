@@ -8,9 +8,16 @@ import {
   Phone, Save, Loader2, CheckCircle, Leaf,
 } from "lucide-react";
 import Link from "next/link";
-import ImageUploader from "@/components/upload/ImageUploader";
-import LocationPicker from "@/components/admin/LocationPicker";
+import dynamic from "next/dynamic";
 import { parseGoogleMapsUrl } from "@/lib/utils";
+
+const ImageUploader = dynamic(() => import("@/components/upload/ImageUploader"), {
+  ssr: false,
+});
+
+const LocationPicker = dynamic(() => import("@/components/admin/LocationPicker"), {
+  ssr: false,
+});
 
 const KOLKATA_AREAS = [
   "Barasat", "Kalyani", "Salt Lake", "New Town", "Madhyamgram",
@@ -323,9 +330,9 @@ export default function EditCatererPage({
             </p>
           )}
           <div className="mt-3">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Google Maps URL (optional)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Maps URL (Google/Ola) (optional)</label>
             <input type="url" name="googleMapsUrl" value={formData.googleMapsUrl}
-              onChange={handleGoogleMapsUrlChange} placeholder="https://maps.app.goo.gl/..."
+              onChange={handleGoogleMapsUrlChange} placeholder="https://maps.app.goo.gl/... or https://maps.olacabs.com/?q=..."
               className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500" />
           </div>
         </div>

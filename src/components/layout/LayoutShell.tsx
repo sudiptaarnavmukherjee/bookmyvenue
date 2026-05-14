@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
-import Footer from "@/components/layout/Footer";
+import { usePathname } from "next/navigation";
 
 // Dynamic imports with ssr: false - only allowed in client components
 const MobileNav = dynamic(
@@ -31,17 +31,25 @@ const OfflineIndicator = dynamic(
 );
 
 export function LayoutShell() {
+  const pathname = usePathname();
+
+  const hideGlobalNav =
+    pathname?.startsWith("/admin") ||
+    pathname?.startsWith("/venue-owner") ||
+    pathname?.startsWith("/catering-owner") ||
+    pathname?.startsWith("/dashboard") ||
+    pathname?.startsWith("/auth/");
+
+  const showCompareBar =
+    pathname?.startsWith("/venues") || pathname?.startsWith("/catering");
+
   return (
     <Suspense fallback={null}>
       <OfflineIndicator />
-      <DesktopNav />
-      <CompareBar />
-      <PWAInstallBanner />
-      <MobileNav />
+      {!hideGlobalNav && <DesktopNav />}
+      {!hideGlobalNav && showCompareBar && <CompareBar />}
+      {!hideGlobalNav && <PWAInstallBanner />}
+      {!hideGlobalNav && <MobileNav />}
     </Suspense>
   );
-}
-
-export function FooterShell() {
-  return <Footer />;
 }

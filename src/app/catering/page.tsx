@@ -7,7 +7,6 @@ import {
 } from "lucide-react";
 import { CatererCard } from "@/components/catering/CatererCard";
 import { useLocation } from "@/hooks/useLocation";
-import { useSession } from "next-auth/react";
 import { getBmvLocation } from "@/components/home/LocationPermissionModal";
 
 type Caterer = {
@@ -58,7 +57,6 @@ export default function CateringPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"default" | "price-low" | "price-high" | "veg-first" | "nearby">("default");
   const { location, loading: locationLoading, isPermissionDenied } = useLocation();
-  const { data: session } = useSession();
   const [selectedArea, setSelectedArea] = useState<string>("");
   const [pureVegOnly, setPureVegOnly] = useState(false);
   const [wishlistCatererIds, setWishlistCatererIds] = useState<Set<string>>(new Set());
@@ -77,7 +75,6 @@ export default function CateringPage() {
 
   // Fetch user's wishlisted caterer IDs once session is loaded
   useEffect(() => {
-    if (!session) { setWishlistCatererIds(new Set()); return; }
     fetch("/api/wishlist", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
@@ -85,8 +82,8 @@ export default function CateringPage() {
         (d.wishlist || []).forEach((item: any) => { if (item.catererId) ids.add(item.catererId); });
         setWishlistCatererIds(ids);
       })
-      .catch(() => {});
-  }, [session]);
+      .catch(() => setWishlistCatererIds(new Set()));
+  }, []);
 
   useEffect(() => {
     if (locationLoading) return;

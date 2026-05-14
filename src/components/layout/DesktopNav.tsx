@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { Building2, Heart, Calendar, User, LogOut, Settings, LayoutDashboard, Search, MapPin, ChevronDown, ChefHat, Ticket } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
-import { getBmvLocation } from "@/components/home/LocationPermissionModal";
+import { getBmvLocation, markBmvLocationPrompted, shouldPromptBmvLocation } from "@/components/home/LocationPermissionModal";
 
 const LocationModal = dynamic(() => import("@/components/home/LocationPermissionModal"), { ssr: false, loading: () => null });
 
@@ -26,15 +26,12 @@ export default function DesktopNav() {
     const stored = getBmvLocation();
     if (stored) {
       setLocationLabel(stored.label);
-    } else {
-      const prompted = sessionStorage.getItem("bmv_loc_prompted");
-      if (!prompted) {
-        const timer = setTimeout(() => {
-          setShowLocationModal(true);
-          sessionStorage.setItem("bmv_loc_prompted", "1");
-        }, 800);
-        return () => clearTimeout(timer);
-      }
+    } else if (shouldPromptBmvLocation()) {
+      const timer = setTimeout(() => {
+        setShowLocationModal(true);
+        markBmvLocationPrompted();
+      }, 800);
+      return () => clearTimeout(timer);
     }
 
     const handler = (e: Event) => {

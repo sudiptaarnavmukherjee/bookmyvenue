@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/db";
+import { normalizeGoogleMapsUrl, parseGoogleMapsUrl } from "@/lib/utils";
 
 // ── PATCH /api/admin/venues/[id] ─────────────────────────────────────────────
 export async function PATCH(
@@ -35,6 +36,61 @@ export async function PATCH(
       images, amenities,
     } = body;
 
+    const normalizedGoogleMapsUrl = googleMapsUrl !== undefined ? normalizeGoogleMapsUrl(googleMapsUrl) : undefined;
+    if (googleMapsUrl && !normalizedGoogleMapsUrl) {
+      return NextResponse.json(
+        { error: "Invalid maps URL. Use a valid https://maps.google.com, https://maps.app.goo.gl, or https://maps.olacabs.com link." },
+        { status: 400 }
+      );
+    }
+
+    const parsedMinGuests = minGuests !== undefined ? Number(minGuests) : undefined;
+    const parsedMaxGuests = maxGuests !== undefined ? Number(maxGuests) : undefined;
+    const effectiveMinGuests = parsedMinGuests ?? venue.minGuests;
+    const effectiveMaxGuests = parsedMaxGuests ?? venue.maxGuests;
+    if (
+      !Number.isFinite(effectiveMinGuests) ||
+      !Number.isFinite(effectiveMaxGuests) ||
+      effectiveMinGuests <= 0 ||
+      effectiveMaxGuests <= 0 ||
+      effectiveMinGuests > effectiveMaxGuests
+    ) {
+      return NextResponse.json(
+        { error: "Guest capacity is invalid. Ensure min guests is less than or equal to max guests." },
+        { status: 400 }
+      );
+    }
+
+    const parsedEstimatedMinPrice = estimatedMinPrice !== undefined && estimatedMinPrice !== null && estimatedMinPrice !== ""
+      ? Number(estimatedMinPrice)
+      : estimatedMinPrice === "" ? null : undefined;
+    const parsedEstimatedMaxPrice = estimatedMaxPrice !== undefined && estimatedMaxPrice !== null && estimatedMaxPrice !== ""
+      ? Number(estimatedMaxPrice)
+      : estimatedMaxPrice === "" ? null : undefined;
+
+    const effectiveEstimatedMinPrice = parsedEstimatedMinPrice !== undefined ? parsedEstimatedMinPrice : venue.estimatedMinPrice;
+    const effectiveEstimatedMaxPrice = parsedEstimatedMaxPrice !== undefined ? parsedEstimatedMaxPrice : venue.estimatedMaxPrice;
+    if (
+      effectiveEstimatedMinPrice !== null &&
+      effectiveEstimatedMinPrice !== undefined &&
+      effectiveEstimatedMaxPrice !== null &&
+      effectiveEstimatedMaxPrice !== undefined &&
+      effectiveEstimatedMinPrice > effectiveEstimatedMaxPrice
+    ) {
+      return NextResponse.json(
+        { error: "Estimated price range is invalid. Min estimate must be less than or equal to max estimate." },
+        { status: 400 }
+      );
+    }
+
+    const fallbackCoords = normalizedGoogleMapsUrl ? parseGoogleMapsUrl(normalizedGoogleMapsUrl) : null;
+    const parsedLatitude = latitude !== undefined
+      ? (latitude ? parseFloat(latitude) : null)
+      : (fallbackCoords?.latitude ?? undefined);
+    const parsedLongitude = longitude !== undefined
+      ? (longitude ? parseFloat(longitude) : null)
+      : (fallbackCoords?.longitude ?? undefined);
+
     const imageList: string[] = Array.isArray(images) ? images : (images || "").split(",").map((s: string) => s.trim()).filter(Boolean);
 
     const updated = await prisma.venue.update({
@@ -47,15 +103,15 @@ export async function PATCH(
         ...(area !== undefined && { area }),
         ...(address !== undefined && { address }),
         ...(pincode !== undefined && { pincode }),
-        ...(latitude !== undefined && { latitude: latitude ? parseFloat(latitude) : null }),
-        ...(longitude !== undefined && { longitude: longitude ? parseFloat(longitude) : null }),
-        ...(googleMapsUrl !== undefined && { googleMapsUrl: googleMapsUrl || null }),
-        ...(minGuests !== undefined && { minGuests: parseInt(minGuests) }),
-        ...(maxGuests !== undefined && { maxGuests: parseInt(maxGuests) }),
+        ...(parsedLatitude !== undefined && { latitude: parsedLatitude }),
+        ...(parsedLongitude !== undefined && { longitude: parsedLongitude }),
+        ...(googleMapsUrl !== undefined && { googleMapsUrl: normalizedGoogleMapsUrl || null }),
+        ...(parsedMinGuests !== undefined && { minGuests: parsedMinGuests }),
+        ...(parsedMaxGuests !== undefined && { maxGuests: parsedMaxGuests }),
         ...(priceMode !== undefined && { priceMode }),
         ...(exactPrice !== undefined && { exactPrice: exactPrice ? parseFloat(exactPrice) : null }),
-        ...(estimatedMinPrice !== undefined && { estimatedMinPrice: estimatedMinPrice ? parseFloat(estimatedMinPrice) : null }),
-        ...(estimatedMaxPrice !== undefined && { estimatedMaxPrice: estimatedMaxPrice ? parseFloat(estimatedMaxPrice) : null }),
+        ...(parsedEstimatedMinPrice !== undefined && { estimatedMinPrice: parsedEstimatedMinPrice }),
+        ...(parsedEstimatedMaxPrice !== undefined && { estimatedMaxPrice: parsedEstimatedMaxPrice }),
         ...(marriagePrice !== undefined && { marriagePrice: marriagePrice ? parseFloat(marriagePrice) : null }),
         ...(birthdayPrice !== undefined && { birthdayPrice: birthdayPrice ? parseFloat(birthdayPrice) : null }),
         ...(otherEventPrice !== undefined && { otherEventPrice: otherEventPrice ? parseFloat(otherEventPrice) : null }),

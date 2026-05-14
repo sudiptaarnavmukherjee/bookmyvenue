@@ -17,9 +17,17 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import ImageUploader from "@/components/upload/ImageUploader";
-import LocationPicker from "@/components/admin/LocationPicker";
+import Image from "next/image";
+import dynamic from "next/dynamic";
 import { parseGoogleMapsUrl } from "@/lib/utils";
+
+const ImageUploader = dynamic(() => import("@/components/upload/ImageUploader"), {
+  ssr: false,
+});
+
+const LocationPicker = dynamic(() => import("@/components/admin/LocationPicker"), {
+  ssr: false,
+});
 
 // Kolkata Areas for dropdown
 const KOLKATA_AREAS = [
@@ -483,17 +491,17 @@ export default function AdminAddVenuePage() {
             </div>
           </div>
 
-          {/* Google Maps URL */}
+          {/* Maps URL */}
           <div className="mt-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Google Maps URL <span className="text-gray-400 font-normal">(optional)</span>
+              Maps URL (Google/Ola) <span className="text-gray-400 font-normal">(optional)</span>
             </label>
             <input
               type="url"
               name="googleMapsUrl"
               value={formData.googleMapsUrl}
               onChange={handleGoogleMapsUrlChange}
-              placeholder="https://maps.app.goo.gl/... or https://www.google.com/maps/place/..."
+              placeholder="https://maps.app.goo.gl/... or https://maps.olacabs.com/?q=..."
               className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-rose-500 text-sm"
             />
             {formData.googleMapsUrl && parseGoogleMapsUrl(formData.googleMapsUrl) ? (
@@ -506,7 +514,7 @@ export default function AdminAddVenuePage() {
               </p>
             ) : (
               <p className="text-xs text-gray-400 mt-1">
-                Paste a Google Maps share link — coordinates will be auto-filled if the URL contains them.
+                Paste a Google/Ola maps link — coordinates will be auto-filled if the URL contains them.
               </p>
             )}
           </div>
@@ -523,7 +531,13 @@ export default function AdminAddVenuePage() {
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-4">
             {formData.images.map((img, index) => (
               <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
-                <img src={img} alt="" className="w-full h-full object-cover" />
+                <Image
+                  src={img}
+                  alt="Uploaded venue image"
+                  fill
+                  sizes="(max-width: 640px) 33vw, 25vw"
+                  className="object-cover"
+                />
                 <button
                   type="button"
                   onClick={() => removeImage(index)}

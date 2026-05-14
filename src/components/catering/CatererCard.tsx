@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api-client";
-import { useSession } from "next-auth/react";
 import { useCompare } from "@/components/providers/CompareProvider";
 
 interface CatererCardProps {
@@ -71,7 +70,6 @@ export function CatererCard({
   slug,
   distanceText,
 }: CatererCardProps) {
-  const { data: session } = useSession();
   const router = useRouter();
   const { isCatererSelected, addCaterer, removeCaterer } = useCompare();
   const [isInWishlist, setIsInWishlist] = useState(inWishlist);
@@ -92,11 +90,6 @@ export function CatererCard({
     e.preventDefault();
     e.stopPropagation();
 
-    if (!session) {
-      router.push("/auth/signin");
-      return;
-    }
-
     const targetId = catererId || id;
     if (!targetId || wishlistLoading) return;
 
@@ -111,7 +104,11 @@ export function CatererCard({
 
       if (error) {
         setIsInWishlist(prev);
-        console.error("Wishlist error:", error);
+        if (/sign in|signin|unauthor/i.test(error)) {
+          router.push("/auth/signin");
+        } else {
+          console.error("Wishlist error:", error);
+        }
       }
     } catch (err) {
       setIsInWishlist(prev);

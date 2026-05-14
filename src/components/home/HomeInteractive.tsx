@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { Search, MapPin, ChevronDown, Heart, Building2, ChefHat, Calendar, Users, Ticket } from "lucide-react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { getBmvLocation } from "@/components/home/LocationPermissionModal";
-import { useSession } from "next-auth/react";
+import { getBmvLocation, markBmvLocationPrompted, shouldPromptBmvLocation } from "@/components/home/LocationPermissionModal";
 
 const SearchModal = dynamic(() => import("@/components/home/SearchModal"), {
   ssr: false,
@@ -28,7 +27,6 @@ const EVENT_CATEGORIES = [
 
 export default function HomeInteractive({ initialMode = "venues" }: { initialMode?: "venues" | "catering" }) {
   const router = useRouter();
-  const { data: session } = useSession();
 
   const [activeTab, setActiveTab] = useState<"venues" | "catering">(initialMode);
   const [location, setLocation] = useState("Kolkata");
@@ -39,15 +37,12 @@ export default function HomeInteractive({ initialMode = "venues" }: { initialMod
     const stored = getBmvLocation();
     if (stored) {
       setLocation(stored.label);
-    } else {
-      const prompted = sessionStorage.getItem("bmv_loc_prompted");
-      if (!prompted) {
-        const timer = setTimeout(() => {
-          setShowLocationModal(true);
-          sessionStorage.setItem("bmv_loc_prompted", "1");
-        }, 800);
-        return () => clearTimeout(timer);
-      }
+    } else if (shouldPromptBmvLocation()) {
+      const timer = setTimeout(() => {
+        setShowLocationModal(true);
+        markBmvLocationPrompted();
+      }, 800);
+      return () => clearTimeout(timer);
     }
 
     const handler = (e: Event) => {
@@ -109,17 +104,9 @@ export default function HomeInteractive({ initialMode = "venues" }: { initialMod
             <Link href="/wishlist" className="rounded-full p-2 hover:bg-slate-100" prefetch={false}>
               <Heart className="h-5 w-5 text-slate-600" />
             </Link>
-            {session?.user ? (
-              <Link href="/profile" className="rounded-full p-1" prefetch={false}>
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#0b5fab] text-xs font-bold text-white">
-                  {(session.user.name || "U")[0].toUpperCase()}
-                </div>
-              </Link>
-            ) : (
-              <Link href="/auth/signin" className="rounded-full bg-[#ff7a00] px-3 py-1.5 text-xs font-bold text-white" prefetch={false}>
-                Login
-              </Link>
-            )}
+            <Link href="/auth/signin" className="rounded-full bg-[#ff7a00] px-3 py-1.5 text-xs font-bold text-white" prefetch={false}>
+              Login
+            </Link>
           </div>
         </div>
 

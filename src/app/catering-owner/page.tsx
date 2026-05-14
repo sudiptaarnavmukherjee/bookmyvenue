@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import dynamic from "next/dynamic";
 import { api } from "@/lib/api-client";
-import AvailabilityCalendar from "@/components/calendar/AvailabilityCalendar";
-import BlockDateModal from "@/components/calendar/BlockDateModal";
+
+const AvailabilityCalendar = dynamic(() => import("@/components/calendar/AvailabilityCalendar"));
+const BlockDateModal = dynamic(() => import("@/components/calendar/BlockDateModal"));
 import { 
   Calendar, 
   CheckCircle2,
@@ -32,7 +34,9 @@ import {
   Eye,
   Star,
   Wand2,
+  Upload,
 } from "lucide-react";
+import { parseCatererVerificationNotes } from "@/lib/verification";
 
 type Caterer = {
   id: string;
@@ -72,6 +76,14 @@ type Booking = {
   caterer?: Caterer;
 };
 
+type KycDraft = {
+  ownerNote: string;
+  aadhaarUrl: string;
+  panUrl: string;
+  uploadingAadhaar: boolean;
+  uploadingPan: boolean;
+};
+
 export default function CateringOwnerDashboard() {
   const router = useRouter();
   const { data: session, status } = useSession();
@@ -85,6 +97,7 @@ export default function CateringOwnerDashboard() {
   // Profile / verification state
   const [ownedCaterers, setOwnedCaterers] = useState<Caterer[]>([]);
   const [verificationLoading, setVerificationLoading] = useState<string | null>(null);
+  const [kycDrafts, setKycDrafts] = useState<Record<string, KycDraft>>({});
 
   // Menus state — uses owned caterers, not booking caterers
   const [menuCatererId, setMenuCatererId] = useState<string | null>(null);
@@ -98,21 +111,7 @@ export default function CateringOwnerDashboard() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedBlockedDate, setSelectedBlockedDate] = useState<any>(null);
 
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/signin");
-      return;
-    }
-    if (status === "authenticated") {
-      if (session?.user?.role !== "CATERING_OWNER") {
-        router.push("/");
-        return;
-      }
-      fetchData();
-    }
-  }, [status, session, router]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -137,8 +136,8 @@ export default function CateringOwnerDashboard() {
         });
         setCaterers(uniqueCaterers);
 
-        if (uniqueCaterers.length > 0 && !selectedCatererId) {
-          setSelectedCatererId(uniqueCaterers[0].id);
+        if (uniqueCaterers.length > 0) {
+          setSelectedCatererId(prev => prev || uniqueCaterers[0].id);
         }
       }
 
@@ -147,8 +146,8 @@ export default function CateringOwnerDashboard() {
         const owned: Caterer[] = ownedData.caterers || [];
         setOwnedCaterers(owned);
         // Set calendar caterer if not already set
-        if (!selectedCatererId && owned.length > 0) {
-          setSelectedCatererId(owned[0].id);
+        if (owned.length > 0) {
+          setSelectedCatererId(prev => prev || owned[0].id);
         }
         // Always set menuCatererId from OWNED caterers (not bookings)
         if (owned.length > 0) {
@@ -160,7 +159,21 @@ export default function CateringOwnerDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/signin");
+      return;
+    }
+    if (status === "authenticated") {
+      if (session?.user?.role !== "CATERING_OWNER") {
+        router.push("/");
+        return;
+      }
+      fetchData();
+    }
+  }, [status, session, router, fetchData]);
   
   const handleDateClick = (date: Date, blockedDate?: any) => {
     setSelectedDate(date);
@@ -219,13 +232,73 @@ export default function CateringOwnerDashboard() {
     setLoadingMenus(false);
   };
 
+  const updateKycDraft = (catererId: string, patch: Partial<KycDraft>) => {
+    setKycDrafts((prev) => ({
+      ...prev,
+      [catererId]: {
+        ownerNote: "",
+        aadhaarUrl: "",
+        panUrl: "",
+        uploadingAadhaar: false,
+        uploadingPan: false,
+        ...(prev[catererId] || {}),
+        ...patch,
+      },
+    }));
+  };
+
+  const uploadKycImage = async (catererId: string, file: File, docType: "aadhaar" | "pan") => {
+    const uploadingKey = docType === "aadhaar" ? "uploadingAadhaar" : "uploadingPan";
+    const urlKey = docType === "aadhaar" ? "aadhaarUrl" : "panUrl";
+    updateKycDraft(catererId, { [uploadingKey]: true } as Partial<KycDraft>);
+
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("folder", "kyc-documents");
+
+      const res = await fetch("/api/upload/image", {
+        method: "POST",
+        body: fd,
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || "Upload failed");
+      }
+
+      updateKycDraft(catererId, { [urlKey]: data.url } as Partial<KycDraft>);
+    } catch (error: any) {
+      alert(error?.message || "Failed to upload KYC document");
+    } finally {
+      updateKycDraft(catererId, { [uploadingKey]: false } as Partial<KycDraft>);
+    }
+  };
+
   const handleRequestVerification = async (catererId: string) => {
     setVerificationLoading(catererId);
+    const draft = kycDrafts[catererId];
+
+    const kycDocuments = [
+      draft?.aadhaarUrl ? { label: "Aadhaar", url: draft.aadhaarUrl } : null,
+      draft?.panUrl ? { label: "PAN/GST", url: draft.panUrl } : null,
+    ].filter(Boolean);
+
+    if (kycDocuments.length === 0) {
+      alert("Please upload at least one KYC document before requesting verification");
+      setVerificationLoading(null);
+      return;
+    }
+
     try {
       const res = await fetch("/api/catering-owner/request-verification", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ catererId }),
+        body: JSON.stringify({
+          catererId,
+          ownerNote: draft?.ownerNote || "",
+          kycDocuments,
+        }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -732,7 +805,9 @@ export default function CateringOwnerDashboard() {
                         <div>
                           <p className="text-sm font-semibold text-green-800">Your caterer is verified and accepting online bookings!</p>
                           {caterer.verificationNotes && (
-                            <p className="text-xs text-green-600 mt-0.5">{caterer.verificationNotes}</p>
+                            <p className="text-xs text-green-600 mt-0.5">
+                              {parseCatererVerificationNotes(caterer.verificationNotes)?.adminReviewNote || caterer.verificationNotes}
+                            </p>
                           )}
                         </div>
                       </div>
@@ -744,6 +819,30 @@ export default function CateringOwnerDashboard() {
                           <p className="text-xs text-blue-500 mt-0.5">
                             Submitted {new Date(caterer.verificationRequestedAt!).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                           </p>
+                          {(() => {
+                            const details = parseCatererVerificationNotes(caterer.verificationNotes);
+                            if (!details) return null;
+                            return (
+                              <div className="mt-2 text-xs text-blue-700 space-y-1">
+                                {details.ownerNote ? <p><strong>Owner note:</strong> {details.ownerNote}</p> : null}
+                                {details.kycDocuments.length > 0 ? (
+                                  <div className="flex flex-wrap gap-2">
+                                    {details.kycDocuments.map((doc) => (
+                                      <a
+                                        key={`${doc.label}-${doc.url}`}
+                                        href={doc.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="underline hover:text-blue-900"
+                                      >
+                                        {doc.label} document
+                                      </a>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     ) : (
@@ -751,6 +850,62 @@ export default function CateringOwnerDashboard() {
                         <p className="text-sm text-amber-800 mb-3">
                           <strong>Ready to go live?</strong> Request verification and our admin team will review your profile and enable online bookings within 24–48 hours.
                         </p>
+                        <div className="grid md:grid-cols-2 gap-3 mb-3">
+                          <label className="text-xs text-amber-900">
+                            Aadhaar document (image URL or upload)
+                            <input
+                              type="url"
+                              value={kycDrafts[caterer.id]?.aadhaarUrl || ""}
+                              onChange={(e) => updateKycDraft(caterer.id, { aadhaarUrl: e.target.value })}
+                              placeholder="https://..."
+                              className="mt-1 w-full px-3 py-2 rounded-lg border border-amber-200 bg-white text-sm"
+                            />
+                            <label className="mt-2 inline-flex items-center gap-2 text-xs font-medium text-purple-700 cursor-pointer">
+                              <Upload className="h-3.5 w-3.5" />
+                              Upload Aadhaar
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) uploadKycImage(caterer.id, file, "aadhaar");
+                                }}
+                              />
+                            </label>
+                          </label>
+
+                          <label className="text-xs text-amber-900">
+                            PAN/GST document (image URL or upload)
+                            <input
+                              type="url"
+                              value={kycDrafts[caterer.id]?.panUrl || ""}
+                              onChange={(e) => updateKycDraft(caterer.id, { panUrl: e.target.value })}
+                              placeholder="https://..."
+                              className="mt-1 w-full px-3 py-2 rounded-lg border border-amber-200 bg-white text-sm"
+                            />
+                            <label className="mt-2 inline-flex items-center gap-2 text-xs font-medium text-purple-700 cursor-pointer">
+                              <Upload className="h-3.5 w-3.5" />
+                              Upload PAN/GST
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) uploadKycImage(caterer.id, file, "pan");
+                                }}
+                              />
+                            </label>
+                          </label>
+                        </div>
+                        <textarea
+                          value={kycDrafts[caterer.id]?.ownerNote || ""}
+                          onChange={(e) => updateKycDraft(caterer.id, { ownerNote: e.target.value })}
+                          rows={2}
+                          placeholder="Optional note for admin reviewer"
+                          className="mb-3 w-full px-3 py-2 rounded-lg border border-amber-200 bg-white text-sm"
+                        />
                         <button
                           onClick={() => handleRequestVerification(caterer.id)}
                           disabled={verificationLoading === caterer.id}

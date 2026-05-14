@@ -6,12 +6,11 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Attempts to extract lat/lng coordinates from a Google Maps URL.
+ * Attempts to extract lat/lng coordinates from Google/Ola Maps URLs.
  * Handles common share formats:
- *   /@lat,lng,zoom  (standard place / directions links)
- *   ?q=lat,lng      (search query with coordinates)
- *   ?ll=lat,lng     (older format)
- * Returns null for short URLs (goo.gl / maps.app.goo.gl) since they require a redirect.
+ *   /@lat,lng,zoom  (Google place / directions links)
+ *   ?q=lat,lng      (Google/Ola query with coordinates)
+ *   ?ll=lat,lng     (older Google format)
  */
 export function parseGoogleMapsUrl(url: string): { latitude: number; longitude: number } | null {
   if (!url) return null;
@@ -51,6 +50,31 @@ export function parseGoogleMapsUrl(url: string): { latitude: number; longitude: 
     // Invalid URL — ignore
   }
   return null;
+}
+
+const MAPS_HOSTS = new Set([
+  "maps.google.com",
+  "www.google.com",
+  "google.com",
+  "maps.app.goo.gl",
+  "goo.gl",
+  "maps.olacabs.com",
+  "www.maps.olacabs.com",
+]);
+
+export function normalizeGoogleMapsUrl(url?: string | null): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== "https:") return null;
+    if (!MAPS_HOSTS.has(parsed.hostname)) return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
 }
 
 function isValidLatLng(lat: number, lng: number): boolean {

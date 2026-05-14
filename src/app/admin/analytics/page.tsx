@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -56,16 +56,7 @@ export default function AnalyticsPage() {
   const [error, setError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<"today" | "week" | "month" | "all">("week");
 
-  useEffect(() => {
-    if (status === "loading") return;
-    if (!session?.user || (session.user as any).role !== "ADMIN") {
-      router.push("/");
-      return;
-    }
-    fetchAnalytics();
-  }, [session, status, dateRange]);
-
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch(`/api/admin/analytics?range=${dateRange}`);
@@ -82,7 +73,16 @@ export default function AnalyticsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateRange]);
+
+  useEffect(() => {
+    if (status === "loading") return;
+    if (!session?.user || (session.user as any).role !== "ADMIN") {
+      router.push("/");
+      return;
+    }
+    fetchAnalytics();
+  }, [session, status, router, fetchAnalytics]);
 
   if (status === "loading" || loading) {
     return (

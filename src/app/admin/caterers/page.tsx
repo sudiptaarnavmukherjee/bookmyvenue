@@ -27,6 +27,7 @@ import {
   Trash2,
   Wand2,
 } from "lucide-react";
+import { parseCatererVerificationNotes } from "@/lib/verification";
 
 type Caterer = {
   id: string;
@@ -57,6 +58,7 @@ type Caterer = {
   };
   createdAt: string;
   verificationRequestedAt?: string | null;
+  verificationNotes?: string | null;
 };
 
 export default function AdminCaterersPage() {
@@ -336,6 +338,9 @@ export default function AdminCaterersPage() {
               animate={{ opacity: 1, y: 0 }}
               className="glass-card rounded-2xl p-6"
             >
+              {(() => {
+                const verificationDetails = parseCatererVerificationNotes(caterer.verificationNotes);
+                return (
               <div className="flex flex-col lg:flex-row lg:items-center gap-4">
                 {/* Caterer Info */}
                 <div className="flex-1">
@@ -421,6 +426,29 @@ export default function AdminCaterersPage() {
                       <span className="text-gray-500">
                         ({caterer.taggedToOwner?.email || caterer.owner?.email})
                       </span>
+                    </div>
+                  )}
+
+                  {caterer.verificationRequestedAt && !caterer.bookingEnabled && verificationDetails && (
+                    <div className="mt-3 rounded-xl border border-orange-200 bg-orange-50 p-3 text-xs text-orange-900">
+                      {verificationDetails.ownerNote ? (
+                        <p className="mb-2"><strong>Owner note:</strong> {verificationDetails.ownerNote}</p>
+                      ) : null}
+                      {verificationDetails.kycDocuments.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {verificationDetails.kycDocuments.map((doc) => (
+                            <a
+                              key={`${doc.label}-${doc.url}`}
+                              href={doc.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline hover:text-orange-700"
+                            >
+                              {doc.label} document
+                            </a>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                   )}
                 </div>
@@ -521,6 +549,8 @@ export default function AdminCaterersPage() {
                   </button>
                 </div>
               </div>
+                );
+              })()}
             </motion.div>
           ))}
 

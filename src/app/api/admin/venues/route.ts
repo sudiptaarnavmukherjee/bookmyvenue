@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/db";
 import { PriceMode } from "@prisma/client";
+import { normalizeGoogleMapsUrl, parseGoogleMapsUrl } from "@/lib/utils";
 
 // GET all venues for admin (including unverified)
 export async function GET() {
@@ -106,6 +107,40 @@ export async function POST(request: Request) {
       );
     }
 
+    const normalizedGoogleMapsUrl = normalizeGoogleMapsUrl(googleMapsUrl);
+    if (googleMapsUrl && !normalizedGoogleMapsUrl) {
+      return NextResponse.json(
+        { error: "Invalid maps URL. Use a valid https://maps.google.com, https://maps.app.goo.gl, or https://maps.olacabs.com link." },
+        { status: 400 }
+      );
+    }
+
+    const parsedMinGuests = Number(minGuests);
+    const parsedMaxGuests = Number(maxGuests);
+    if (!Number.isFinite(parsedMinGuests) || !Number.isFinite(parsedMaxGuests) || parsedMinGuests <= 0 || parsedMaxGuests <= 0 || parsedMinGuests > parsedMaxGuests) {
+      return NextResponse.json(
+        { error: "Guest capacity is invalid. Ensure min guests is less than or equal to max guests." },
+        { status: 400 }
+      );
+    }
+
+    const parsedEstimatedMinPrice = estimatedMinPrice ? Number(estimatedMinPrice) : null;
+    const parsedEstimatedMaxPrice = estimatedMaxPrice ? Number(estimatedMaxPrice) : null;
+    if (
+      parsedEstimatedMinPrice !== null &&
+      parsedEstimatedMaxPrice !== null &&
+      parsedEstimatedMinPrice > parsedEstimatedMaxPrice
+    ) {
+      return NextResponse.json(
+        { error: "Estimated price range is invalid. Min estimate must be less than or equal to max estimate." },
+        { status: 400 }
+      );
+    }
+
+    const fallbackCoords = normalizedGoogleMapsUrl ? parseGoogleMapsUrl(normalizedGoogleMapsUrl) : null;
+    const parsedLatitude = latitude ? parseFloat(latitude) : fallbackCoords?.latitude ?? null;
+    const parsedLongitude = longitude ? parseFloat(longitude) : fallbackCoords?.longitude ?? null;
+
     // Generate unique slug
     const baseSlug = name
       .toLowerCase()
@@ -124,13 +159,13 @@ export async function POST(request: Request) {
         area: area || "",
         address,
         pincode: pincode || "",
-        latitude: latitude ? parseFloat(latitude) : null,
-        longitude: longitude ? parseFloat(longitude) : null,
-        minGuests: parseInt(minGuests),
-        maxGuests: parseInt(maxGuests),
+        latitude: parsedLatitude,
+        longitude: parsedLongitude,
+        minGuests: parsedMinGuests,
+        maxGuests: parsedMaxGuests,
         priceMode: (priceMode as PriceMode) || PriceMode.ESTIMATED,
-        estimatedMinPrice: estimatedMinPrice ? parseFloat(estimatedMinPrice) : null,
-        estimatedMaxPrice: estimatedMaxPrice ? parseFloat(estimatedMaxPrice) : null,
+        estimatedMinPrice: parsedEstimatedMinPrice,
+        estimatedMaxPrice: parsedEstimatedMaxPrice,
         primeDayPrice: primeDayPrice ? parseFloat(primeDayPrice) : null,
         nonPrimeDayPrice: nonPrimeDayPrice ? parseFloat(nonPrimeDayPrice) : null,
         primeDays: primeDays || "",
@@ -139,7 +174,7 @@ export async function POST(request: Request) {
         otherEventPrice: body.otherEventPrice ? parseFloat(body.otherEventPrice) : null,
         contactName: contactName || "",
         contactNumber: contactNumber || "",
-        googleMapsUrl: googleMapsUrl || null,
+        googleMapsUrl: normalizedGoogleMapsUrl,
         images: images || "",
         coverImage: coverImage || (images ? images.split(",")[0].trim() : ""),
         videos: "",

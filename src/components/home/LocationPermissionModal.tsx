@@ -7,6 +7,8 @@ import { searchPlaces, getPlaceDetails, geocodeAddress, getAreaCoordinates, type
 // ── Shared location storage ──────────────────────────────────────────────────
 const STORAGE_KEY = "bmv_location";
 const LOCATION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const LOCATION_PROMPT_KEY = "bmv_loc_prompted_at";
+const LOCATION_PROMPT_COOLDOWN_MS = 6 * 60 * 60 * 1000; // 6 hours
 
 export interface StoredLocation {
   lat: number;
@@ -35,6 +37,24 @@ export function getBmvLocation(): StoredLocation | null {
   } catch {
     return null;
   }
+}
+
+export function shouldPromptBmvLocation(): boolean {
+  try {
+    if (getBmvLocation()) return false;
+    const lastPromptAtRaw = localStorage.getItem(LOCATION_PROMPT_KEY);
+    const lastPromptAt = lastPromptAtRaw ? Number(lastPromptAtRaw) : 0;
+    if (!lastPromptAt || Number.isNaN(lastPromptAt)) return true;
+    return Date.now() - lastPromptAt > LOCATION_PROMPT_COOLDOWN_MS;
+  } catch {
+    return true;
+  }
+}
+
+export function markBmvLocationPrompted(): void {
+  try {
+    localStorage.setItem(LOCATION_PROMPT_KEY, String(Date.now()));
+  } catch {}
 }
 
 // ── Quick-select Kolkata areas (fallback when Ola Maps unavailable) ──────────

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { MapPin, ExternalLink, Navigation } from "lucide-react";
+import { parseGoogleMapsUrl } from "@/lib/utils";
 
 interface MapEmbedProps {
   latitude?: number | null;
@@ -22,7 +23,9 @@ function isSafeGoogleMapsUrl(url: string): boolean {
       (parsed.hostname === "maps.google.com" ||
         parsed.hostname === "www.google.com" ||
         parsed.hostname === "maps.app.goo.gl" ||
-        parsed.hostname === "goo.gl")
+        parsed.hostname === "goo.gl" ||
+        parsed.hostname === "maps.olacabs.com" ||
+        parsed.hostname === "www.maps.olacabs.com")
     );
   } catch {
     return false;
@@ -64,16 +67,17 @@ function buildOSMEmbedUrl(lat: number, lng: number): string {
   );
 }
 
-/**
- * Build Ola Maps static tile URL (requires NEXT_PUBLIC_OLA_MAPS_API_KEY)
- */
-function buildOlaMapsStaticUrl(lat: number, lng: number): string | null {
-  const key = process.env.NEXT_PUBLIC_OLA_MAPS_API_KEY;
-  if (!key) return null;
-  const zoom = 15;
-  const w = 800;
-  const h = 400;
-  return `https://api.olamaps.io/tiles/v1/static/${lng},${lat},${zoom}/${w}x${h}.png?api_key=${key}&markers=color:red|${lat},${lng}`;
+function buildOlaMapsUrl(
+  lat?: number | null,
+  lng?: number | null,
+  address?: string | null,
+  name?: string
+): string {
+  if (lat && lng) {
+    return `https://maps.olacabs.com/?q=${lat},${lng}`;
+  }
+  const query = [name, address].filter(Boolean).join(", ");
+  return `https://maps.olacabs.com/?q=${encodeURIComponent(query)}`;
 }
 
 /**
@@ -105,20 +109,18 @@ export default function MapEmbed({
 
   const hasCoords = typeof latitude === "number" && typeof longitude === "number";
   const hasGoogleUrl = googleMapsUrl && isSafeGoogleMapsUrl(googleMapsUrl);
+  const coordsFromUrl = !hasCoords && googleMapsUrl ? parseGoogleMapsUrl(googleMapsUrl) : null;
 
   // Pick the best embed source
   let embedSrc: string | null = null;
-  let embedType: "ola" | "osm" | "google" | null = null;
+  let embedType: "osm" | "google" | null = null;
 
   if (hasCoords) {
-    const olaUrl = buildOlaMapsStaticUrl(latitude!, longitude!);
-    if (olaUrl) {
-      embedSrc = olaUrl;
-      embedType = "ola";
-    } else {
-      embedSrc = buildOSMEmbedUrl(latitude!, longitude!);
-      embedType = "osm";
-    }
+    embedSrc = buildOSMEmbedUrl(latitude!, longitude!);
+    embedType = "osm";
+  } else if (coordsFromUrl) {
+    embedSrc = buildOSMEmbedUrl(coordsFromUrl.latitude, coordsFromUrl.longitude);
+    embedType = "osm";
   } else if (hasGoogleUrl) {
     const gmbedUrl = buildGoogleMapsEmbedUrl(googleMapsUrl!);
     if (gmbedUrl) {
@@ -128,6 +130,7 @@ export default function MapEmbed({
   }
 
   const directionsUrl = buildDirectionsUrl(latitude, longitude, address, name);
+  const olaMapsUrl = buildOlaMapsUrl(latitude, longitude, address, name);
 
   const fullAddress = address || name;
 
@@ -161,37 +164,16 @@ export default function MapEmbed({
   return (
     <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
       {/* Map render */}
-      {embedType === "ola" ? (
-        // Ola Maps returns a static PNG image
-        <div className="relative" style={{ height }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={embedSrc}
-            alt={`Map showing location of ${name}`}
-            className="w-full h-full object-cover"
-            onError={() => setEmbedError(true)}
-          />
-          {/* Marker label overlay */}
-          <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm rounded-xl px-3 py-2 shadow-md max-w-[calc(100%-1.5rem)]">
-            <div className="flex items-center gap-1.5">
-              <MapPin className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
-              <span className="text-xs font-semibold text-gray-800 truncate">{name}</span>
-            </div>
-          </div>
-        </div>
-      ) : (
-        // OSM or Google Maps iframe
-        <iframe
-          src={embedSrc}
-          width="100%"
-          height={height}
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
-          title={`Map of ${name}`}
-          className="block border-0"
-          onError={() => setEmbedError(true)}
-        />
-      )}
+      <iframe
+        src={embedSrc}
+        width="100%"
+        height={height}
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+        title={`Map of ${name}`}
+        className="block border-0"
+        onError={() => setEmbedError(true)}
+      />
 
       {/* Footer bar */}
       <div className="bg-white px-4 py-3 flex items-center justify-between gap-3 border-t border-gray-100">
@@ -199,16 +181,27 @@ export default function MapEmbed({
           <MapPin className="h-4 w-4 text-purple-500 flex-shrink-0" />
           <p className="text-xs text-gray-600 truncate">{fullAddress}</p>
         </div>
-        <a
-          href={directionsUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5 text-xs font-semibold text-purple-600 hover:text-purple-800 whitespace-nowrap transition-colors flex-shrink-0"
-        >
-          <Navigation className="h-3.5 w-3.5" />
-          Get Directions
-          <ExternalLink className="h-3 w-3" />
-        </a>
+        <div className="flex items-center gap-3">
+          <a
+            href={olaMapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-xs font-semibold text-[#0b5fab] hover:text-[#094f8f] whitespace-nowrap transition-colors flex-shrink-0"
+          >
+            Open in Ola Maps
+            <ExternalLink className="h-3 w-3" />
+          </a>
+          <a
+            href={directionsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-xs font-semibold text-purple-600 hover:text-purple-800 whitespace-nowrap transition-colors flex-shrink-0"
+          >
+            <Navigation className="h-3.5 w-3.5" />
+            Get Directions
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
       </div>
     </div>
   );

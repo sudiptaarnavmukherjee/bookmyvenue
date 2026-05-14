@@ -7,7 +7,6 @@ import {
 } from "lucide-react";
 import { VenueCard } from "@/components/venue/VenueCard";
 import { useLocation } from "@/hooks/useLocation";
-import { useSession } from "next-auth/react";
 import { getBmvLocation } from "@/components/home/LocationPermissionModal";
 
 type Venue = {
@@ -60,7 +59,6 @@ export default function VenuesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"area" | "price-low" | "price-high" | "popular" | "newest" | "nearby">("area");
   const { location, loading: locationLoading, isPermissionDenied } = useLocation();
-  const { data: session } = useSession();
   const [selectedArea, setSelectedArea] = useState<string>("");
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [wishlistVenueIds, setWishlistVenueIds] = useState<Set<string>>(new Set());
@@ -79,7 +77,6 @@ export default function VenuesPage() {
 
   // Fetch user's wishlisted venue IDs once session is loaded
   useEffect(() => {
-    if (!session) { setWishlistVenueIds(new Set()); return; }
     fetch("/api/wishlist", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
@@ -87,8 +84,8 @@ export default function VenuesPage() {
         (d.wishlist || []).forEach((item: any) => { if (item.venueId) ids.add(item.venueId); });
         setWishlistVenueIds(ids);
       })
-      .catch(() => {});
-  }, [session]);
+      .catch(() => setWishlistVenueIds(new Set()));
+  }, []);
 
   useEffect(() => {
     if (locationLoading) return;

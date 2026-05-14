@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api-client";
-import { useSession } from "next-auth/react";
 import { useCompare } from "@/components/providers/CompareProvider";
 
 interface VenueCardProps {
@@ -81,7 +80,6 @@ export function VenueCard({
   rating,
   reviewCount,
 }: VenueCardProps) {
-  const { data: session } = useSession();
   const router = useRouter();
   const { isVenueSelected, addVenue, removeVenue } = useCompare();
   const [isInWishlist, setIsInWishlist] = useState(inWishlist);
@@ -102,11 +100,6 @@ export function VenueCard({
     e.preventDefault();
     e.stopPropagation();
 
-    if (!session) {
-      router.push("/auth/signin");
-      return;
-    }
-
     const targetId = venueId || id;
     if (!targetId || wishlistLoading) return;
 
@@ -121,6 +114,9 @@ export function VenueCard({
 
       if (error) {
         setIsInWishlist(prev);
+        if (/sign in|signin|unauthor/i.test(error)) {
+          router.push("/auth/signin");
+        }
       }
     } catch {
       setIsInWishlist(prev);

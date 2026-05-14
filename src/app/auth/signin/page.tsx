@@ -4,11 +4,26 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Mail, Lock, ArrowRight, Sparkles, AlertCircle } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, getSession } from "next-auth/react";
+
+function roleHome(role?: string) {
+  if (role === "ADMIN") return "/admin";
+  if (role === "VENUE_OWNER") return "/venue-owner";
+  if (role === "CATERING_OWNER") return "/catering-owner";
+  return "/";
+}
+
+function sanitizeCallbackUrl(value: string | null): string | null {
+  if (!value || !value.startsWith("/")) return null;
+  if (value.startsWith("//")) return null;
+  return value;
+}
 
 export default function SignInPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = sanitizeCallbackUrl(searchParams.get("callbackUrl"));
   const [formData, setFormData] = useState({
     email: "",
     password: ""
@@ -37,17 +52,17 @@ export default function SignInPage() {
       // Fetch fresh session to get the user's role, then redirect directly
       const session = await getSession();
       const role = session?.user?.role;
+      const isPhoneVerified = Boolean(session?.user?.phoneVerified);
+      const defaultRedirect = roleHome(role);
+      const finalCallback = callbackUrl || defaultRedirect;
 
-      if (role === "ADMIN") {
-        router.push("/admin");
-      } else if (role === "VENUE_OWNER") {
-        router.push("/venue-owner");
-      } else if (role === "CATERING_OWNER") {
-        router.push("/catering-owner");
-      } else {
-        // Regular USER or unknown → homepage
-        router.push("/");
+      if (!isPhoneVerified) {
+        router.push(`/auth/verify-phone?callbackUrl=${encodeURIComponent(finalCallback)}`);
+        router.refresh();
+        return;
       }
+
+      router.push(finalCallback);
       router.refresh();
     } catch (err: any) {
       setError(err.message || "Failed to sign in");
@@ -75,7 +90,7 @@ export default function SignInPage() {
         {/* Google Sign In */}
         <button
           type="button"
-          onClick={() => signIn("google", { callbackUrl: "/" })}
+          onClick={() => signIn("google", { callbackUrl: callbackUrl || "/" })}
           className="mb-5 flex w-full items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white py-3.5 font-semibold text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md"
         >
           <svg className="h-5 w-5" viewBox="0 0 24 24">

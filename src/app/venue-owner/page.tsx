@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import dynamic from "next/dynamic";
 import { api } from "@/lib/api-client";
 import { Calendar, CheckCircle2, Clock, Users, Loader2, Building, MapPin, X, CalendarDays, Eye, Phone, Mail, IndianRupee, Wallet, ExternalLink } from "lucide-react";
-import AvailabilityCalendar from "@/components/calendar/AvailabilityCalendar";
-import BlockDateModal from "@/components/calendar/BlockDateModal";
-import EarningsDashboard from "@/components/owner/EarningsDashboard";
+
+const AvailabilityCalendar = dynamic(() => import("@/components/calendar/AvailabilityCalendar"));
+const BlockDateModal = dynamic(() => import("@/components/calendar/BlockDateModal"));
+const EarningsDashboard = dynamic(() => import("@/components/owner/EarningsDashboard"));
 
 type Venue = {
   id: string;
@@ -55,7 +57,7 @@ export default function VenueOwnerDashboard() {
   // Google Form URL for venue listing requests
   const VENUE_REQUEST_FORM_URL = "https://forms.gle/yourformid"; // Replace with actual Google Form URL
   
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       // Fetch venues
@@ -64,8 +66,8 @@ export default function VenueOwnerDashboard() {
         const data = venueRes.data as any;
         const venueList = Array.isArray(data.venues) ? data.venues : Array.isArray(data) ? data : [];
         setVenues(venueList);
-        if (venueList.length > 0 && !selectedVenueId) {
-          setSelectedVenueId(venueList[0].id);
+        if (venueList.length > 0) {
+          setSelectedVenueId(prev => prev || venueList[0].id);
         }
       }
       
@@ -80,12 +82,12 @@ export default function VenueOwnerDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/auth/signin");
     else if (status === "authenticated") fetchData();
-  }, [status, router]);
+  }, [status, router, fetchData]);
 
   if (status === "loading" || loading) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-purple-600" /></div>;

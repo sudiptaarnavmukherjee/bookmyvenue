@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/db";
+import { buildCatererVerificationNotes, KycDocument } from "@/lib/verification";
 
 // POST - Caterer owner requests verification for one of their caterers
 export async function POST(request: Request) {
@@ -13,11 +14,28 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { catererId } = body;
+    const { catererId, ownerNote, kycDocuments } = body as {
+      catererId?: string;
+      ownerNote?: string;
+      kycDocuments?: KycDocument[];
+    };
 
     if (!catererId) {
       return NextResponse.json({ error: "catererId is required" }, { status: 400 });
     }
+
+    const validKycDocuments = (Array.isArray(kycDocuments) ? kycDocuments : []).filter((doc) => {
+      return doc && typeof doc.label === "string" && typeof doc.url === "string" && doc.url.startsWith("http");
+    });
+
+    if (validKycDocuments.length === 0) {
+      return NextResponse.json(
+        { error: "Please upload at least one KYC document before requesting verification" },
+        { status: 400 }
+      );
+    }
+
+    const now = new Date();
 
     // Ensure this caterer belongs to the requesting owner
     const caterer = await prisma.caterer.findFirst({
@@ -44,7 +62,15 @@ export async function POST(request: Request) {
 
     const updated = await prisma.caterer.update({
       where: { id: catererId },
-      data: { verificationRequestedAt: new Date() },
+      data: {
+        verificationRequestedAt: now,
+        verificationNotes: buildCatererVerificationNotes({
+          status: "REQUESTED",
+          submittedAt: now.toISOString(),
+          ownerNote: ownerNote?.trim() || "",
+          kycDocuments: validKycDocuments,
+        }),
+      },
       select: { id: true, verificationRequestedAt: true },
     });
 
