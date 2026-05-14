@@ -38,6 +38,9 @@ export interface HomeStats {
   totalVenues: number;
   totalCaterers: number;
   completedBookings: number;
+  verifiedVenues: number;
+  verifiedCaterers: number;
+  avgCatererRating: number | null;
 }
 
 // ============================================
@@ -154,13 +157,35 @@ export const getFeaturedCaterers = unstable_cache(
  */
 export const getHomeStats = unstable_cache(
   async (): Promise<HomeStats> => {
-    const [totalVenues, totalCaterers, completedBookings] = await Promise.all([
+    const [
+      totalVenues,
+      totalCaterers,
+      completedBookings,
+      verifiedVenues,
+      verifiedCaterers,
+    ] = await Promise.all([
       prisma.venue.count({ where: { isActive: true, deletedAt: null } }),
       prisma.caterer.count({ where: { isActive: true } }),
       prisma.booking.count({ where: { status: "COMPLETED" } }),
+      prisma.venue.count({ where: { isActive: true, deletedAt: null, isVerified: true } }),
+      prisma.caterer.count({ where: { isActive: true, isVerified: true } }),
     ]);
 
-    return { totalVenues, totalCaterers, completedBookings };
+    // Get average caterer rating
+    const ratingAgg = await prisma.caterer.aggregate({
+      where: { isActive: true, rating: { gt: 0 } },
+      _avg: { rating: true },
+    });
+    const avgCatererRating = ratingAgg._avg.rating ? parseFloat(ratingAgg._avg.rating.toFixed(1)) : null;
+
+    return {
+      totalVenues,
+      totalCaterers,
+      completedBookings,
+      verifiedVenues,
+      verifiedCaterers,
+      avgCatererRating,
+    };
   },
   ["home-stats"],
   { revalidate: 3600, tags: ["stats"] } // 1 hour

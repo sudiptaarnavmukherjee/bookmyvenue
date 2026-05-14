@@ -1,10 +1,11 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { getFeaturedVenues, getFeaturedCaterers } from "@/lib/home-data";
+import { getFeaturedVenues, getFeaturedCaterers, getHomeStats } from "@/lib/home-data";
 import HomeInteractive from "@/components/home/HomeInteractive";
 import HomeTabContent from "@/components/home/HomeTabContent";
 import NearbySection from "@/components/home/NearbySection";
 import BusinessValueSection from "@/components/home/BusinessValueSection";
+import TrustSignalsSection from "@/components/home/TrustSignalsSection";
 import Logo from "@/components/layout/Logo";
 
 // ============================================
@@ -48,10 +49,12 @@ export default async function HomePage({
   // Pre-fetch both tabs server-side so client switching is instant (no extra API calls)
   let venues: Awaited<ReturnType<typeof getFeaturedVenues>> = [];
   let caterers: Awaited<ReturnType<typeof getFeaturedCaterers>> = [];
+  let stats: Awaited<ReturnType<typeof getHomeStats>> = { totalVenues: 0, totalCaterers: 0, completedBookings: 0, verifiedVenues: 0, verifiedCaterers: 0, avgCatererRating: null };
   try {
-    [venues, caterers] = await Promise.all([
+    [venues, caterers, stats] = await Promise.all([
       getFeaturedVenues(12),
       getFeaturedCaterers(12),
+      getHomeStats(),
     ]);
   } catch {
     // DB unavailable - render empty state gracefully
@@ -66,6 +69,9 @@ export default async function HomePage({
 
       {/* Phase 1 foundation: clear value proposition for users and owners */}
       <BusinessValueSection />
+
+      {/* Trust signals: showcase verified partners and completed events */}
+      <TrustSignalsSection stats={stats} />
 
       {/* Nearby Section - Client-side, reads GPS from localStorage */}
       <NearbySection />
