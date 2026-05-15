@@ -10,7 +10,7 @@ This roadmap replaces the older scattered planning notes and provides one clear 
 
 ---
 
-## Completed Phases (1-31)
+## Completed Phases (1-32)
 
 ### Foundation and Core (1-8) - COMPLETED
 1. Auth, role access, and secure session flow
@@ -48,18 +48,13 @@ This roadmap replaces the older scattered planning notes and provides one clear 
 29. Owner self-serve operations (guided cancellation requests, dispute note trails, scoped owner actions)
 30. Observability and SLOs (structured logs, synthetic latency dashboard, operational error budgets, incident checklist)
 31. Security hardening (rate-limit coverage review, tighter headers/CORS policy, stricter session settings)
+32. Production scale readiness (hot-endpoint cache review, cron lease safety, rollback and recovery playbook)
 
 ---
 
-## New Roadmap (32)
+## New Roadmap
 
-### Phase 32 - Production Scale Readiness - PLANNED
-Goal: Prepare for high traffic and operational resilience.
-
-Scope:
-- Cache strategy review across hot endpoints
-- Background job safety checks
-- Deployment rollback and recovery playbook
+No additional phases are currently planned in this roadmap version.
 
 ---
 

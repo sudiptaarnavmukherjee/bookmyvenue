@@ -8,17 +8,33 @@ import {
   type Coordinates 
 } from "@/lib/ola-maps";
 
+function clampInt(value: string | null, min: number, max: number, fallback: number) {
+  if (!value) return fallback;
+  const parsed = parseInt(value, 10);
+  if (Number.isNaN(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+}
+
+function buildCacheHeaders(hasCustomLocation: boolean) {
+  return {
+    "Cache-Control": hasCustomLocation
+      ? "public, s-maxage=20, stale-while-revalidate=60"
+      : "public, s-maxage=120, stale-while-revalidate=600",
+  };
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const lat = parseFloat(searchParams.get("lat") || "0");
     const lng = parseFloat(searchParams.get("lng") || "0");
-    const radius = parseInt(searchParams.get("radius") || "50000"); // Default 50km
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const radius = clampInt(searchParams.get("radius"), 1000, 100000, 50000); // Default 50km
+    const limit = clampInt(searchParams.get("limit"), 1, 40, 20);
     const type = searchParams.get("type") || "venues"; // venues or caterers
+    const hasCustomLocation = Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0;
 
     // Validate coordinates
-    const userLocation: Coordinates = (lat && lng) 
+    const userLocation: Coordinates = hasCustomLocation 
       ? { lat, lng } 
       : KOLKATA_CENTER;
 
@@ -112,12 +128,15 @@ export async function GET(request: Request) {
         .sort((a, b) => a.distanceMeters - b.distanceMeters)
         .slice(0, limit);
 
-      return NextResponse.json({
-        venues: venuesWithDistance,
-        userLocation,
-        radius,
-        total: venuesWithDistance.length,
-      });
+      return NextResponse.json(
+        {
+          venues: venuesWithDistance,
+          userLocation,
+          radius,
+          total: venuesWithDistance.length,
+        },
+        { headers: buildCacheHeaders(hasCustomLocation) }
+      );
     } else {
       // Fetch all active caterers
       const caterers = await prisma.caterer.findMany({
@@ -204,18 +223,24 @@ export async function GET(request: Request) {
         .sort((a, b) => a.distanceMeters - b.distanceMeters)
         .slice(0, limit);
 
-      return NextResponse.json({
-        caterers: caterersWithDistance,
-        userLocation,
-        radius,
-        total: caterersWithDistance.length,
-      });
+      return NextResponse.json(
+        {
+          caterers: caterersWithDistance,
+          userLocation,
+          radius,
+          total: caterersWithDistance.length,
+        },
+        { headers: buildCacheHeaders(hasCustomLocation) }
+      );
     }
   } catch (error: any) {
     console.error("Nearby API Error:", error?.message || error);
     return NextResponse.json(
       { error: "Failed to fetch nearby locations" },
-      { status: 500 }
+      {
+        status: 500,
+        headers: { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30" },
+      }
     );
   }
 }
