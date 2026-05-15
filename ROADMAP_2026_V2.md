@@ -10,7 +10,7 @@ This roadmap replaces the older scattered planning notes and provides one clear 
 
 ---
 
-## Completed Phases (1-28)
+## Completed Phases (1-29)
 
 ### Foundation and Core (1-8) - COMPLETED
 1. Auth, role access, and secure session flow
@@ -45,18 +45,11 @@ This roadmap replaces the older scattered planning notes and provides one clear 
 26. Reconciliation hub with mismatch reporting + CSV export
 27. Notification reliability (retry pipeline, delivery dashboard, provider failure alerts)
 28. Search performance and relevance (ranking tune, query caching, server pagination)
+29. Owner self-serve operations (guided cancellation requests, dispute note trails, scoped owner actions)
 
 ---
 
-## New Roadmap (29-32)
-
-### Phase 29 - Owner Self-Serve Operations - PLANNED
-Goal: Reduce admin load by enabling safe owner controls.
-
-Scope:
-- Better owner-side booking action permissions
-- Guided cancellation and refund request tools
-- Owner dispute note trails
+## New Roadmap (30-32)
 
 ### Phase 30 - Observability and SLOs - PLANNED
 Goal: Measure uptime and performance with enforceable targets.

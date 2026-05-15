@@ -70,6 +70,13 @@ type Booking = {
   bookingNumber: string;
   menuPackage: string;
   pricePerPlate: number;
+  ownerNotes?: string | null;
+  cancellationRequest?: {
+    id: string;
+    status: string;
+    refundAmount?: number | null;
+    refundStatus?: string | null;
+  } | null;
   user: {
     name: string;
     email: string;
@@ -187,35 +194,69 @@ export default function CateringOwnerDashboard() {
     fetchData();
   };
 
+  const callOwnerBookingAction = async (bookingId: string, payload: Record<string, unknown>) => {
+    const res = await fetch(`/api/owner/bookings/${bookingId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || "Action failed");
+    }
+    return data;
+  };
+
   const handleConfirm = async (id: string) => {
     try {
       setActionLoading(id);
-      const { error: err } = await api.confirmBooking(id);
-      
-      if (err) {
-        alert(`Failed to confirm: ${err}`);
-      } else {
-        alert("Booking confirmed!");
-        fetchData();
-      }
+      await callOwnerBookingAction(id, { action: "CONFIRM_BOOKING" });
+      alert("Booking confirmed!");
+      fetchData();
     } finally {
       setActionLoading(null);
     }
   };
 
-  const handleCancel = async (id: string) => {
-    if (!confirm("Cancel this booking?")) return;
-    
+  const handleCancellationRequest = async (id: string) => {
+    const reason = window.prompt("Cancellation reason (minimum 8 chars):", "Customer requested cancellation") || "";
+    if (reason.trim().length < 8) {
+      alert("Cancellation reason must be at least 8 characters.");
+      return;
+    }
+
+    const refundInput = window.prompt("Requested refund amount (optional, INR):", "");
+    const parsedRefund = refundInput && refundInput.trim().length > 0 ? Number(refundInput) : undefined;
+
     try {
       setActionLoading(id);
-      const { error: err } = await api.cancelBooking(id);
-      
-      if (err) {
-        alert(`Failed: ${err}`);
-      } else {
-        alert("Booking cancelled!");
-        fetchData();
-      }
+      await callOwnerBookingAction(id, {
+        action: "REQUEST_CANCELLATION",
+        reason,
+        requestedRefundAmount: Number.isFinite(parsedRefund) ? parsedRefund : undefined,
+      });
+      alert("Cancellation request submitted for admin review.");
+      fetchData();
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleAddDisputeNote = async (id: string) => {
+    const note = window.prompt("Add owner dispute note:", "") || "";
+    if (note.trim().length < 3) {
+      alert("Note must be at least 3 characters.");
+      return;
+    }
+
+    try {
+      setActionLoading(id);
+      await callOwnerBookingAction(id, {
+        action: "ADD_DISPUTE_NOTE",
+        note,
+      });
+      alert("Dispute note added.");
+      fetchData();
     } finally {
       setActionLoading(null);
     }
@@ -558,10 +599,26 @@ export default function CateringOwnerDashboard() {
                             <strong>Special Requests:</strong> {booking.message}
                           </p>
                         )}
+                        {booking.ownerNotes && (
+                          <p className="mt-2 text-sm text-indigo-700 bg-indigo-50 p-2 rounded whitespace-pre-wrap">
+                            <strong>Owner Notes Trail:</strong> {"\n"}{booking.ownerNotes}
+                          </p>
+                        )}
+                        {booking.cancellationRequest && (
+                          <p className="mt-2 text-sm text-rose-700 bg-rose-50 p-2 rounded">
+                            <strong>Dispute Status:</strong> {booking.cancellationRequest.status}
+                            {booking.cancellationRequest.refundAmount
+                              ? ` | Requested Refund: ₹${booking.cancellationRequest.refundAmount.toLocaleString("en-IN")}`
+                              : ""}
+                            {booking.cancellationRequest.refundStatus
+                              ? ` | Refund: ${booking.cancellationRequest.refundStatus}`
+                              : ""}
+                          </p>
+                        )}
                       </div>
 
-                      {booking.status === "PENDING" && (
-                        <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
+                        {booking.status === "PENDING" && (
                           <button
                             onClick={() => handleConfirm(booking.id)}
                             disabled={actionLoading === booking.id}
@@ -574,15 +631,24 @@ export default function CateringOwnerDashboard() {
                             )}
                             Confirm
                           </button>
+                        )}
+                        {booking.status !== "CANCELLED" && (
                           <button
-                            onClick={() => handleCancel(booking.id)}
+                            onClick={() => handleCancellationRequest(booking.id)}
                             disabled={actionLoading === booking.id}
                             className="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
                           >
-                            Cancel
+                            Request Cancellation
                           </button>
-                        </div>
-                      )}
+                        )}
+                        <button
+                          onClick={() => handleAddDisputeNote(booking.id)}
+                          disabled={actionLoading === booking.id}
+                          className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                        >
+                          Add Dispute Note
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}

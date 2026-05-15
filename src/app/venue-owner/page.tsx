@@ -56,6 +56,14 @@ type Booking = {
   totalAmount?: number;
   specialRequests?: string;
   createdAt: string;
+  ownerNotes?: string | null;
+  cancellationRequest?: {
+    id: string;
+    status: string;
+    refundAmount?: number | null;
+    refundStatus?: string | null;
+    processNotes?: string | null;
+  } | null;
   venue?: {
     id: string;
     name: string;
@@ -84,6 +92,7 @@ export default function VenueOwnerDashboard() {
   const [pricingSaving, setPricingSaving] = useState(false);
   const [pricingSuccess, setPricingSuccess] = useState(false);
   const [pricingError, setPricingError] = useState<string | null>(null);
+  const [bookingActionLoading, setBookingActionLoading] = useState<string | null>(null);
   
   // Google Form URL for venue listing requests
   const VENUE_REQUEST_FORM_URL = "https://forms.gle/yourformid"; // Replace with actual Google Form URL
@@ -164,6 +173,77 @@ export default function VenueOwnerDashboard() {
     if (status === "unauthenticated") router.push("/auth/signin");
     else if (status === "authenticated") fetchData();
   }, [status, router, fetchData]);
+
+  const callOwnerBookingAction = async (bookingId: string, payload: Record<string, unknown>) => {
+    const res = await fetch(`/api/owner/bookings/${bookingId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || "Action failed");
+    }
+    return data;
+  };
+
+  const handleConfirmBooking = async (bookingId: string) => {
+    try {
+      setBookingActionLoading(bookingId);
+      await callOwnerBookingAction(bookingId, { action: "CONFIRM_BOOKING" });
+      fetchData();
+    } catch (error: any) {
+      alert(error?.message || "Failed to confirm booking");
+    } finally {
+      setBookingActionLoading(null);
+    }
+  };
+
+  const handleRequestCancellation = async (bookingId: string) => {
+    const reason = window.prompt("Cancellation reason (minimum 8 chars):", "Customer requested cancellation") || "";
+    if (reason.trim().length < 8) {
+      alert("Cancellation reason must be at least 8 characters.");
+      return;
+    }
+
+    const refundInput = window.prompt("Requested refund amount (optional, INR):", "");
+    const parsedRefund = refundInput && refundInput.trim().length > 0 ? Number(refundInput) : undefined;
+
+    try {
+      setBookingActionLoading(bookingId);
+      await callOwnerBookingAction(bookingId, {
+        action: "REQUEST_CANCELLATION",
+        reason,
+        requestedRefundAmount: Number.isFinite(parsedRefund) ? parsedRefund : undefined,
+      });
+      fetchData();
+    } catch (error: any) {
+      alert(error?.message || "Failed to request cancellation");
+    } finally {
+      setBookingActionLoading(null);
+    }
+  };
+
+  const handleAddDisputeNote = async (bookingId: string) => {
+    const note = window.prompt("Add owner dispute note:", "") || "";
+    if (note.trim().length < 3) {
+      alert("Note must be at least 3 characters.");
+      return;
+    }
+
+    try {
+      setBookingActionLoading(bookingId);
+      await callOwnerBookingAction(bookingId, {
+        action: "ADD_DISPUTE_NOTE",
+        note,
+      });
+      fetchData();
+    } catch (error: any) {
+      alert(error?.message || "Failed to add note");
+    } finally {
+      setBookingActionLoading(null);
+    }
+  };
 
   if (status === "loading" || loading) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-purple-600" /></div>;
@@ -385,6 +465,49 @@ export default function VenueOwnerDashboard() {
                             <strong>Special Requests:</strong> {booking.specialRequests}
                           </p>
                         )}
+                        {booking.ownerNotes && (
+                          <p className="mt-2 text-sm text-indigo-700 bg-indigo-50 p-2 rounded whitespace-pre-wrap">
+                            <strong>Owner Notes Trail:</strong> {"\n"}{booking.ownerNotes}
+                          </p>
+                        )}
+                        {booking.cancellationRequest && (
+                          <p className="mt-2 text-sm text-rose-700 bg-rose-50 p-2 rounded">
+                            <strong>Dispute Status:</strong> {booking.cancellationRequest.status}
+                            {booking.cancellationRequest.refundAmount
+                              ? ` | Requested Refund: ₹${booking.cancellationRequest.refundAmount.toLocaleString("en-IN")}`
+                              : ""}
+                            {booking.cancellationRequest.refundStatus
+                              ? ` | Refund: ${booking.cancellationRequest.refundStatus}`
+                              : ""}
+                          </p>
+                        )}
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {booking.status === "PENDING" && (
+                            <button
+                              onClick={() => handleConfirmBooking(booking.id)}
+                              disabled={bookingActionLoading === booking.id}
+                              className="px-3 py-1.5 rounded-lg bg-green-600 text-white text-sm font-semibold disabled:opacity-60"
+                            >
+                              {bookingActionLoading === booking.id ? "Working..." : "Confirm Booking"}
+                            </button>
+                          )}
+                          {booking.status !== "CANCELLED" && (
+                            <button
+                              onClick={() => handleRequestCancellation(booking.id)}
+                              disabled={bookingActionLoading === booking.id}
+                              className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-sm font-semibold disabled:opacity-60"
+                            >
+                              Request Cancellation
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleAddDisputeNote(booking.id)}
+                            disabled={bookingActionLoading === booking.id}
+                            className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-60"
+                          >
+                            Add Dispute Note
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>

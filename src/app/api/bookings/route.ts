@@ -80,6 +80,7 @@ export async function GET(request: Request) {
               coverImage: true,
             },
           },
+          cancellationRequest: true,
           payments: true,
         },
         orderBy: {
@@ -115,6 +116,7 @@ export async function GET(request: Request) {
               coverImage: true,
             },
           },
+          cancellationRequest: true,
           payments: true,
         },
         orderBy: {
