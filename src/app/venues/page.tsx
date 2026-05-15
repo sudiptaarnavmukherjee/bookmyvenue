@@ -54,6 +54,7 @@ type Area = {
 };
 
 export default function VenuesPage() {
+  const PAGE_SIZE = 24;
   const [venues, setVenues] = useState<Venue[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,6 +62,10 @@ export default function VenuesPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [showSortSheet, setShowSortSheet] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalResults, setTotalResults] = useState(0);
   const [sortBy, setSortBy] = useState<"area" | "price-low" | "price-high" | "popular" | "newest" | "nearby">("area");
   const { location, loading: locationLoading, isPermissionDenied } = useLocation();
   const [selectedArea, setSelectedArea] = useState<string>("");
@@ -93,6 +98,17 @@ export default function VenuesPage() {
   }, []);
 
   useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+    }, 250);
+    return () => window.clearTimeout(timeoutId);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [sortBy, selectedArea, debouncedSearch, location?.lat, location?.lng]);
+
+  useEffect(() => {
     if (locationLoading) return;
     const fetchData = async () => {
       setLoading(true);
@@ -100,7 +116,10 @@ export default function VenuesPage() {
       try {
         const params = new URLSearchParams();
         params.set("sortBy", sortBy);
+        params.set("page", String(page));
+        params.set("limit", String(PAGE_SIZE));
         if (selectedArea) params.set("area", selectedArea);
+        if (debouncedSearch) params.set("search", debouncedSearch);
         if (location) {
           params.set("lat", location.lat.toString());
           params.set("lng", location.lng.toString());
@@ -112,15 +131,19 @@ export default function VenuesPage() {
         } else {
           setVenues(data.venues || []);
           if (data.areas) setAreas(data.areas);
+          setTotalPages(data.pagination?.totalPages || 1);
+          setTotalResults(data.pagination?.total || data.total || 0);
         }
       } catch (err: any) {
         setError(err.message || "Failed to load venues");
+        setTotalPages(1);
+        setTotalResults(0);
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, [sortBy, selectedArea, location, locationLoading]);
+  }, [sortBy, selectedArea, location, locationLoading, page, debouncedSearch]);
 
   useEffect(() => {
     const fetchAreas = async () => {
@@ -137,15 +160,6 @@ export default function VenuesPage() {
 
   const filteredVenues = useMemo(() => {
     return venues.filter((venue) => {
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        if (
-          !venue.name.toLowerCase().includes(q) &&
-          !venue.city.toLowerCase().includes(q) &&
-          !(venue.area || "").toLowerCase().includes(q)
-        )
-          return false;
-      }
       if (verifiedOnly && !venue.isVerified) return false;
       // Event type filter — only exclude if the venue has at least one event-type price set
       // (venues without any event pricing pass through to avoid hiding non-priced venues)
@@ -159,7 +173,7 @@ export default function VenuesPage() {
       }
       return true;
     });
-  }, [venues, searchQuery, verifiedOnly, eventTypeFilter]);
+  }, [venues, verifiedOnly, eventTypeFilter]);
 
   const clearFilters = useCallback(() => {
     setSearchQuery("");
@@ -167,6 +181,7 @@ export default function VenuesPage() {
     setSelectedArea("");
     setVerifiedOnly(false);
     setEventTypeFilter("MARRIAGE");
+    setPage(1);
   }, []);
 
   const getVenueImage = useCallback((venue: Venue) => {
@@ -198,7 +213,7 @@ export default function VenuesPage() {
               <ChevronLeft className="h-5 w-5 text-slate-600" />
               <div>
                 <h1 className="text-lg font-extrabold leading-tight text-slate-900">Compare Venues in {currentLocationLabel}</h1>
-                {!loading && <p className="text-xs text-slate-400">{filteredVenues.length} venue{filteredVenues.length !== 1 ? "s" : ""} • Research & shortlist</p>}
+                {!loading && <p className="text-xs text-slate-400">{totalResults} venue{totalResults !== 1 ? "s" : ""} • Research & shortlist</p>}
               </div>
             </button>
             <button
@@ -468,6 +483,28 @@ export default function VenuesPage() {
             ))}
           </div>
         )}
+
+        {!loading && !error && totalPages > 1 && (
+          <div className="mt-6 flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700 disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <p className="text-sm text-slate-600">
+              Page {page} of {totalPages}
+            </p>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700 disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
 
       {showSortSheet && (
@@ -639,7 +676,7 @@ export default function VenuesPage() {
                 onClick={() => setShowFilters(false)}
                 className="w-full py-4 bg-[#0b5fab] text-white rounded-2xl font-bold text-base hover:bg-[#084a86] transition-colors"
               >
-                Show {filteredVenues.length} Venue{filteredVenues.length !== 1 ? "s" : ""}
+                Show {totalResults} Venue{totalResults !== 1 ? "s" : ""}
               </button>
             </div>
           </div>

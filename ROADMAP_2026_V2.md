@@ -10,7 +10,7 @@ This roadmap replaces the older scattered planning notes and provides one clear 
 
 ---
 
-## Completed Phases (1-27)
+## Completed Phases (1-28)
 
 ### Foundation and Core (1-8) - COMPLETED
 1. Auth, role access, and secure session flow
@@ -44,18 +44,11 @@ This roadmap replaces the older scattered planning notes and provides one clear 
 25. Refund lifecycle tracking in dispute operations
 26. Reconciliation hub with mismatch reporting + CSV export
 27. Notification reliability (retry pipeline, delivery dashboard, provider failure alerts)
+28. Search performance and relevance (ranking tune, query caching, server pagination)
 
 ---
 
-## New Roadmap (28-32)
-
-### Phase 28 - Search Performance and Relevance - PLANNED
-Goal: Improve conversion via better discovery.
-
-Scope:
-- Search relevance tuning
-- Query caching strategy improvements
-- Pagination and ranking optimization
+## New Roadmap (29-32)
 
 ### Phase 29 - Owner Self-Serve Operations - PLANNED
 Goal: Reduce admin load by enabling safe owner controls.

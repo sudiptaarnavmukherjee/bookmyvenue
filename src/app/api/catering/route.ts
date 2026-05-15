@@ -3,10 +3,29 @@ import prisma from "@/lib/db";
 import { getAreaCoordinates } from "@/lib/ola-maps";
 import { assessCatererTrust } from "@/lib/listing-trust";
 
-// Cache headers - 30 second cache with stale-while-revalidate
-const CACHE_HEADERS = {
-  'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120',
-};
+const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 60;
+
+function buildCacheHeaders(search: string | null, lat: string | null, lng: string | null) {
+  if (search) {
+    return { "Cache-Control": "public, s-maxage=12, stale-while-revalidate=60" };
+  }
+  if (lat && lng) {
+    return { "Cache-Control": "public, s-maxage=20, stale-while-revalidate=90" };
+  }
+  return { "Cache-Control": "public, s-maxage=45, stale-while-revalidate=180" };
+}
+
+function clampInt(value: string | null, min: number, max: number, fallback: number) {
+  if (!value) return fallback;
+  const parsed = parseInt(value, 10);
+  if (Number.isNaN(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+}
+
+function normalizeSearch(value: string | null) {
+  return (value || "").trim().toLowerCase();
+}
 
 // Haversine formula to calculate distance between two coordinates
 function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -28,6 +47,54 @@ function formatDistance(distanceKm: number): string {
   return `${distanceKm.toFixed(1)}km`;
 }
 
+function buildCatererRelevanceScore(
+  caterer: {
+    name: string;
+    city: string;
+    area: string | null;
+    description: string | null;
+    cuisines: string | null;
+    isPureVeg: boolean;
+    isVerified: boolean;
+    viewCount: number | null;
+    _count: { reviews: number; bookings: number };
+  },
+  query: string,
+  distanceKm: number | null
+) {
+  if (!query) return 0;
+
+  let score = 0;
+  const name = caterer.name.toLowerCase();
+  const city = caterer.city.toLowerCase();
+  const area = (caterer.area || "").toLowerCase();
+  const description = (caterer.description || "").toLowerCase();
+  const cuisines = (caterer.cuisines || "").toLowerCase();
+
+  if (name === query) score += 120;
+  else if (name.startsWith(query)) score += 80;
+  else if (name.includes(query)) score += 55;
+
+  if (city === query || area === query) score += 38;
+  else if (city.startsWith(query) || area.startsWith(query)) score += 28;
+  else if (city.includes(query) || area.includes(query)) score += 18;
+
+  if (description.includes(query)) score += 10;
+  if (cuisines.includes(query)) score += 26;
+
+  if (caterer.isVerified) score += 8;
+  if (caterer.isPureVeg && (query.includes("veg") || query.includes("vegetarian"))) score += 20;
+  score += Math.min(14, Math.log10((caterer.viewCount || 0) + 1) * 6);
+  score += Math.min(14, caterer._count.reviews * 1.4);
+  score += Math.min(8, caterer._count.bookings * 0.8);
+
+  if (distanceKm !== null) {
+    score += Math.max(0, 20 - distanceKm);
+  }
+
+  return score;
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -40,6 +107,11 @@ export async function GET(request: Request) {
     const lat = searchParams.get("lat");
     const lng = searchParams.get("lng");
     const minGuests = searchParams.get("minGuests"); // For plate count filtering
+    const page = clampInt(searchParams.get("page"), 1, 500, 1);
+    const pageSize = clampInt(limit, 1, MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE);
+    const searchQuery = normalizeSearch(search);
+    const effectiveSortBy = sortBy === "newest" && searchQuery ? "relevance" : sortBy;
+    const cacheHeaders = buildCacheHeaders(search, lat, lng);
 
     const where: any = {
       isActive: true,
@@ -122,7 +194,6 @@ export async function GET(request: Request) {
           },
         },
       },
-      take: limit ? parseInt(limit) : undefined,
     });
 
     // Apply sorting
@@ -162,7 +233,7 @@ export async function GET(request: Request) {
       ? caterersWithDistance.filter(c => c.distanceKm !== null && c.distanceKm <= parseFloat(radius))
       : caterersWithDistance;
     
-    switch (sortBy) {
+    switch (effectiveSortBy) {
       case "nearby":
         radiusFiltered.sort((a, b) => {
           if (a.distanceKm === null && b.distanceKm === null) return 0;
@@ -198,6 +269,14 @@ export async function GET(request: Request) {
         break;
       case "rating":
         radiusFiltered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        break;
+      case "relevance":
+        radiusFiltered.sort((a, b) => {
+          const aScore = buildCatererRelevanceScore(a, searchQuery, a.distanceKm ?? null);
+          const bScore = buildCatererRelevanceScore(b, searchQuery, b.distanceKm ?? null);
+          if (bScore !== aScore) return bScore - aScore;
+          return (b.viewCount || 0) - (a.viewCount || 0);
+        });
         break;
       case "newest":
       default:
@@ -236,14 +315,35 @@ export async function GET(request: Request) {
         ...caterer,
         qualityScore: trust.qualityScore,
         priceConfidence: trust.priceConfidence,
+        relevanceScore: searchQuery
+          ? buildCatererRelevanceScore(caterer, searchQuery, caterer.distanceKm ?? null)
+          : undefined,
       };
     });
 
+    const total = enriched.length;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const safePage = Math.min(page, totalPages);
+    const start = (safePage - 1) * pageSize;
+    const pagedCaterers = enriched.slice(start, start + pageSize);
+
     return NextResponse.json({ 
-      caterers: enriched, 
+      caterers: pagedCaterers,
       areas,
-      total: enriched.length 
-    }, { headers: CACHE_HEADERS });
+      total,
+      pagination: {
+        page: safePage,
+        limit: pageSize,
+        total,
+        totalPages,
+        hasNextPage: safePage < totalPages,
+        hasPreviousPage: safePage > 1,
+      },
+      sorting: {
+        requested: sortBy,
+        effective: effectiveSortBy,
+      },
+    }, { headers: cacheHeaders });
   } catch (error: any) {
     console.error("Error fetching caterers:", error?.message || error);
     return NextResponse.json(
@@ -253,7 +353,7 @@ export async function GET(request: Request) {
         caterers: [],
         areas: []
       },
-      { status: 500, headers: CACHE_HEADERS }
+      { status: 500 }
     );
   }
 }

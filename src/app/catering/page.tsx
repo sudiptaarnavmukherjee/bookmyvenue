@@ -57,12 +57,17 @@ const SORT_OPTIONS = [
 ] as const;
 
 export default function CateringPage() {
+  const PAGE_SIZE = 20;
   const [caterers, setCaterers] = useState<Caterer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [showSortSheet, setShowSortSheet] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalResults, setTotalResults] = useState(0);
   const [sortBy, setSortBy] = useState<"default" | "price-low" | "price-high" | "veg-first" | "nearby">("default");
   const { location, loading: locationLoading, isPermissionDenied } = useLocation();
   const [selectedArea, setSelectedArea] = useState<string>("");
@@ -94,6 +99,17 @@ export default function CateringPage() {
   }, []);
 
   useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+    }, 250);
+    return () => window.clearTimeout(timeoutId);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [sortBy, selectedArea, pureVegOnly, debouncedSearch, location?.lat, location?.lng]);
+
+  useEffect(() => {
     if (locationLoading) return;
 
     const fetchData = async () => {
@@ -103,8 +119,11 @@ export default function CateringPage() {
       try {
         const params = new URLSearchParams();
 
+        params.set("page", String(page));
+        params.set("limit", String(PAGE_SIZE));
         if (selectedArea) params.set("area", selectedArea);
         if (pureVegOnly) params.set("isPureVeg", "true");
+        if (debouncedSearch) params.set("search", debouncedSearch);
         if (location) {
           params.set("lat", location.lat.toString());
           params.set("lng", location.lng.toString());
@@ -129,35 +148,31 @@ export default function CateringPage() {
         }
 
         setCaterers(nextCaterers);
+        setTotalPages(data.pagination?.totalPages || 1);
+        setTotalResults(data.pagination?.total || data.total || 0);
       } catch (err: any) {
         setError(err?.message || "Failed to load caterers");
         setCaterers([]);
+        setTotalPages(1);
+        setTotalResults(0);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [sortBy, selectedArea, pureVegOnly, location, locationLoading]);
+  }, [sortBy, selectedArea, pureVegOnly, location, locationLoading, page, debouncedSearch]);
 
   const filteredCaterers = useMemo(() => {
-    if (!searchQuery) return caterers;
-
-    const q = searchQuery.toLowerCase();
-    return caterers.filter((caterer) => {
-      return (
-        caterer.name.toLowerCase().includes(q) ||
-        caterer.city.toLowerCase().includes(q) ||
-        (caterer.area || "").toLowerCase().includes(q)
-      );
-    });
-  }, [caterers, searchQuery]);
+    return caterers;
+  }, [caterers]);
 
   const clearFilters = useCallback(() => {
     setSearchQuery("");
     setSortBy("default");
     setSelectedArea("");
     setPureVegOnly(false);
+    setPage(1);
   }, []);
 
   const getCatererImage = useCallback((c: Caterer) => {
@@ -183,7 +198,7 @@ export default function CateringPage() {
                 <h1 className="text-lg font-bold text-gray-900 leading-tight">Caterers in {currentLocationLabel}</h1>
                 {!loading && (
                   <p className="text-xs text-gray-400">
-                    {filteredCaterers.length} caterer{filteredCaterers.length !== 1 ? "s" : ""} found
+                    {totalResults} caterer{totalResults !== 1 ? "s" : ""} found
                   </p>
                 )}
               </div>
@@ -405,6 +420,28 @@ export default function CateringPage() {
             ))}
           </div>
         )}
+
+        {!loading && !error && totalPages > 1 && (
+          <div className="mt-6 flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700 disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <p className="text-sm text-slate-600">
+              Page {page} of {totalPages}
+            </p>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700 disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
 
       {showSortSheet && (
@@ -524,7 +561,7 @@ export default function CateringPage() {
                 onClick={() => setShowFilters(false)}
                 className="w-full py-4 bg-[#0b5fab] text-white rounded-2xl font-bold text-base hover:bg-[#084a86] transition-colors"
               >
-                Show {filteredCaterers.length} Caterer{filteredCaterers.length !== 1 ? "s" : ""}
+                Show {totalResults} Caterer{totalResults !== 1 ? "s" : ""}
               </button>
             </div>
           </div>

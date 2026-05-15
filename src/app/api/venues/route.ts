@@ -3,10 +3,29 @@ import prisma from "@/lib/db";
 import { getAreaCoordinates } from "@/lib/ola-maps";
 import { assessVenueTrust } from "@/lib/listing-trust";
 
-// Cache headers - 30 second cache with stale-while-revalidate
-const CACHE_HEADERS = {
-  'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120',
-};
+const DEFAULT_PAGE_SIZE = 24;
+const MAX_PAGE_SIZE = 60;
+
+function buildCacheHeaders(search: string | null, lat: string | null, lng: string | null) {
+  if (search) {
+    return { "Cache-Control": "public, s-maxage=12, stale-while-revalidate=60" };
+  }
+  if (lat && lng) {
+    return { "Cache-Control": "public, s-maxage=20, stale-while-revalidate=90" };
+  }
+  return { "Cache-Control": "public, s-maxage=45, stale-while-revalidate=180" };
+}
+
+function clampInt(value: string | null, min: number, max: number, fallback: number) {
+  if (!value) return fallback;
+  const parsed = parseInt(value, 10);
+  if (Number.isNaN(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+}
+
+function normalizeSearch(value: string | null) {
+  return (value || "").trim().toLowerCase();
+}
 
 // Haversine formula to calculate distance between two coordinates
 function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -28,6 +47,49 @@ function formatDistance(distanceKm: number): string {
   return `${distanceKm.toFixed(1)}km`;
 }
 
+function buildVenueRelevanceScore(
+  venue: {
+    name: string;
+    city: string;
+    area: string | null;
+    description: string | null;
+    isVerified: boolean;
+    viewCount: number | null;
+    _count: { reviews: number; bookings: number };
+  },
+  query: string,
+  distanceKm: number | null
+) {
+  if (!query) return 0;
+
+  let score = 0;
+  const name = venue.name.toLowerCase();
+  const city = venue.city.toLowerCase();
+  const area = (venue.area || "").toLowerCase();
+  const description = (venue.description || "").toLowerCase();
+
+  if (name === query) score += 120;
+  else if (name.startsWith(query)) score += 80;
+  else if (name.includes(query)) score += 55;
+
+  if (city === query || area === query) score += 40;
+  else if (city.startsWith(query) || area.startsWith(query)) score += 30;
+  else if (city.includes(query) || area.includes(query)) score += 20;
+
+  if (description.includes(query)) score += 10;
+
+  if (venue.isVerified) score += 10;
+  score += Math.min(14, Math.log10((venue.viewCount || 0) + 1) * 6);
+  score += Math.min(14, venue._count.reviews * 1.4);
+  score += Math.min(8, venue._count.bookings * 0.8);
+
+  if (distanceKm !== null) {
+    score += Math.max(0, 20 - distanceKm);
+  }
+
+  return score;
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -41,6 +103,11 @@ export async function GET(request: Request) {
     const lat = searchParams.get("lat");
     const lng = searchParams.get("lng");
     const date = searchParams.get("date");
+    const page = clampInt(searchParams.get("page"), 1, 500, 1);
+    const pageSize = clampInt(limit, 1, MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE);
+    const searchQuery = normalizeSearch(search);
+    const effectiveSortBy = sortBy === "newest" && searchQuery ? "relevance" : sortBy;
+    const cacheHeaders = buildCacheHeaders(search, lat, lng);
 
     const where: any = {
       isActive: true,
@@ -133,7 +200,6 @@ export async function GET(request: Request) {
           },
         },
       },
-      take: limit ? parseInt(limit) : undefined,
     });
 
     // Apply sorting
@@ -173,7 +239,7 @@ export async function GET(request: Request) {
       ? venuesWithDistance.filter(v => v.distanceKm !== null && v.distanceKm <= parseFloat(radius))
       : venuesWithDistance;
     
-    switch (sortBy) {
+    switch (effectiveSortBy) {
       case "nearby":
         radiusFiltered.sort((a, b) => {
           if (a.distanceKm === null && b.distanceKm === null) return 0;
@@ -206,6 +272,14 @@ export async function GET(request: Request) {
         break;
       case "popular":
         radiusFiltered.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
+        break;
+      case "relevance":
+        radiusFiltered.sort((a, b) => {
+          const aScore = buildVenueRelevanceScore(a, searchQuery, a.distanceKm ?? null);
+          const bScore = buildVenueRelevanceScore(b, searchQuery, b.distanceKm ?? null);
+          if (bScore !== aScore) return bScore - aScore;
+          return (b.viewCount || 0) - (a.viewCount || 0);
+        });
         break;
       case "newest":
       default:
@@ -244,14 +318,35 @@ export async function GET(request: Request) {
         ...venue,
         qualityScore: trust.qualityScore,
         priceConfidence: trust.priceConfidence,
+        relevanceScore: searchQuery
+          ? buildVenueRelevanceScore(venue, searchQuery, venue.distanceKm ?? null)
+          : undefined,
       };
     });
 
+    const total = enriched.length;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const safePage = Math.min(page, totalPages);
+    const start = (safePage - 1) * pageSize;
+    const pagedVenues = enriched.slice(start, start + pageSize);
+
     return NextResponse.json({ 
-      venues: enriched, 
+      venues: pagedVenues,
       areas,
-      total: enriched.length 
-    }, { headers: CACHE_HEADERS });
+      total,
+      pagination: {
+        page: safePage,
+        limit: pageSize,
+        total,
+        totalPages,
+        hasNextPage: safePage < totalPages,
+        hasPreviousPage: safePage > 1,
+      },
+      sorting: {
+        requested: sortBy,
+        effective: effectiveSortBy,
+      },
+    }, { headers: cacheHeaders });
   } catch (error: any) {
     console.error("Error fetching venues:", error?.message || error);
     return NextResponse.json(
@@ -261,7 +356,7 @@ export async function GET(request: Request) {
         venues: [],
         areas: []
       },
-      { status: 500, headers: CACHE_HEADERS }
+      { status: 500 }
     );
   }
 }
