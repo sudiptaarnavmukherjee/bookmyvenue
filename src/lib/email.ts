@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
 
 // Initialize Resend (or use Nodemailer as fallback)
@@ -98,6 +99,9 @@ function getEmailContent(template: EmailTemplate, data: Record<string, unknown>)
 // Send email function
 export async function sendEmail(params: SendEmailParams): Promise<boolean> {
   const { to, template, data, bookingId, userId } = params;
+  const metadataPayload = {
+    data: JSON.parse(JSON.stringify(data ?? {})),
+  } as Prisma.InputJsonValue;
 
   try {
     const { subject, html } = getEmailContent(template, data);
@@ -135,6 +139,7 @@ export async function sendEmail(params: SendEmailParams): Promise<boolean> {
         messageId,
         provider: resend ? "resend" : "dev",
         error,
+        metadata: metadataPayload,
         bookingId,
         userId,
         sentAt: error ? null : new Date(),
@@ -153,6 +158,7 @@ export async function sendEmail(params: SendEmailParams): Promise<boolean> {
         template,
         status: "FAILED",
         error: err instanceof Error ? err.message : "Unknown error",
+        metadata: metadataPayload,
         bookingId,
         userId,
       },

@@ -10,7 +10,7 @@ This roadmap replaces the older scattered planning notes and provides one clear 
 
 ---
 
-## Completed Phases (1-26)
+## Completed Phases (1-27)
 
 ### Foundation and Core (1-8) - COMPLETED
 1. Auth, role access, and secure session flow
@@ -43,18 +43,11 @@ This roadmap replaces the older scattered planning notes and provides one clear 
 24. Performance optimization (Cloudinary URL transforms + caching path hardening)
 25. Refund lifecycle tracking in dispute operations
 26. Reconciliation hub with mismatch reporting + CSV export
+27. Notification reliability (retry pipeline, delivery dashboard, provider failure alerts)
 
 ---
 
-## New Roadmap (27-32)
-
-### Phase 27 - Notification Reliability - PLANNED
-Goal: Ensure message delivery consistency across email/SMS/push.
-
-Scope:
-- Retry strategy for failed sends
-- Delivery status dashboard
-- Alerting for repeated provider failures
+## New Roadmap (28-32)
 
 ### Phase 28 - Search Performance and Relevance - PLANNED
 Goal: Improve conversion via better discovery.

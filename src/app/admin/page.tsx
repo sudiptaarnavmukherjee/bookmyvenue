@@ -311,6 +311,12 @@ export default function AdminDashboard() {
             >
               Reconciliation Hub
             </Link>
+            <Link
+              href="/admin/notifications"
+              className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-all"
+            >
+              Notification Reliability
+            </Link>
           </div>
         </div>
 
@@ -536,6 +542,22 @@ export default function AdminDashboard() {
               </div>
               <div className="h-12 w-12 rounded-xl bg-rose-100 flex items-center justify-center group-hover:bg-rose-200 transition-colors">
                 <BellRing className="h-6 w-6 text-rose-600" />
+              </div>
+            </div>
+          </Link>
+          <Link
+            href="/admin/notifications"
+            className="glass-card rounded-2xl p-5 hover:shadow-lg transition-all group"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-gray-900 group-hover:text-emerald-600 transition-colors">
+                  Notification Reliability
+                </h3>
+                <p className="text-sm text-gray-600">Retries, delivery failures, and provider alerts</p>
+              </div>
+              <div className="h-12 w-12 rounded-xl bg-emerald-100 flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
+                <AlertCircle className="h-6 w-6 text-emerald-600" />
               </div>
             </div>
           </Link>
