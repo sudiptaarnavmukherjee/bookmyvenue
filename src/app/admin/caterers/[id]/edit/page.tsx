@@ -28,6 +28,14 @@ const KOLKATA_AREAS = [
   "Lake Town", "Kankurgachi", "Phoolbagan", "Entally", "Park Circus",
 ];
 
+const INDIAN_STATES = [
+  "West Bengal", "Maharashtra", "Delhi", "Karnataka", "Tamil Nadu",
+  "Uttar Pradesh", "Gujarat", "Punjab", "Rajasthan", "Andhra Pradesh",
+  "Telangana", "Kerala", "Jharkhand", "Odisha", "Bihar",
+  "Madhya Pradesh", "Haryana", "Himachal Pradesh", "Uttarakhand", "Assam",
+  "Goa", "Tripura", "Mizoram", "Manipur", "Meghalya", "Nagaland", "Sikkim",
+];
+
 const CUISINES = [
   "Bengali", "North Indian", "South Indian", "Chinese",
   "Mughlai", "Continental", "Italian", "Thai",
@@ -37,7 +45,7 @@ const CUISINES = [
 
 type FormData = {
   name: string; description: string;
-  city: string; area: string; address: string; pincode: string;
+  state: string; city: string; area: string; address: string; pincode: string;
   latitude: number | null; longitude: number | null; googleMapsUrl: string;
   silverPrice: string; goldPrice: string; platinumPrice: string; minPlatePrice: string;
   isPureVeg: boolean;
@@ -61,7 +69,7 @@ export default function EditCatererPage({
 
   const [formData, setFormData] = useState<FormData>({
     name: "", description: "",
-    city: "Kolkata", area: "", address: "", pincode: "",
+    state: "West Bengal", city: "Kolkata", area: "", address: "", pincode: "",
     latitude: null, longitude: null, googleMapsUrl: "",
     silverPrice: "", goldPrice: "", platinumPrice: "", minPlatePrice: "",
     isPureVeg: false,
@@ -91,6 +99,7 @@ export default function EditCatererPage({
       setFormData({
         name: caterer.name || "",
         description: caterer.description || "",
+        state: caterer.state || "West Bengal",
         city: caterer.city || "Kolkata",
         area: caterer.area || "",
         address: caterer.address || "",
@@ -168,6 +177,7 @@ export default function EditCatererPage({
         body: JSON.stringify({
           name: formData.name,
           description: formData.description,
+          state: formData.state,
           city: formData.city,
           area: formData.area,
           address: formData.address,
@@ -281,19 +291,41 @@ export default function EditCatererPage({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Area</label>
-                <select name="area" value={formData.area} onChange={handleInputChange}
+                <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                <select name="state" value={formData.state} onChange={handleInputChange}
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500">
-                  <option value="">Select Area</option>
-                  {KOLKATA_AREAS.map((a) => <option key={a} value={a}>{a}</option>)}
+                  {INDIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Full Address</label>
-                <input type="text" name="address" value={formData.address} onChange={handleInputChange}
-                  placeholder="Street address..."
+                <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                <input type="text" name="city" value={formData.city} onChange={handleInputChange}
+                  placeholder="e.g., Kolkata"
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500" />
               </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Locality / Area</label>
+              <select name="area" value={formData.area} onChange={handleInputChange}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500">
+                <option value="">Select Locality</option>
+                {KOLKATA_AREAS.map((a) => <option key={a} value={a}>{a}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Street Address *</label>
+              <input type="text" name="address" value={formData.address} onChange={handleInputChange}
+                placeholder="Building name, house number, street..."
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500" />
+              <p className="text-xs text-gray-500 mt-1">Include building name, house number, and street details</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Pincode *</label>
+              <input type="text" name="pincode" value={formData.pincode} onChange={handleInputChange}
+                placeholder="e.g., 700064"
+                maxLength={6}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500" />
+              <p className="text-xs text-gray-500 mt-1">6-digit Indian postal code</p>
             </div>
 
             {/* Pure Veg toggle */}

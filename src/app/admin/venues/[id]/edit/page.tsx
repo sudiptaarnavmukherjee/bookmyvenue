@@ -28,6 +28,14 @@ const KOLKATA_AREAS = [
   "Lake Town", "Kankurgachi", "Phoolbagan", "Entally", "Park Circus",
 ];
 
+const INDIAN_STATES = [
+  "West Bengal", "Maharashtra", "Delhi", "Karnataka", "Tamil Nadu",
+  "Uttar Pradesh", "Gujarat", "Punjab", "Rajasthan", "Andhra Pradesh",
+  "Telangana", "Kerala", "Jharkhand", "Odisha", "Bihar",
+  "Madhya Pradesh", "Haryana", "Himachal Pradesh", "Uttarakhand", "Assam",
+  "Goa", "Tripura", "Mizoram", "Manipur", "Meghalya", "Nagaland", "Sikkim",
+];
+
 const VENUE_TYPES = [
   "Banquet Hall", "Marriage Hall", "Lawn/Garden", "Resort",
   "Hotel", "Farmhouse", "Rooftop", "Community Hall",
@@ -47,6 +55,7 @@ type FormData = {
   name: string;
   description: string;
   venueType: string;
+  state: string;
   city: string;
   area: string;
   address: string;
@@ -84,6 +93,7 @@ export default function EditVenuePage({
     name: "",
     description: "",
     venueType: "Banquet Hall",
+    state: "West Bengal",
     city: "Kolkata",
     area: "",
     address: "",
@@ -126,6 +136,7 @@ export default function EditVenuePage({
         name: venue.name || "",
         description: venue.description || "",
         venueType: venue.venueType || "Banquet Hall",
+        state: venue.state || "West Bengal",
         city: venue.city || "Kolkata",
         area: venue.area || "",
         address: venue.address || "",
@@ -212,6 +223,7 @@ export default function EditVenuePage({
           name: formData.name,
           description: formData.description,
           venueType: formData.venueType,
+          state: formData.state,
           city: formData.city,
           area: formData.area,
           address: formData.address,
@@ -345,19 +357,43 @@ export default function EditVenuePage({
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Area</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                <select name="state" value={formData.state} onChange={handleInputChange}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500">
+                  {INDIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                <input type="text" name="city" value={formData.city} onChange={handleInputChange}
+                  placeholder="e.g., Kolkata"
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Locality / Area</label>
                 <select name="area" value={formData.area} onChange={handleInputChange}
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500">
-                  <option value="">Select Area</option>
+                  <option value="">Select Locality</option>
                   {KOLKATA_AREAS.map((a) => <option key={a} value={a}>{a}</option>)}
                 </select>
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Full Address</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Street Address *</label>
               <input type="text" name="address" value={formData.address}
-                onChange={handleInputChange} placeholder="Street address, building name..."
+                onChange={handleInputChange} placeholder="Building name, house number, street..."
                 className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500" />
+              <p className="text-xs text-gray-500 mt-1">Include building name, house number, and street details</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Pincode *</label>
+              <input type="text" name="pincode" value={formData.pincode}
+                onChange={handleInputChange} placeholder="e.g., 700064"
+                maxLength={6}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500" />
+              <p className="text-xs text-gray-500 mt-1">6-digit Indian postal code</p>
             </div>
           </div>
         </div>
