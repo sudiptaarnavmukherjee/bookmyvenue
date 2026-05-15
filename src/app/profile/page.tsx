@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { api } from "@/lib/api-client";
 
+import { PushNotificationToggle } from "@/components/pwa/PushNotificationToggle";
+
 type OtpStep = "idle" | "sending" | "sent" | "verifying" | "done";
 
 export default function ProfilePage() {
@@ -386,6 +388,21 @@ export default function ProfilePage() {
               </motion.div>
             )}
           </div>
+        </motion.div>
+
+        {/* Additional Stats for Owners */}
+        {/* Notification Preferences */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="mt-6 glass-card rounded-3xl p-8"
+        >
+          <h2 className="text-2xl font-bold text-gradient mb-4">Notifications</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Stay updated with booking confirmations, reminders, and important alerts.
+          </p>
+          <PushNotificationToggle />
         </motion.div>
 
         {/* Additional Stats for Owners */}

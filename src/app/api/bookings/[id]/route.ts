@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { sendTemplatedEmail } from "@/lib/email-templates";
+import { sendPushToUser } from "@/lib/push";
 
 export async function GET(
   request: Request,
@@ -97,6 +98,11 @@ export async function PATCH(
       },
     });
 
+    // Fetch the customer's push subscriptions for notification
+    const customerPushSubs = existingBooking?.userId
+      ? await prisma.pushSubscription.findMany({ where: { userId: existingBooking.userId } })
+      : [];
+
     const booking = await prisma.booking.update({
       where: {
         id: params.id,
@@ -142,6 +148,15 @@ export async function PATCH(
             </div>
           `,
         }).catch((e) => console.error("Booking confirmed email error:", e));
+
+              // Push notification
+              if (customerPushSubs.length) {
+                sendPushToUser(customerPushSubs, {
+                  title: "Booking Confirmed! 🎉",
+                  body: `Your booking for ${listingName} on ${formattedDate} is confirmed.`,
+                  url: `/bookings/${params.id}`,
+                }).catch((e) => console.error("Booking confirmed push error:", e));
+              }
       } else if (newStatus === "CANCELLED") {
         sendTemplatedEmail({
           to: existingBooking.customerEmail,
