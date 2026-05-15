@@ -26,6 +26,7 @@ import {
   MessageSquare,
   UserCog,
   BellRing,
+  Scale,
 } from "lucide-react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -289,6 +290,24 @@ export default function AdminDashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="mb-6 rounded-2xl border border-rose-200 bg-gradient-to-r from-rose-50 to-orange-50 p-4 sm:p-5">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="rounded-xl bg-white/80 p-2">
+              <Scale className="h-5 w-5 text-rose-600" />
+            </div>
+            <div className="flex-1 min-w-[220px]">
+              <p className="text-sm font-semibold text-rose-900">New: Dispute Resolution Desk</p>
+              <p className="text-xs text-rose-700">Review cancellation disputes, approve/reject claims, and adjust refund outcomes.</p>
+            </div>
+            <Link
+              href="/admin/disputes"
+              className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 transition-all"
+            >
+              Open Disputes
+            </Link>
+          </div>
+        </div>
+
         {stats && stats.pendingVerifications > 0 && (
           <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-center gap-3">
             <BellRing className="h-6 w-6 text-amber-600" />
