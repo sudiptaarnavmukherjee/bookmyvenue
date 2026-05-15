@@ -10,7 +10,7 @@ This roadmap replaces the older scattered planning notes and provides one clear 
 
 ---
 
-## Completed Phases (1-24)
+## Completed Phases (1-26)
 
 ### Foundation and Core (1-8) - COMPLETED
 1. Auth, role access, and secure session flow
@@ -41,35 +41,12 @@ This roadmap replaces the older scattered planning notes and provides one clear 
 22. Admin dispute resolution dashboard (single actions)
 23. Bulk dispute actions + audit logging
 24. Performance optimization (Cloudinary URL transforms + caching path hardening)
+25. Refund lifecycle tracking in dispute operations
+26. Reconciliation hub with mismatch reporting + CSV export
 
 ---
 
-## New Roadmap (25-32)
-
-### Phase 25 - Refund Lifecycle Tracking - ACTIVE
-Goal: Make dispute handling financially traceable end-to-end.
-
-Scope:
-- Add refund lifecycle controls (PENDING/PROCESSING/COMPLETED/FAILED)
-- Persist refund reference IDs
-- Update cancellation and payment records on refund completion
-- Add refund lifecycle audit logs
-- Show and edit refund lifecycle in admin dispute UI
-
-Success Criteria:
-- Admin can update refund status from disputes screen
-- Refund status and reference are persisted per cancellation
-- Payment refund statuses update when refund is completed
-- Audit trail exists for every refund lifecycle change
-
-### Phase 26 - Reconciliation Report Hub - PLANNED
-Goal: Give finance a clean daily/weekly reconciliation surface.
-
-Scope:
-- Reconciliation API endpoint by date range
-- Group by refund state and payout state
-- CSV export for finance operations
-- Mismatch flags (approved cancellation without completed refund)
+## New Roadmap (27-32)
 
 ### Phase 27 - Notification Reliability - PLANNED
 Goal: Ensure message delivery consistency across email/SMS/push.

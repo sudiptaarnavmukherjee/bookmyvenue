@@ -305,6 +305,12 @@ export default function AdminDashboard() {
             >
               Open Disputes
             </Link>
+            <Link
+              href="/admin/reconciliation"
+              className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-all"
+            >
+              Reconciliation Hub
+            </Link>
           </div>
         </div>
 
