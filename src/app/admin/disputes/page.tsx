@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 type CancellationStatus = "PENDING" | "APPROVED" | "REJECTED";
+type RefundStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
 
 interface CancellationRequestRow {
   id: string;
@@ -38,6 +39,8 @@ interface CancellationRequestRow {
   reason: string;
   requestedBy: string;
   status: CancellationStatus;
+  refundStatus?: RefundStatus | null;
+  refundId?: string | null;
   createdAt: string;
   approvedAt: string | null;
   refundedAt: string | null;
@@ -68,6 +71,9 @@ export default function AdminDisputesPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkNote, setBulkNote] = useState("");
   const [bulkActionLoading, setBulkActionLoading] = useState<"APPROVE" | "REJECT" | null>(null);
+  const [refundStatusById, setRefundStatusById] = useState<Record<string, RefundStatus>>({});
+  const [refundRefById, setRefundRefById] = useState<Record<string, string>>({});
+  const [refundUpdatingId, setRefundUpdatingId] = useState<string | null>(null);
 
   const fetchRequests = useCallback(async () => {
     try {
@@ -88,6 +94,15 @@ export default function AdminDisputesPage() {
       setRows(nextRows);
       const idSet = new Set(nextRows.map((row) => row.id));
       setSelectedIds((current) => current.filter((id) => idSet.has(id)));
+
+      const nextRefundStatuses: Record<string, RefundStatus> = {};
+      const nextRefundRefs: Record<string, string> = {};
+      for (const row of nextRows) {
+        nextRefundStatuses[row.id] = (row.refundStatus || "PENDING") as RefundStatus;
+        nextRefundRefs[row.id] = row.refundId || "";
+      }
+      setRefundStatusById(nextRefundStatuses);
+      setRefundRefById(nextRefundRefs);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Failed to load dispute queue");
     } finally {
@@ -145,6 +160,40 @@ export default function AdminDisputesPage() {
       setError(processError instanceof Error ? processError.message : "Failed to process dispute");
     } finally {
       setProcessingId(null);
+    }
+  }
+
+  async function updateRefundLifecycle(id: string) {
+    try {
+      setRefundUpdatingId(id);
+      setError(null);
+      setMessage(null);
+
+      const response = await fetch("/api/admin/cancellations", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id,
+          action: "UPDATE_REFUND",
+          refundStatus: refundStatusById[id] || "PENDING",
+          refundId: (refundRefById[id] || "").trim() || undefined,
+          reason: (noteById[id] || "").trim() || undefined,
+        }),
+      });
+
+      const data = (await response.json()) as { error?: string; message?: string };
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to update refund lifecycle");
+      }
+
+      setMessage(data.message || "Refund lifecycle updated");
+      await fetchRequests();
+    } catch (refundError) {
+      setError(refundError instanceof Error ? refundError.message : "Failed to update refund lifecycle");
+    } finally {
+      setRefundUpdatingId(null);
     }
   }
 
@@ -363,8 +412,11 @@ export default function AdminDisputesPage() {
           ) : (
             rows.map((row) => {
               const isPending = row.status === "PENDING";
+              const isApproved = row.status === "APPROVED";
               const isProcessing = processingId === row.id;
               const isSelected = selectedIds.includes(row.id);
+              const effectiveRefundStatus = refundStatusById[row.id] || (row.refundStatus as RefundStatus) || "PENDING";
+              const isRefundUpdating = refundUpdatingId === row.id;
 
               return (
                 <div key={row.id} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -452,6 +504,49 @@ export default function AdminDisputesPage() {
                           Reject
                         </button>
                       </div>
+                    </div>
+                  ) : null}
+
+                  {isApproved ? (
+                    <div className="mt-4 grid gap-3 border-t border-gray-100 pt-4 md:grid-cols-4">
+                      <select
+                        value={effectiveRefundStatus}
+                        onChange={(event) =>
+                          setRefundStatusById((current) => ({
+                            ...current,
+                            [row.id]: event.target.value as RefundStatus,
+                          }))
+                        }
+                        className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none"
+                      >
+                        <option value="PENDING">Refund Pending</option>
+                        <option value="PROCESSING">Refund Processing</option>
+                        <option value="COMPLETED">Refund Completed</option>
+                        <option value="FAILED">Refund Failed</option>
+                      </select>
+
+                      <input
+                        type="text"
+                        value={refundRefById[row.id] ?? ""}
+                        onChange={(event) =>
+                          setRefundRefById((current) => ({ ...current, [row.id]: event.target.value }))
+                        }
+                        className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none"
+                        placeholder="Refund reference / gateway ID"
+                      />
+
+                      <div className="flex items-center text-sm text-gray-600">
+                        Current: <span className="ml-1 rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">{row.refundStatus || "PENDING"}</span>
+                      </div>
+
+                      <button
+                        disabled={isRefundUpdating}
+                        onClick={() => updateRefundLifecycle(row.id)}
+                        className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {isRefundUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                        Update Refund
+                      </button>
                     </div>
                   ) : null}
                 </div>

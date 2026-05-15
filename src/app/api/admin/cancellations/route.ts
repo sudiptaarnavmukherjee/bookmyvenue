@@ -6,7 +6,17 @@ import { prisma } from "@/lib/prisma";
 import { sendCancellationSMS } from "@/lib/sms";
 import { sendCancellationEmail } from "@/lib/email-templates";
 
-type CancellationAction = "APPROVE" | "REJECT";
+type CancellationAction = "APPROVE" | "REJECT" | "UPDATE_REFUND";
+type RefundLifecycleStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
+
+function isValidRefundStatus(value: unknown): value is RefundLifecycleStatus {
+  return (
+    value === "PENDING" ||
+    value === "PROCESSING" ||
+    value === "COMPLETED" ||
+    value === "FAILED"
+  );
+}
 
 async function processCancellationRequest(params: {
   id: string;
@@ -146,6 +156,137 @@ async function processCancellationRequest(params: {
   } as const;
 }
 
+async function updateRefundLifecycle(params: {
+  id: string;
+  adminUserId: string;
+  refundStatus: RefundLifecycleStatus;
+  refundId?: string;
+  reason?: string;
+}) {
+  const { id, adminUserId, refundStatus, refundId, reason } = params;
+
+  const cancellation = await prisma.cancellationRequest.findUnique({
+    where: { id },
+    include: {
+      booking: {
+        include: {
+          payments: {
+            where: {
+              status: "COMPLETED",
+            },
+            orderBy: {
+              paidAt: "asc",
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!cancellation) {
+    return {
+      success: false,
+      statusCode: 404,
+      error: "Cancellation request not found",
+    } as const;
+  }
+
+  if (cancellation.status !== "APPROVED") {
+    return {
+      success: false,
+      statusCode: 400,
+      error: "Refund lifecycle can only be updated for approved cancellations",
+    } as const;
+  }
+
+  const updatePayload: {
+    refundStatus: RefundLifecycleStatus;
+    refundId?: string;
+    refundedAt?: Date | null;
+    processNotes?: string;
+  } = {
+    refundStatus,
+  };
+
+  if (refundId !== undefined) {
+    updatePayload.refundId = refundId;
+  }
+
+  if (refundStatus === "COMPLETED") {
+    updatePayload.refundedAt = new Date();
+  } else if (refundStatus === "FAILED") {
+    updatePayload.refundedAt = null;
+  }
+
+  if (reason && reason.trim().length > 0) {
+    updatePayload.processNotes = reason.trim();
+  }
+
+  const updatedCancellation = await prisma.cancellationRequest.update({
+    where: { id },
+    data: updatePayload,
+  });
+
+  if (refundStatus === "COMPLETED" && cancellation.refundAmount && cancellation.refundAmount > 0) {
+    let remainingRefund = cancellation.refundAmount;
+    const paymentUpdates = [] as ReturnType<typeof prisma.payment.update>[];
+
+    for (const payment of cancellation.booking.payments) {
+      if (remainingRefund <= 0) {
+        break;
+      }
+
+      const paymentRefundAmount = Math.min(payment.amount, remainingRefund);
+      remainingRefund -= paymentRefundAmount;
+
+      paymentUpdates.push(
+        prisma.payment.update({
+          where: { id: payment.id },
+          data: {
+            status: paymentRefundAmount >= payment.amount ? "REFUNDED" : "PARTIALLY_REFUNDED",
+            refundAmount: paymentRefundAmount,
+            refundId: refundId || payment.refundId,
+            refundedAt: new Date(),
+          },
+        })
+      );
+    }
+
+    if (paymentUpdates.length > 0) {
+      await prisma.$transaction(paymentUpdates);
+    }
+  }
+
+  try {
+    await prisma.auditLog.create({
+      data: {
+        action: "CANCELLATION_REFUND_UPDATED",
+        entityType: "CANCELLATION",
+        entityId: cancellation.id,
+        userId: adminUserId,
+        details: {
+          cancellationId: cancellation.id,
+          bookingId: cancellation.bookingId,
+          bookingNumber: cancellation.booking.bookingNumber,
+          previousRefundStatus: cancellation.refundStatus || null,
+          newRefundStatus: refundStatus,
+          refundId: refundId || cancellation.refundId || null,
+          refundAmount: cancellation.refundAmount || 0,
+          reason: reason || null,
+        },
+      },
+    });
+  } catch (auditError) {
+    console.error("Refund audit log creation failed:", auditError);
+  }
+
+  return {
+    success: true,
+    cancellation: updatedCancellation,
+    message: `Refund status updated to ${refundStatus}`,
+  } as const;
+}
+
 // GET /api/admin/cancellations - List all cancellation requests
 export async function GET(request: NextRequest) {
   try {
@@ -210,6 +351,8 @@ export async function GET(request: NextRequest) {
       reason: c.reason,
       requestedBy: c.requestedBy,
       status: c.status,
+      refundStatus: c.refundStatus,
+      refundId: c.refundId,
       createdAt: c.createdAt,
       approvedAt: c.approvedAt,
       refundedAt: c.refundedAt,
@@ -242,7 +385,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, ids, action, reason, adjustedRefundAmount } = body;
+    const { id, ids, action, reason, adjustedRefundAmount, refundStatus, refundId } = body;
 
     const actionType = action as CancellationAction;
     const targetIds = Array.isArray(ids)
@@ -258,11 +401,77 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    if (!["APPROVE", "REJECT"].includes(actionType)) {
+    if (!["APPROVE", "REJECT", "UPDATE_REFUND"].includes(actionType)) {
       return NextResponse.json(
-        { error: "Invalid action. Must be APPROVE or REJECT" },
+        { error: "Invalid action. Must be APPROVE, REJECT, or UPDATE_REFUND" },
         { status: 400 }
       );
+    }
+
+    if (actionType === "UPDATE_REFUND") {
+      if (!isValidRefundStatus(refundStatus)) {
+        return NextResponse.json(
+          { error: "Invalid refundStatus. Must be PENDING, PROCESSING, COMPLETED, or FAILED" },
+          { status: 400 }
+        );
+      }
+
+      if (targetIds.length > 1 && refundId) {
+        return NextResponse.json(
+          { error: "refundId can only be set for single refund update" },
+          { status: 400 }
+        );
+      }
+
+      if (targetIds.length === 1) {
+        const refundResult = await updateRefundLifecycle({
+          id: targetIds[0],
+          adminUserId: session.user.id,
+          refundStatus,
+          refundId,
+          reason,
+        });
+
+        if (!refundResult.success) {
+          return NextResponse.json({ error: refundResult.error }, { status: refundResult.statusCode });
+        }
+
+        return NextResponse.json({
+          success: true,
+          cancellation: refundResult.cancellation,
+          message: refundResult.message,
+        });
+      }
+
+      const refundResults = [] as Array<{ id: string; success: boolean; error?: string }>;
+      for (const targetId of targetIds) {
+        const refundResult = await updateRefundLifecycle({
+          id: targetId,
+          adminUserId: session.user.id,
+          refundStatus,
+          reason,
+        });
+
+        refundResults.push({
+          id: targetId,
+          success: refundResult.success,
+          error: refundResult.success ? undefined : refundResult.error,
+        });
+      }
+
+      const successfulRefundUpdates = refundResults.filter((item) => item.success).length;
+      const failedRefundUpdates = refundResults.length - successfulRefundUpdates;
+
+      return NextResponse.json({
+        success: true,
+        message: `${successfulRefundUpdates} refund status update(s) applied${failedRefundUpdates > 0 ? `, ${failedRefundUpdates} failed` : ""}`,
+        results: refundResults,
+        summary: {
+          total: refundResults.length,
+          successful: successfulRefundUpdates,
+          failed: failedRefundUpdates,
+        },
+      });
     }
 
     if (targetIds.length > 1 && adjustedRefundAmount !== undefined) {
