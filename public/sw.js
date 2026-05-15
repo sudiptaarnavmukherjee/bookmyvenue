@@ -148,17 +148,136 @@ async function staleWhileRevalidate(request, cacheName) {
   return cached || fetchPromise;
 }
 
-// Background sync for offline bookings
+// Background sync for offline requests
 self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-bookings') {
-    event.waitUntil(syncBookings());
+  if (event.tag === 'sync-offline-requests') {
+    event.waitUntil(syncOfflineRequests());
   }
 });
 
-async function syncBookings() {
-  // Get pending bookings from IndexedDB
-  // Send them to the server
-  console.log('[SW] Syncing bookings...');
+async function syncOfflineRequests() {
+  try {
+    console.log('[SW] Starting background sync of offline requests...');
+    
+    // Open the offline database
+    const db = await new Promise((resolve, reject) => {
+      const request = indexedDB.open('BookMyVenue_Offline', 1);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
+    });
+
+    // Get all pending requests
+    const requests = await new Promise((resolve, reject) => {
+      const store = db.transaction('pending_requests', 'readonly').objectStore('pending_requests');
+      const getAllRequest = store.getAll();
+      getAllRequest.onerror = () => reject(getAllRequest.error);
+      getAllRequest.onsuccess = () => {
+        const items = getAllRequest.result;
+        // Sort by priority and timestamp
+        const priorityOrder = { high: 0, normal: 1, low: 2 };
+        items.sort((a, b) => {
+          const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+          return priorityDiff !== 0 ? priorityDiff : a.timestamp - b.timestamp;
+        });
+        resolve(items);
+      };
+    });
+
+    if (requests.length === 0) {
+      console.log('[SW] No pending requests to sync');
+      return;
+    }
+
+    console.log(`[SW] Found ${requests.length} pending requests to sync`);
+
+    // Sync each request
+    let successful = 0;
+    let failed = 0;
+
+    for (const request of requests) {
+      try {
+        const response = await fetch(request.url, {
+          method: request.method,
+          headers: {
+            'Content-Type': 'application/json',
+            ...request.headers,
+          },
+          body: request.body ? JSON.parse(request.body) : undefined,
+        });
+
+        if (response.ok || response.status === 201) {
+          // Remove from queue
+          await new Promise((resolve, reject) => {
+            const store = db.transaction('pending_requests', 'readwrite').objectStore('pending_requests');
+            const deleteRequest = store.delete(request.id);
+            deleteRequest.onerror = () => reject(deleteRequest.error);
+            deleteRequest.onsuccess = () => resolve(null);
+          });
+          successful++;
+          console.log(`[SW] ✓ Synced ${request.method} ${request.url}`);
+        } else {
+          failed++;
+          // Update retry count
+          request.retries = (request.retries || 0) + 1;
+          if (request.retries >= 5) {
+            // Remove after 5 retries
+            await new Promise((resolve, reject) => {
+              const store = db.transaction('pending_requests', 'readwrite').objectStore('pending_requests');
+              const deleteRequest = store.delete(request.id);
+              deleteRequest.onerror = () => reject(deleteRequest.error);
+              deleteRequest.onsuccess = () => resolve(null);
+            });
+            console.log(`[SW] ✗ Max retries for ${request.method} ${request.url}, removed`);
+          } else {
+            // Save updated retry count
+            await new Promise((resolve, reject) => {
+              const store = db.transaction('pending_requests', 'readwrite').objectStore('pending_requests');
+              const putRequest = store.put(request);
+              putRequest.onerror = () => reject(putRequest.error);
+              putRequest.onsuccess = () => resolve(null);
+            });
+          }
+          console.log(`[SW] ✗ Failed to sync ${request.method} ${request.url}, retries: ${request.retries}`);
+        }
+      } catch (error) {
+        failed++;
+        request.retries = (request.retries || 0) + 1;
+        if (request.retries >= 5) {
+          // Remove after 5 retries
+          await new Promise((resolve, reject) => {
+            const store = db.transaction('pending_requests', 'readwrite').objectStore('pending_requests');
+            const deleteRequest = store.delete(request.id);
+            deleteRequest.onerror = () => reject(deleteRequest.error);
+            deleteRequest.onsuccess = () => resolve(null);
+          });
+        } else {
+          // Save updated retry count
+          await new Promise((resolve, reject) => {
+            const store = db.transaction('pending_requests', 'readwrite').objectStore('pending_requests');
+            const putRequest = store.put(request);
+            putRequest.onerror = () => reject(putRequest.error);
+            putRequest.onsuccess = () => resolve(null);
+          });
+        }
+        console.log(`[SW] Error syncing ${request.method} ${request.url}:`, error);
+      }
+    }
+
+    console.log(`[SW] Background sync complete: ${successful} successful, ${failed} failed`);
+    
+    // Notify clients about sync completion
+    const clients = await self.clients.matchAll();
+    clients.forEach(client => {
+      client.postMessage({
+        type: 'OFFLINE_SYNC_COMPLETE',
+        successful,
+        failed,
+      });
+    });
+
+  } catch (error) {
+    console.error('[SW] Error in background sync:', error);
+  }
 }
 
 // Push notifications

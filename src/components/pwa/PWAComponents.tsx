@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { usePWA } from "@/hooks/usePWA";
-import { Download, X, Smartphone, WifiOff } from "lucide-react";
+import { useOfflineQueue } from "@/hooks/useOfflineQueue";
+import { Download, X, Smartphone, WifiOff, Cloud } from "lucide-react";
 
 export function PWAInstallBanner() {
   const { isInstallable, isInstalled, isOnline, install } = usePWA();
@@ -83,6 +84,7 @@ export function PWAInstallBanner() {
 
 export function OfflineIndicator() {
   const { isOnline } = usePWA();
+  const { pendingCount, isSyncing } = useOfflineQueue();
   const [showIndicator, setShowIndicator] = useState(false);
 
   useEffect(() => {
@@ -95,22 +97,29 @@ export function OfflineIndicator() {
     }
   }, [isOnline]);
 
-  if (!showIndicator) return null;
+  if (!showIndicator && !isSyncing) return null;
 
   return (
     <div
       className={`fixed top-16 left-0 right-0 z-50 flex items-center justify-center gap-2 py-2 text-sm font-medium transition-all ${
-        isOnline
+        isOnline && !isSyncing
           ? "bg-green-500 text-white"
-          : "bg-yellow-500 text-yellow-900"
+          : isOnline && isSyncing
+            ? "bg-blue-500 text-white"
+            : "bg-amber-500 text-amber-900"
       }`}
     >
-      {isOnline ? (
-        <>Back online!</>
+      {isOnline && !isSyncing ? (
+        <>✓ Back online!</>
+      ) : isSyncing ? (
+        <>
+          <Cloud className="h-4 w-4 animate-pulse" />
+          Syncing {pendingCount} change{pendingCount !== 1 ? "s" : ""}...
+        </>
       ) : (
         <>
           <WifiOff className="h-4 w-4" />
-          You&apos;re offline. Some features may be limited.
+          You&apos;re offline{pendingCount > 0 ? ` • ${pendingCount} pending` : ""}
         </>
       )}
     </div>

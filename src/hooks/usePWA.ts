@@ -52,8 +52,20 @@ export function usePWA() {
         .register("/sw.js")
         .then((registration) => {
           console.log("SW registered:", registration.scope);
+          
+          // Request background sync permission when online
+          if ("SyncManager" in window && navigator.onLine) {
+            (registration as any).sync
+              .register("sync-offline-requests")
+              .then(() => {
+                console.log("Background sync registered");
+              })
+              .catch((error: any) => {
+                console.log("Background sync registration failed:", error);
+              });
+          }
         })
-        .catch((error) => {
+        .catch((error: any) => {
           console.log("SW registration failed:", error);
         });
     }
