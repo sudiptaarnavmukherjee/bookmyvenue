@@ -27,6 +27,7 @@ import {
   UserCog,
   BellRing,
   Scale,
+  Radar,
 } from "lucide-react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -317,6 +318,12 @@ export default function AdminDashboard() {
             >
               Notification Reliability
             </Link>
+            <Link
+              href="/admin/observability"
+              className="rounded-xl bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 transition-all"
+            >
+              Observability
+            </Link>
           </div>
         </div>
 
@@ -558,6 +565,22 @@ export default function AdminDashboard() {
               </div>
               <div className="h-12 w-12 rounded-xl bg-emerald-100 flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
                 <AlertCircle className="h-6 w-6 text-emerald-600" />
+              </div>
+            </div>
+          </Link>
+          <Link
+            href="/admin/observability"
+            className="glass-card rounded-2xl p-5 hover:shadow-lg transition-all group"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-gray-900 group-hover:text-slate-700 transition-colors">
+                  Observability &amp; SLOs
+                </h3>
+                <p className="text-sm text-gray-600">Latency probes, error budgets, and incident playbooks</p>
+              </div>
+              <div className="h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center group-hover:bg-slate-200 transition-colors">
+                <Radar className="h-6 w-6 text-slate-700" />
               </div>
             </div>
           </Link>
