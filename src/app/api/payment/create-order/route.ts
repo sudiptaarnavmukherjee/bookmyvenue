@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -9,6 +9,7 @@ import {
   generateReceiptNumber,
 } from "@/lib/razorpay";
 import { z } from "zod";
+import { createOptionsResponse, withApiSecurity } from "@/lib/security";
 
 // Validation schema
 const createOrderSchema = z.object({
@@ -18,7 +19,7 @@ const createOrderSchema = z.object({
 });
 
 // POST /api/payment/create-order - Create Razorpay order
-export async function POST(req: NextRequest) {
+export const POST = withApiSecurity(async (req: Request) => {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
@@ -171,4 +172,11 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
+}, {
+  methods: ["POST", "OPTIONS"],
+  rateLimitConfig: { windowMs: 5 * 60 * 1000, maxRequests: 8 },
+});
+
+export function OPTIONS(request: Request) {
+  return createOptionsResponse(request, ["POST", "OPTIONS"]);
 }

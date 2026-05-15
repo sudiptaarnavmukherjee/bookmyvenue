@@ -6,11 +6,20 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { compare } from "bcryptjs";
 import prisma from "@/lib/db";
 
+const isProduction = process.env.NODE_ENV === "production";
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as any,
+  secret: process.env.NEXTAUTH_SECRET,
   session: {
     strategy: "jwt",
+    maxAge: 12 * 60 * 60,
+    updateAge: 60 * 60,
   },
+  jwt: {
+    maxAge: 12 * 60 * 60,
+  },
+  useSecureCookies: isProduction,
   pages: {
     signIn: "/auth/signin",
     signOut: "/auth/signin",

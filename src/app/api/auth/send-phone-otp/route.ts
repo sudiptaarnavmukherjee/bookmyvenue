@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/db";
+import { createOptionsResponse, withApiSecurity } from "@/lib/security";
 
 function generateOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -15,7 +16,7 @@ function formatIndianPhone(raw: string): string {
 }
 
 // POST /api/auth/send-phone-otp
-export async function POST(request: Request) {
+export const POST = withApiSecurity(async (request: Request) => {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -121,4 +122,11 @@ export async function POST(request: Request) {
     console.error("send-phone-otp error:", error);
     return NextResponse.json({ error: "Failed to send OTP" }, { status: 500 });
   }
+}, {
+  methods: ["POST", "OPTIONS"],
+  rateLimitConfig: { windowMs: 10 * 60 * 1000, maxRequests: 5 },
+});
+
+export function OPTIONS(request: Request) {
+  return createOptionsResponse(request, ["POST", "OPTIONS"]);
 }

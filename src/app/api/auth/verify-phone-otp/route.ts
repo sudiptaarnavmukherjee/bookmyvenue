@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/db";
+import { createOptionsResponse, withApiSecurity } from "@/lib/security";
 
 // POST /api/auth/verify-phone-otp
-export async function POST(request: Request) {
+export const POST = withApiSecurity(async (request: Request) => {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -80,4 +81,11 @@ export async function POST(request: Request) {
     console.error("verify-phone-otp error:", error);
     return NextResponse.json({ error: "Verification failed" }, { status: 500 });
   }
+}, {
+  methods: ["POST", "OPTIONS"],
+  rateLimitConfig: { windowMs: 10 * 60 * 1000, maxRequests: 10 },
+});
+
+export function OPTIONS(request: Request) {
+  return createOptionsResponse(request, ["POST", "OPTIONS"]);
 }

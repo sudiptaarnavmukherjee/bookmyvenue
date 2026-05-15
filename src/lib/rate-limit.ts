@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 // Simple in-memory rate limiter (for production, use Redis)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 
-interface RateLimitConfig {
+export interface RateLimitConfig {
   windowMs: number;  // Time window in milliseconds
   maxRequests: number;  // Max requests per window
 }
@@ -17,7 +17,10 @@ const defaultConfig: RateLimitConfig = {
 const endpointLimits: Record<string, RateLimitConfig> = {
   "/api/auth/signup": { windowMs: 60 * 60 * 1000, maxRequests: 5 },  // 5 signups per hour
   "/api/auth/signin": { windowMs: 15 * 60 * 1000, maxRequests: 10 },  // 10 logins per 15 min
+  "/api/auth/send-phone-otp": { windowMs: 10 * 60 * 1000, maxRequests: 5 },
+  "/api/auth/verify-phone-otp": { windowMs: 10 * 60 * 1000, maxRequests: 10 },
   "/api/bookings": { windowMs: 60 * 1000, maxRequests: 10 },  // 10 bookings per minute
+  "/api/payment/create-order": { windowMs: 5 * 60 * 1000, maxRequests: 8 },
   "/api/upload": { windowMs: 60 * 1000, maxRequests: 20 },  // 20 uploads per minute
   "/api/venues": { windowMs: 60 * 1000, maxRequests: 100 },  // 100 venue requests per minute
   "/api/catering": { windowMs: 60 * 1000, maxRequests: 100 },

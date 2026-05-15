@@ -10,7 +10,7 @@ This roadmap replaces the older scattered planning notes and provides one clear 
 
 ---
 
-## Completed Phases (1-30)
+## Completed Phases (1-31)
 
 ### Foundation and Core (1-8) - COMPLETED
 1. Auth, role access, and secure session flow
@@ -47,18 +47,11 @@ This roadmap replaces the older scattered planning notes and provides one clear 
 28. Search performance and relevance (ranking tune, query caching, server pagination)
 29. Owner self-serve operations (guided cancellation requests, dispute note trails, scoped owner actions)
 30. Observability and SLOs (structured logs, synthetic latency dashboard, operational error budgets, incident checklist)
+31. Security hardening (rate-limit coverage review, tighter headers/CORS policy, stricter session settings)
 
 ---
 
-## New Roadmap (31-32)
-
-### Phase 31 - Security Hardening - PLANNED
-Goal: Raise platform security posture before scale.
-
-Scope:
-- Rate limiting coverage review
-- Header/CORS policy hardening
-- Session policy and secret hygiene checks
+## New Roadmap (32)
 
 ### Phase 32 - Production Scale Readiness - PLANNED
 Goal: Prepare for high traffic and operational resilience.

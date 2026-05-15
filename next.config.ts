@@ -28,11 +28,23 @@ const securityHeaders = [
   },
   {
     key: 'Referrer-Policy',
-    value: 'origin-when-cross-origin',
+    value: 'strict-origin-when-cross-origin',
   },
   {
     key: 'Permissions-Policy',
     value: 'camera=(), microphone=(), geolocation=(self), interest-cohort=()',
+  },
+  {
+    key: 'Cross-Origin-Opener-Policy',
+    value: 'same-origin-allow-popups',
+  },
+  {
+    key: 'Cross-Origin-Resource-Policy',
+    value: 'same-site',
+  },
+  {
+    key: 'Origin-Agent-Cluster',
+    value: '?1',
   },
 ];
 
