@@ -27,6 +27,7 @@ import {
   getQualityLabel,
   getPriceConfidenceExplanation,
 } from "@/lib/listing-trust";
+import { optimizeImageUrl } from "@/lib/image";
 
 interface CatererCardProps {
   id: string;
@@ -184,6 +185,9 @@ export function CatererCard({
   };
 
   const catererUrl = slug ? `/catering/${slug}` : `/catering/${id}`;
+  const optimizedCoverImage =
+    optimizeImageUrl(coverImage, { width: 900, height: 560, quality: 72 }) ||
+    "/placeholder-food.jpg";
   const ratingColor =
     rating >= 4 ? "bg-emerald-600" : rating >= 3 ? "bg-amber-500" : "bg-rose-500";
   const popularityLabel = rating && rating >= 4.3 ? "Popular" : null;
@@ -200,7 +204,7 @@ export function CatererCard({
       <Link href={catererUrl} className="block">
         <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
           <Image
-            src={coverImage || "/placeholder-food.jpg"}
+            src={optimizedCoverImage}
             alt={name}
             fill
             className="object-cover transition-transform duration-500 group-hover:scale-105"

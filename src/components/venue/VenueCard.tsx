@@ -25,6 +25,7 @@ import {
   getQualityLabel,
   getPriceConfidenceExplanation,
 } from "@/lib/listing-trust";
+import { optimizeImageUrl } from "@/lib/image";
 
 interface VenueCardProps {
   id: string;
@@ -197,6 +198,9 @@ export function VenueCard({
 
   const normalizedPriceMode = priceMode?.toUpperCase();
   const venueUrl = slug ? `/venues/${slug}` : `/venues/${id}`;
+  const optimizedCoverImage =
+    optimizeImageUrl(coverImage, { width: 900, height: 560, quality: 72 }) ||
+    "/placeholder-venue.jpg";
 
   const startingPrice = (() => {
     const prices = [marriagePrice, birthdayPrice, otherEventPrice, exactPrice, estimatedMinPrice].filter(Boolean) as number[];
@@ -211,7 +215,7 @@ export function VenueCard({
     <div className={cn("overflow-hidden rounded-xl border bg-white transition-all duration-200 group", isSelected ? "border-[#ff7a00] shadow-md ring-2 ring-[#ff7a00]/25" : "border-slate-200 shadow-sm hover:-translate-y-0.5 hover:shadow-md")}>
       <Link href={venueUrl} className="block">
         <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
-          <Image src={coverImage || "/placeholder-venue.jpg"} alt={name} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" />
+          <Image src={optimizedCoverImage} alt={name} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
 
           <div className="absolute right-3 top-3 z-10 flex flex-col gap-2">

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { optimizeImageUrl } from "@/lib/image";
 
 // Optimized single API to fetch both venues and caterers for homepage
 // Reduces multiple API calls to just ONE
@@ -103,7 +104,10 @@ export async function GET(request: Request) {
       priceRange: v.estimatedMinPrice && v.estimatedMaxPrice 
         ? `₹${(v.estimatedMinPrice/1000).toFixed(0)}K - ₹${(v.estimatedMaxPrice/1000).toFixed(0)}K`
         : null,
-      image: v.coverImage || (v.images ? v.images.split(",")[0].trim() : null),
+      image: optimizeImageUrl(
+        v.coverImage || (v.images ? v.images.split(",")[0].trim() : null),
+        { width: 900, height: 560, quality: 72 }
+      ),
       capacity: v.maxGuests,
       isVerified: v.isVerified,
       isAdminListed: v.isAdminListed,
@@ -122,7 +126,10 @@ export async function GET(request: Request) {
       city: c.city,
       area: c.area,
       price: c.minPlatePrice || c.silverPrice || 0,
-      image: c.coverImage || (c.images ? c.images.split(",")[0].trim() : null),
+      image: optimizeImageUrl(
+        c.coverImage || (c.images ? c.images.split(",")[0].trim() : null),
+        { width: 900, height: 560, quality: 72 }
+      ),
       isPureVeg: c.isPureVeg,
       cuisines: c.cuisines,
       rating: c.rating,
@@ -156,7 +163,12 @@ export async function GET(request: Request) {
         caterers: [],
         stats: { totalVenues: 0, totalCaterers: 0, completedBookings: 0 },
       },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
+        },
+      }
     );
   }
 }
