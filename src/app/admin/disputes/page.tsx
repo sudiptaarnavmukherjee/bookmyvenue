@@ -65,6 +65,9 @@ export default function AdminDisputesPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [noteById, setNoteById] = useState<Record<string, string>>({});
   const [refundById, setRefundById] = useState<Record<string, string>>({});
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkNote, setBulkNote] = useState("");
+  const [bulkActionLoading, setBulkActionLoading] = useState<"APPROVE" | "REJECT" | null>(null);
 
   const fetchRequests = useCallback(async () => {
     try {
@@ -81,7 +84,10 @@ export default function AdminDisputesPage() {
         throw new Error((data as { error?: string }).error || "Failed to load dispute queue");
       }
 
-      setRows((data as CancellationsResponse).cancellations || []);
+      const nextRows = (data as CancellationsResponse).cancellations || [];
+      setRows(nextRows);
+      const idSet = new Set(nextRows.map((row) => row.id));
+      setSelectedIds((current) => current.filter((id) => idSet.has(id)));
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Failed to load dispute queue");
     } finally {
@@ -142,6 +148,52 @@ export default function AdminDisputesPage() {
     }
   }
 
+  async function processBulk(action: "APPROVE" | "REJECT") {
+    if (selectedIds.length === 0) {
+      return;
+    }
+
+    try {
+      setBulkActionLoading(action);
+      setError(null);
+      setMessage(null);
+
+      const response = await fetch("/api/admin/cancellations", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ids: selectedIds,
+          action,
+          reason: bulkNote.trim() || undefined,
+        }),
+      });
+
+      const data = (await response.json()) as {
+        error?: string;
+        message?: string;
+        summary?: { successful: number; failed: number };
+      };
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to process selected disputes");
+      }
+
+      setMessage(
+        data.message ||
+          `${data.summary?.successful ?? 0} selected dispute(s) processed`
+      );
+      setSelectedIds([]);
+      setBulkNote("");
+      await fetchRequests();
+    } catch (bulkError) {
+      setError(bulkError instanceof Error ? bulkError.message : "Failed to process selected disputes");
+    } finally {
+      setBulkActionLoading(null);
+    }
+  }
+
   const summary = useMemo(() => {
     return rows.reduce(
       (acc, row) => {
@@ -161,6 +213,14 @@ export default function AdminDisputesPage() {
       { total: 0, pending: 0, approved: 0, rejected: 0, refundExposure: 0 }
     );
   }, [rows]);
+
+  const pendingRows = useMemo(
+    () => rows.filter((row) => row.status === "PENDING"),
+    [rows]
+  );
+
+  const allPendingSelected =
+    pendingRows.length > 0 && selectedIds.length === pendingRows.length;
 
   if (status === "loading" || loading) {
     return (
@@ -246,6 +306,54 @@ export default function AdminDisputesPage() {
           </div>
         </div>
 
+        {filter === "PENDING" && pendingRows.length > 0 ? (
+          <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="inline-flex items-center gap-2 text-sm font-medium text-indigo-900">
+                <input
+                  type="checkbox"
+                  checked={allPendingSelected}
+                  onChange={(event) => {
+                    if (event.target.checked) {
+                      setSelectedIds(pendingRows.map((row) => row.id));
+                    } else {
+                      setSelectedIds([]);
+                    }
+                  }}
+                  className="h-4 w-4 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                Select all pending ({pendingRows.length})
+              </label>
+
+              <input
+                type="text"
+                value={bulkNote}
+                onChange={(event) => setBulkNote(event.target.value)}
+                className="min-w-[220px] flex-1 rounded-lg border border-indigo-300 px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none"
+                placeholder="Optional note for selected requests"
+              />
+
+              <button
+                onClick={() => processBulk("APPROVE")}
+                disabled={selectedIds.length === 0 || bulkActionLoading !== null}
+                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {bulkActionLoading === "APPROVE" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                Approve Selected ({selectedIds.length})
+              </button>
+
+              <button
+                onClick={() => processBulk("REJECT")}
+                disabled={selectedIds.length === 0 || bulkActionLoading !== null}
+                className="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {bulkActionLoading === "REJECT" ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                Reject Selected ({selectedIds.length})
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         <div className="space-y-4">
           {rows.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center">
@@ -256,12 +364,27 @@ export default function AdminDisputesPage() {
             rows.map((row) => {
               const isPending = row.status === "PENDING";
               const isProcessing = processingId === row.id;
+              const isSelected = selectedIds.includes(row.id);
 
               return (
                 <div key={row.id} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
+                        {isPending ? (
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(event) => {
+                              if (event.target.checked) {
+                                setSelectedIds((current) => [...new Set([...current, row.id])]);
+                              } else {
+                                setSelectedIds((current) => current.filter((id) => id !== row.id));
+                              }
+                            }}
+                            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                        ) : null}
                         <span className="rounded-md bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">#{row.bookingNumber}</span>
                         <span
                           className={`rounded-md px-2 py-1 text-xs font-semibold ${
@@ -313,7 +436,7 @@ export default function AdminDisputesPage() {
                       />
                       <div className="flex items-center gap-2 md:justify-end">
                         <button
-                          disabled={isProcessing}
+                          disabled={isProcessing || bulkActionLoading !== null}
                           onClick={() => processRequest(row.id, "APPROVE")}
                           className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                         >
@@ -321,7 +444,7 @@ export default function AdminDisputesPage() {
                           Approve
                         </button>
                         <button
-                          disabled={isProcessing}
+                          disabled={isProcessing || bulkActionLoading !== null}
                           onClick={() => processRequest(row.id, "REJECT")}
                           className="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
                         >
