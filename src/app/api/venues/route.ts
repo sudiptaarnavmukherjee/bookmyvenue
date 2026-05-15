@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { getAreaCoordinates } from "@/lib/ola-maps";
+import { assessVenueTrust } from "@/lib/listing-trust";
 
 // Cache headers - 30 second cache with stale-while-revalidate
 const CACHE_HEADERS = {
@@ -160,6 +161,7 @@ export async function GET(request: Request) {
       
       return {
         ...venue,
+        taggedToOwnerId: venue.taggedToOwnerId,
         distanceKm,
         distanceText,
       };
@@ -213,10 +215,42 @@ export async function GET(request: Request) {
         break;
     }
 
+    const enriched = radiusFiltered.map((venue) => {
+      const imageCount = venue.images
+        ? venue.images.split(",").filter(Boolean).length
+        : venue.coverImage
+        ? 1
+        : 0;
+      const trust = assessVenueTrust({
+        hasCoverImage: Boolean(venue.coverImage),
+        imagesCount: imageCount,
+        hasDescription: Boolean(venue.description && venue.description.trim().length >= 40),
+        hasCity: Boolean(venue.city),
+        hasArea: Boolean(venue.area),
+        hasCoordinates: Boolean(venue.latitude && venue.longitude),
+        hasCapacityRange: Boolean(venue.minGuests && venue.maxGuests),
+        hasExactPrice: Boolean(venue.exactPrice),
+        hasEstimatedRange: Boolean(venue.estimatedMinPrice),
+        hasPrimePricing: Boolean(venue.primeDayPrice && venue.nonPrimeDayPrice),
+        hasEventPricingCount: [venue.marriagePrice, venue.birthdayPrice, venue.otherEventPrice].filter(Boolean).length,
+        hasContactDetails: Boolean(venue.contactNumber || venue.contactName),
+        reviewCount: venue._count.reviews,
+        bookingCount: venue._count.bookings,
+        viewCount: venue.viewCount ?? 0,
+        updatedAt: venue.updatedAt?.toISOString(),
+        isVerified: venue.isVerified,
+      });
+      return {
+        ...venue,
+        qualityScore: trust.qualityScore,
+        priceConfidence: trust.priceConfidence,
+      };
+    });
+
     return NextResponse.json({ 
-      venues: radiusFiltered, 
+      venues: enriched, 
       areas,
-      total: radiusFiltered.length 
+      total: enriched.length 
     }, { headers: CACHE_HEADERS });
   } catch (error: any) {
     console.error("Error fetching venues:", error?.message || error);

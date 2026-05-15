@@ -20,6 +20,13 @@ import {
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api-client";
 import { useCompare } from "@/components/providers/CompareProvider";
+import { getPartnerStatus, getPartnerStatusLabel } from "@/lib/partner-status";
+import {
+  assessCatererTrust,
+  getLastUpdatedLabel,
+  getQualityLabel,
+  getPriceConfidenceExplanation,
+} from "@/lib/listing-trust";
 
 interface CatererCardProps {
   id: string;
@@ -35,15 +42,24 @@ interface CatererCardProps {
   totalReviews?: number;
   isPureVeg?: boolean;
   coverImage: string;
+  description?: string;
+  imagesCount?: number;
+  hasCoordinates?: boolean;
+  hasCuisineData?: boolean;
+  minGuests?: number;
+  hasMenuPackages?: boolean;
   isVerified?: boolean;
   bookingEnabled?: boolean;
   isAdminListed?: boolean;
+  taggedToOwnerId?: string;
+  updatedAt?: string;
   contactNumber?: string;
   contactName?: string;
   viewCount?: number;
   inWishlist?: boolean;
   slug?: string;
   distanceText?: string;
+  bookingCount?: number;
 }
 
 export function CatererCard({
@@ -60,15 +76,24 @@ export function CatererCard({
   totalReviews = 0,
   isPureVeg = false,
   coverImage,
+  description,
+  imagesCount,
+  hasCoordinates,
+  hasCuisineData,
+  minGuests,
+  hasMenuPackages,
   isVerified = false,
   bookingEnabled = false,
   isAdminListed = true,
+  taggedToOwnerId,
+  updatedAt,
   contactNumber,
   contactName,
   viewCount,
   inWishlist = false,
   slug,
   distanceText,
+  bookingCount,
 }: CatererCardProps) {
   const router = useRouter();
   const { isCatererSelected, addCaterer, removeCaterer } = useCompare();
@@ -77,6 +102,40 @@ export function CatererCard({
 
   const isFishbowl = isAdminListed && !bookingEnabled;
   const isSelected = isCatererSelected(catererId || id);
+  const partnerStatus = getPartnerStatus({ isVerified, bookingEnabled, isAdminListed, taggedToOwnerId });
+
+  const partnerStatusClass = {
+    LISTED: "bg-slate-100 text-slate-700",
+    CLAIMED: "bg-blue-100 text-blue-700",
+    VERIFIED: "bg-emerald-100 text-emerald-700",
+    PREFERRED_PARTNER: "bg-amber-100 text-amber-800",
+  }[partnerStatus];
+
+  const trust = assessCatererTrust({
+    hasCoverImage: Boolean(coverImage),
+    imagesCount: imagesCount ?? (coverImage ? 1 : 0),
+    hasDescription: Boolean(description && description.trim().length >= 40),
+    hasCity: Boolean(city),
+    hasArea: Boolean(area),
+    hasCoordinates: Boolean(hasCoordinates),
+    hasMinPlatePrice: Boolean(minPlatePrice),
+    hasTierCount: [silverPrice, goldPrice, platinumPrice].filter(Boolean).length,
+    hasCuisineData: Boolean(hasCuisineData),
+    hasMinGuests: Boolean(minGuests),
+    hasMenuPackages: Boolean(hasMenuPackages),
+    hasContactDetails: Boolean(contactNumber || contactName),
+    reviewCount: totalReviews,
+    bookingCount,
+    viewCount,
+    updatedAt,
+    isVerified,
+  });
+
+  const priceConfidenceClass = {
+    HIGH: "bg-emerald-50 text-emerald-700",
+    MEDIUM: "bg-amber-50 text-amber-700",
+    LOW: "bg-rose-50 text-rose-700",
+  }[trust.priceConfidence];
 
   const handleCompareToggle = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -223,6 +282,18 @@ export function CatererCard({
           </p>
 
           <div className="mb-2 flex flex-wrap gap-1.5">
+            <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold", partnerStatusClass)}>
+              {getPartnerStatusLabel(partnerStatus)}
+            </span>
+            <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700">
+              Quality {trust.qualityScore}/100
+            </span>
+            <span
+              className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold cursor-help", priceConfidenceClass)}
+              title={getPriceConfidenceExplanation(trust.priceConfidence, "caterer")}
+            >
+              Price {trust.priceConfidence}
+            </span>
             {distanceText && (
               <span className="rounded-full bg-[#0b5fab]/5 px-2 py-0.5 text-[10px] font-bold text-[#0b5fab]">
                 {distanceText}
@@ -281,6 +352,10 @@ export function CatererCard({
           )}
         </div>
       </Link>
+
+      <p className="px-3.5 pb-2 text-[11px] text-slate-500">
+        {getQualityLabel(trust.qualityScore)} data quality ({trust.completedItems}/{trust.totalItems}) • {getLastUpdatedLabel(updatedAt)}
+      </p>
 
       <div className="px-3.5 pb-3.5">
         {isFishbowl ? (

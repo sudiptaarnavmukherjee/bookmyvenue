@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { sendTemplatedEmail } from "@/lib/email-templates";
 
 export async function GET(
   request: Request,
@@ -87,12 +88,83 @@ export async function PATCH(
     const params = await segmentData.params;
     const body = await request.json();
 
+    // Fetch existing booking to determine what fields to read for emails
+    const existingBooking = await prisma.booking.findUnique({
+      where: { id: params.id },
+      include: {
+        venue: { select: { name: true } },
+        caterer: { select: { name: true } },
+      },
+    });
+
     const booking = await prisma.booking.update({
       where: {
         id: params.id,
       },
       data: body,
     });
+
+    // Send status-change emails when status transitions to CONFIRMED or CANCELLED
+    const newStatus: string | undefined = body.status;
+    if (
+      existingBooking &&
+      existingBooking.customerEmail &&
+      (newStatus === "CONFIRMED" || newStatus === "CANCELLED")
+    ) {
+      const listingName =
+        existingBooking.venue?.name ?? existingBooking.caterer?.name ?? "your booking";
+      const formattedDate = new Date(existingBooking.eventDate).toLocaleDateString("en-IN", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+
+      if (newStatus === "CONFIRMED") {
+        sendTemplatedEmail({
+          to: existingBooking.customerEmail,
+          templateName: "booking_confirmed_customer",
+          subject: `Booking Confirmed – ${listingName} on ${formattedDate}`,
+          variables: {
+            customerName: existingBooking.customerName,
+            bookingNumber: existingBooking.bookingNumber,
+            listingName,
+            eventDate: formattedDate,
+          },
+          fallbackHtml: `
+            <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px">
+              <h2 style="color:#16a34a">Your Booking is Confirmed!</h2>
+              <p>Hi ${existingBooking.customerName},</p>
+              <p>Great news! The owner has confirmed your booking for <strong>${listingName}</strong> on <strong>${formattedDate}</strong>.</p>
+              <p><strong>Booking #:</strong> ${existingBooking.bookingNumber}</p>
+              <p style="margin-top:16px">We look forward to making your event special!</p>
+              <p style="color:#6b7280;font-size:13px">Questions? Contact us at support@shubhspace.com</p>
+            </div>
+          `,
+        }).catch((e) => console.error("Booking confirmed email error:", e));
+      } else if (newStatus === "CANCELLED") {
+        sendTemplatedEmail({
+          to: existingBooking.customerEmail,
+          templateName: "booking_cancelled_customer",
+          subject: `Booking Cancelled – ${listingName} on ${formattedDate}`,
+          variables: {
+            customerName: existingBooking.customerName,
+            bookingNumber: existingBooking.bookingNumber,
+            listingName,
+            eventDate: formattedDate,
+          },
+          fallbackHtml: `
+            <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px">
+              <h2 style="color:#dc2626">Booking Cancelled</h2>
+              <p>Hi ${existingBooking.customerName},</p>
+              <p>Your booking for <strong>${listingName}</strong> on <strong>${formattedDate}</strong> has been cancelled.</p>
+              <p><strong>Booking #:</strong> ${existingBooking.bookingNumber}</p>
+              <p style="margin-top:16px">If you believe this is an error or would like to rebook, please contact us at support@shubhspace.com</p>
+            </div>
+          `,
+        }).catch((e) => console.error("Booking cancelled email error:", e));
+      }
+    }
 
     return NextResponse.json({ booking });
   } catch (error) {

@@ -13,6 +13,13 @@ import {
 } from "lucide-react";
 import MapEmbed from "@/components/venue/MapEmbed";
 import InquiryForm from "@/components/shared/InquiryForm";
+import { getPartnerStatus, getPartnerStatusLabel } from "@/lib/partner-status";
+import {
+  assessVenueTrust,
+  getLastUpdatedLabel,
+  getPriceConfidenceExplanation,
+  getQualityLabel,
+} from "@/lib/listing-trust";
 
 export type VenueData = {
   id: string;
@@ -38,6 +45,7 @@ export type VenueData = {
   isVerified: boolean;
   bookingEnabled?: boolean;
   isAdminListed?: boolean;
+  taggedToOwnerId?: string | null;
   contactNumber?: string | null;
   contactName?: string | null;
   description: string;
@@ -51,6 +59,7 @@ export type VenueData = {
   latitude?: number | null;
   longitude?: number | null;
   googleMapsUrl?: string | null;
+  updatedAt?: string;
 };
 
 const AMENITY_ICONS: Record<string, any> = {
@@ -76,10 +85,12 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
   const [guests, setGuests] = useState("");
   const [message, setMessage] = useState("");
   const [bookingLoading, setBookingLoading] = useState(false);
+  const [selectedEventType, setSelectedEventType] = useState<"" | "MARRIAGE" | "BIRTHDAY" | "OTHER">("MARRIAGE");
   const [stickyNav, setStickyNav] = useState(false);
   const [activeSection, setActiveSection] = useState<"overview" | "amenities" | "location">("overview");
   const [isInWishlist, setIsInWishlist] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
+  const [showPriceConfidenceHelp, setShowPriceConfidenceHelp] = useState(false);
   const heroRef = useRef<HTMLDivElement>(null);
   const overviewRef = useRef<HTMLDivElement>(null);
   const amenitiesRef = useRef<HTMLDivElement>(null);
@@ -210,7 +221,8 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
         customerEmail: session.user.email || "",
         customerPhone: "N/A",
         specialRequests: message,
-        totalAmount: venue.price || 0,
+        totalAmount: computedPrice,
+        eventType: selectedEventType || undefined,
       };
 
       const { error: err } = await api.createBooking(bookingData);
@@ -234,7 +246,75 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
   };
 
   const isFishbowl = venue.isAdminListed && !venue.bookingEnabled;
-  const displayPrice = venue.exactPrice || venue.price || 0;
+  const partnerStatus = getPartnerStatus({
+    isVerified: venue.isVerified,
+    bookingEnabled: venue.bookingEnabled,
+    isAdminListed: venue.isAdminListed,
+    taggedToOwnerId: venue.taggedToOwnerId,
+  });
+
+  const partnerStatusClass = {
+    LISTED: "bg-slate-100 text-slate-700 border-slate-200",
+    CLAIMED: "bg-blue-100 text-blue-700 border-blue-200",
+    VERIFIED: "bg-green-100 text-green-700 border-green-200",
+    PREFERRED_PARTNER: "bg-amber-100 text-amber-800 border-amber-200",
+  }[partnerStatus];
+
+  const trust = assessVenueTrust({
+    hasCoverImage: venue.images.length > 0,
+    imagesCount: venue.images.length,
+    hasDescription: Boolean(venue.description && venue.description.trim().length >= 40),
+    hasCity: Boolean(venue.city),
+    hasArea: Boolean(venue.area),
+    hasCoordinates: Boolean(venue.latitude && venue.longitude),
+    hasCapacityRange: Boolean(venue.minGuests && venue.maxGuests && venue.maxGuests >= venue.minGuests),
+    hasExactPrice: Boolean(venue.exactPrice),
+    hasEstimatedRange: Boolean(venue.estimatedMinPrice && venue.estimatedMaxPrice),
+    hasPrimePricing: Boolean(venue.primeDayPrice && venue.nonPrimeDayPrice),
+    hasEventPricingCount: [venue.marriagePrice, venue.birthdayPrice, venue.otherEventPrice].filter(Boolean).length,
+    hasContactDetails: Boolean(venue.contactNumber || venue.contactName),
+    reviewCount: venue.reviewCount,
+    bookingCount: venue.bookingCount,
+    viewCount: venue.viewCount,
+    updatedAt: venue.updatedAt,
+    isVerified: venue.isVerified,
+  });
+
+  const priceConfidenceClass = {
+    HIGH: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    MEDIUM: "bg-amber-100 text-amber-700 border-amber-200",
+    LOW: "bg-rose-100 text-rose-700 border-rose-200",
+  }[trust.priceConfidence];
+
+  // Compute the right price based on selected event type and day-of-week (prime vs non-prime)
+  const computedPrice = (() => {
+    const primeDayList = venue.primeDays
+      ? venue.primeDays.split(",").map((d) => d.trim().toLowerCase())
+      : [];
+    const selectedDayName = bookingDate
+      ? new Date(bookingDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long" }).toLowerCase()
+      : "";
+    const isPrimeDay = selectedDayName ? primeDayList.includes(selectedDayName) : false;
+
+    // Event type price
+    const eventPrice =
+      selectedEventType === "MARRIAGE" ? (venue.marriagePrice ?? null)
+      : selectedEventType === "BIRTHDAY" ? (venue.birthdayPrice ?? null)
+      : selectedEventType === "OTHER" ? (venue.otherEventPrice ?? null)
+      : null;
+
+    // Prime/non-prime day price
+    const dayPrice = isPrimeDay
+      ? (venue.primeDayPrice ?? null)
+      : primeDayList.length > 0 && selectedDayName
+      ? (venue.nonPrimeDayPrice ?? null)
+      : null;
+
+    // Priority: event type price > day price > exactPrice > price
+    return eventPrice ?? dayPrice ?? venue.exactPrice ?? venue.price ?? 0;
+  })();
+
+  const displayPrice = computedPrice;
 
   return (
     <>
@@ -354,17 +434,33 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
           {/* Gallery action row */}
           <div className="flex items-center justify-between mt-3 mb-1">
             <div className="flex gap-2 flex-wrap">
-              {venue.isVerified && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700 border border-green-200">
-                  <BadgeCheck className="h-3.5 w-3.5" /> Verified Venue
-                </span>
-              )}
+              <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold border ${partnerStatusClass}`}>
+                <BadgeCheck className="h-3.5 w-3.5" /> {getPartnerStatusLabel(partnerStatus)}
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700 border border-sky-200">
+                Quality {trust.qualityScore}/100
+              </span>
+              <button
+                onClick={() => setShowPriceConfidenceHelp((prev) => !prev)}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold border ${priceConfidenceClass}`}
+              >
+                Price {trust.priceConfidence} {showPriceConfidenceHelp ? "▲" : "?"}
+              </button>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 border border-gray-200">
+                {getLastUpdatedLabel(venue.updatedAt)}
+              </span>
               {venue.viewCount !== undefined && venue.viewCount > 0 && (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500">
                   <Eye className="h-3.5 w-3.5" /> {venue.viewCount.toLocaleString()} views
                 </span>
               )}
             </div>
+            {showPriceConfidenceHelp && (
+              <p className="mt-2 text-xs text-gray-600">
+                {getPriceConfidenceExplanation(trust.priceConfidence, "venue")}
+              </p>
+            )}
+            <p className="mt-1 text-sm text-gray-500">{getQualityLabel(trust.qualityScore)} listing data quality</p>
             {venue.images.length > 1 && (
               <button
                 onClick={() => setShowLightbox(true)}
@@ -783,6 +879,37 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
                   ) : (
                     /* ── Online booking form ──────────────────────── */
                     <div className="space-y-4">
+
+                      {/* Event type selector */}
+                      {(venue.marriagePrice || venue.birthdayPrice || venue.otherEventPrice) && (
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-2">Event Type</label>
+                          <div className="flex flex-wrap gap-2">
+                            {([
+                              { key: "MARRIAGE", label: "💍 Marriage", price: venue.marriagePrice },
+                              { key: "BIRTHDAY", label: "🎂 Birthday / Anniversary", price: venue.birthdayPrice },
+                              { key: "OTHER", label: "🎪 Other Event", price: venue.otherEventPrice },
+                            ] as const).filter(({ price }) => price != null).map(({ key, label, price }) => (
+                              <button
+                                key={key}
+                                type="button"
+                                onClick={() => setSelectedEventType(key)}
+                                className={`px-3 py-2 rounded-xl text-sm font-medium border-2 transition-all ${
+                                  selectedEventType === key
+                                    ? "border-[#0b5fab] bg-[#0b5fab]/10 text-[#0b5fab]"
+                                    : "border-gray-200 text-gray-600 hover:border-gray-300"
+                                }`}
+                              >
+                                {label}
+                                {price != null && (
+                                  <span className="ml-1.5 text-xs font-bold">₹{price.toLocaleString("en-IN")}</span>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-1.5">Select Date</label>
                         <input
@@ -840,7 +967,9 @@ export default function VenueDetailContent({ venue }: { venue: VenueData }) {
                       {bookingDate && guests && !isDateBooked(bookingDate) && (
                         <div className="rounded-xl bg-gray-50 p-4 space-y-1.5 text-sm">
                           <div className="flex justify-between text-gray-600">
-                            <span>₹{displayPrice.toLocaleString("en-IN")} × 1 event</span>
+                            <span>
+                              {selectedEventType === "MARRIAGE" ? "Marriage" : selectedEventType === "BIRTHDAY" ? "Birthday / Anniversary" : selectedEventType === "OTHER" ? "Other Event" : "Venue"} price
+                            </span>
                             <span>₹{displayPrice.toLocaleString("en-IN")}</span>
                           </div>
                           <div className="flex justify-between font-bold text-gray-900 pt-1.5 border-t border-gray-200">

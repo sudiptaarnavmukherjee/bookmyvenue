@@ -18,6 +18,13 @@ import {
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api-client";
 import { useCompare } from "@/components/providers/CompareProvider";
+import { getPartnerStatus, getPartnerStatusLabel } from "@/lib/partner-status";
+import {
+  assessVenueTrust,
+  getLastUpdatedLabel,
+  getQualityLabel,
+  getPriceConfidenceExplanation,
+} from "@/lib/listing-trust";
 
 interface VenueCardProps {
   id: string;
@@ -37,9 +44,14 @@ interface VenueCardProps {
   minGuests?: number;
   maxGuests?: number;
   coverImage: string;
+  description?: string;
+  imagesCount?: number;
+  hasCoordinates?: boolean;
   isVerified?: boolean;
   bookingEnabled?: boolean;
   isAdminListed?: boolean;
+  taggedToOwnerId?: string;
+  updatedAt?: string;
   contactNumber?: string;
   contactName?: string;
   viewCount?: number;
@@ -48,6 +60,7 @@ interface VenueCardProps {
   distanceText?: string;
   rating?: number;
   reviewCount?: number;
+  bookingCount?: number;
 }
 
 export function VenueCard({
@@ -68,9 +81,14 @@ export function VenueCard({
   minGuests = 50,
   maxGuests = 500,
   coverImage,
+  description,
+  imagesCount,
+  hasCoordinates,
   isVerified = false,
   bookingEnabled = false,
   isAdminListed = true,
+  taggedToOwnerId,
+  updatedAt,
   contactNumber,
   contactName,
   viewCount,
@@ -79,6 +97,7 @@ export function VenueCard({
   distanceText,
   rating,
   reviewCount,
+  bookingCount,
 }: VenueCardProps) {
   const router = useRouter();
   const { isVenueSelected, addVenue, removeVenue } = useCompare();
@@ -87,6 +106,40 @@ export function VenueCard({
 
   const isFishbowl = isAdminListed && !bookingEnabled;
   const isSelected = isVenueSelected(venueId || id);
+  const partnerStatus = getPartnerStatus({ isVerified, bookingEnabled, isAdminListed, taggedToOwnerId });
+
+  const partnerStatusClass = {
+    LISTED: "bg-slate-100 text-slate-700",
+    CLAIMED: "bg-blue-100 text-blue-700",
+    VERIFIED: "bg-emerald-100 text-emerald-700",
+    PREFERRED_PARTNER: "bg-amber-100 text-amber-800",
+  }[partnerStatus];
+
+  const trust = assessVenueTrust({
+    hasCoverImage: Boolean(coverImage),
+    imagesCount: imagesCount ?? (coverImage ? 1 : 0),
+    hasDescription: Boolean(description && description.trim().length >= 40),
+    hasCity: Boolean(city),
+    hasArea: Boolean(area),
+    hasCoordinates: Boolean(hasCoordinates),
+    hasCapacityRange: Boolean(minGuests && maxGuests && maxGuests >= minGuests),
+    hasExactPrice: Boolean(exactPrice),
+    hasEstimatedRange: Boolean(estimatedMinPrice && estimatedMaxPrice),
+    hasPrimePricing: Boolean(primeDayPrice && nonPrimeDayPrice),
+    hasEventPricingCount: [marriagePrice, birthdayPrice, otherEventPrice].filter(Boolean).length,
+    hasContactDetails: Boolean(contactNumber || contactName),
+    reviewCount,
+    bookingCount,
+    viewCount,
+    updatedAt,
+    isVerified,
+  });
+
+  const priceConfidenceClass = {
+    HIGH: "bg-emerald-50 text-emerald-700",
+    MEDIUM: "bg-amber-50 text-amber-700",
+    LOW: "bg-rose-50 text-rose-700",
+  }[trust.priceConfidence];
 
   const handleCompareToggle = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -199,6 +252,18 @@ export function VenueCard({
           <p className="mb-2.5 flex items-center gap-1 truncate text-xs text-slate-500"><MapPin className="h-3 w-3 flex-shrink-0 text-[#0b5fab]" />{area ? `${area}, ${city}` : city}</p>
 
           <div className="mb-2 flex flex-wrap gap-1.5">
+            <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold", partnerStatusClass)}>
+              {getPartnerStatusLabel(partnerStatus)}
+            </span>
+            <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700">
+              Quality {trust.qualityScore}/100
+            </span>
+            <span
+              className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold cursor-help", priceConfidenceClass)}
+              title={getPriceConfidenceExplanation(trust.priceConfidence, "venue")}
+            >
+              Price {trust.priceConfidence}
+            </span>
             {distanceText && (
               <span className="rounded-full bg-[#0b5fab]/5 px-2 py-0.5 text-[10px] font-bold text-[#0b5fab]">
                 {distanceText}
@@ -236,6 +301,10 @@ export function VenueCard({
           </div>
         </div>
       </Link>
+
+      <p className="px-3.5 pb-2 text-[11px] text-slate-500">
+        {getQualityLabel(trust.qualityScore)} data quality ({trust.completedItems}/{trust.totalItems}) • {getLastUpdatedLabel(updatedAt)}
+      </p>
 
       <div className="px-3.5 pb-3.5">
         {isFishbowl ? (

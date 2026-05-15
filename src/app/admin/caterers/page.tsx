@@ -28,6 +28,7 @@ import {
   Wand2,
 } from "lucide-react";
 import { parseCatererVerificationNotes } from "@/lib/verification";
+import { assessCatererTrust, getQualityLabel } from "@/lib/listing-trust";
 
 type Caterer = {
   id: string;
@@ -42,6 +43,14 @@ type Caterer = {
   contactNumber?: string;
   contactName?: string;
   viewCount: number;
+  description?: string;
+  images?: string;
+  coverImage?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  cuisines?: string;
+  minGuests?: number;
+  updatedAt?: string;
   minPlatePrice?: number;
   silverPrice?: number;
   goldPrice?: number;
@@ -67,7 +76,7 @@ export default function AdminCaterersPage() {
   const [caterers, setCaterers] = useState<Caterer[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterType, setFilterType] = useState<"all" | "fishbowl" | "verified" | "requested">("all");
+  const [filterType, setFilterType] = useState<"all" | "fishbowl" | "verified" | "requested" | "low-quality">("all");
   const [tagModalOpen, setTagModalOpen] = useState(false);
   const [selectedCaterer, setSelectedCaterer] = useState<Caterer | null>(null);
   const [tagEmail, setTagEmail] = useState("");
@@ -208,8 +217,38 @@ export default function AdminCaterersPage() {
     if (filterType === "requested") {
       return matchesSearch && !!caterer.verificationRequestedAt && !caterer.bookingEnabled;
     }
+    if (filterType === "low-quality") {
+      const trust = getCatererTrust(caterer);
+      return matchesSearch && trust.qualityScore < 40;
+    }
     return matchesSearch;
   });
+
+  const getCatererTrust = (caterer: Caterer) => {
+    const imageCount = caterer.images
+      ? caterer.images.split(",").filter(Boolean).length
+      : caterer.coverImage
+        ? 1
+        : 0;
+
+    return assessCatererTrust({
+      hasCoverImage: Boolean(caterer.coverImage),
+      imagesCount: imageCount,
+      hasDescription: Boolean(caterer.description && caterer.description.trim().length >= 40),
+      hasCity: Boolean(caterer.city),
+      hasArea: Boolean(caterer.area),
+      hasCoordinates: Boolean(caterer.latitude && caterer.longitude),
+      hasMinPlatePrice: Boolean(caterer.minPlatePrice),
+      hasTierCount: [caterer.silverPrice, caterer.goldPrice, caterer.platinumPrice].filter(Boolean).length,
+      hasCuisineData: Boolean(caterer.cuisines && caterer.cuisines.trim()),
+      hasMinGuests: Boolean(caterer.minGuests),
+      hasMenuPackages: false,
+      hasContactDetails: Boolean(caterer.contactNumber || caterer.contactName),
+      viewCount: caterer.viewCount,
+      updatedAt: caterer.updatedAt,
+      isVerified: caterer.isVerified,
+    });
+  };
 
   if (status === "loading" || loading) {
     return (
@@ -275,13 +314,15 @@ export default function AdminCaterersPage() {
               />
             </div>
             <div className="flex gap-2 flex-wrap">
-              {(["all", "fishbowl", "requested", "verified"] as const).map((type) => (
+              {(["all", "fishbowl", "requested", "verified", "low-quality"] as const).map((type) => (
                 <button
                   key={type}
                   onClick={() => setFilterType(type)}
                   className={`px-4 py-3 rounded-xl font-medium transition-all relative ${
                     filterType === type
-                      ? "bg-purple-600 text-white"
+                      ? type === "low-quality"
+                        ? "bg-red-600 text-white"
+                        : "bg-purple-600 text-white"
                       : "bg-white/60 text-gray-700 hover:bg-white"
                   }`}
                 >
@@ -299,6 +340,16 @@ export default function AdminCaterersPage() {
                     </span>
                   )}
                   {type === "verified" && "✓ Verified"}
+                  {type === "low-quality" && (
+                    <span className="flex items-center gap-1.5">
+                      ⚠️ Low Quality
+                      {filterType !== "low-quality" && (
+                        <span className="ml-1 bg-red-500 text-white text-xs font-bold rounded-full px-1.5 py-0.5 leading-none">
+                          {caterers.filter(c => getCatererTrust(c).qualityScore < 40).length}
+                        </span>
+                      )}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -414,6 +465,24 @@ export default function AdminCaterersPage() {
                         Starting: ₹{caterer.minPlatePrice}/plate
                       </span>
                     )}
+                  </div>
+
+                  <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs">
+                    <p className="font-semibold text-slate-700">
+                      {(() => {
+                        const trust = getCatererTrust(caterer);
+                        return `Quality ${trust.qualityScore}/100 (${trust.completedItems}/${trust.totalItems}) - ${getQualityLabel(trust.qualityScore)}`;
+                      })()}
+                    </p>
+                    <p className="mt-1 text-slate-500">
+                      {(() => {
+                        const trust = getCatererTrust(caterer);
+                        const missing = trust.checklist.filter((item) => !item.done).slice(0, 2);
+                        return missing.length > 0
+                          ? `Missing: ${missing.map((item) => item.label).join(", ")}`
+                          : "Checklist complete for this listing";
+                      })()}
+                    </p>
                   </div>
 
                   {/* Owner Info */}

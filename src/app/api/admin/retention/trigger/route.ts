@@ -4,6 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { runRetentionAutomation } from "@/lib/retention";
 
 // Validate request with a secret token from environment
@@ -15,13 +17,16 @@ const RETENTION_SECRET = process.env.RETENTION_AUTOMATION_SECRET || "dev-secret"
  */
 export async function POST(request: NextRequest) {
   try {
-    // Check authorization header
+    const session = await getServerSession(authOptions);
+
+    // Allow either an authenticated admin session or the server-to-server bearer token.
     const authHeader = request.headers.get("authorization");
     const token = authHeader?.replace("Bearer ", "");
+    const isAdminSession = session?.user?.role === "ADMIN";
 
-    if (!token || token !== RETENTION_SECRET) {
+    if (!isAdminSession && (!token || token !== RETENTION_SECRET)) {
       return NextResponse.json(
-        { error: "Unauthorized: Invalid or missing retention secret" },
+        { error: "Unauthorized: Invalid admin session or retention secret" },
         { status: 401 }
       );
     }

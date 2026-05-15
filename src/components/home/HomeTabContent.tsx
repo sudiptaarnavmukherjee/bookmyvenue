@@ -22,6 +22,7 @@ import {
   VenueCardSkeleton,
   CatererCardSkeleton,
 } from "@/components/home/HomeCards";
+import { getBmvLocation } from "@/components/home/LocationPermissionModal";
 import type { VenueCard, CatererCard } from "@/lib/home-data";
 
 const VENUE_TRUST = [
@@ -58,8 +59,8 @@ const CUISINE_CHIPS = [
 
 export default function HomeTabContent({
   initialMode,
-  venues,
-  caterers,
+  venues: initialVenues,
+  caterers: initialCaterers,
 }: {
   initialMode: string;
   venues: VenueCard[];
@@ -68,6 +69,57 @@ export default function HomeTabContent({
   const [mode, setMode] = useState<"venues" | "catering">(
     initialMode === "catering" ? "catering" : "venues"
   );
+  const [venues, setVenues] = useState<VenueCard[]>(initialVenues);
+  const [caterers, setCaterers] = useState<CatererCard[]>(initialCaterers);
+  const [locationLabel, setLocationLabel] = useState<string | null>(null);
+
+  // Hydrate with location-aware results after first paint
+  useEffect(() => {
+    const stored = getBmvLocation();
+    if (!stored?.lat || !stored?.lng) return;
+
+    setLocationLabel(stored.label || null);
+
+    // Fetch location-sorted venues in background — swap ISR data silently
+    const params = new URLSearchParams({
+      lat: String(stored.lat),
+      lng: String(stored.lng),
+      sortBy: "nearby",
+      limit: "12",
+    });
+
+    Promise.all([
+      fetch(`/api/venues?${params}`).then((r) => r.json()).catch(() => null),
+      fetch(`/api/catering?${params}`).then((r) => r.json()).catch(() => null),
+    ]).then(([venueData, catererData]) => {
+      if (venueData?.venues?.length) setVenues(venueData.venues);
+      if (catererData?.caterers?.length) setCaterers(catererData.caterers);
+    });
+  }, []);
+
+  // Listen for location updates mid-session
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const d = (e as CustomEvent<{ lat: number; lng: number; label: string }>).detail;
+      if (!d?.lat || !d?.lng) return;
+      setLocationLabel(d.label || null);
+      const params = new URLSearchParams({
+        lat: String(d.lat),
+        lng: String(d.lng),
+        sortBy: "nearby",
+        limit: "12",
+      });
+      Promise.all([
+        fetch(`/api/venues?${params}`).then((r) => r.json()).catch(() => null),
+        fetch(`/api/catering?${params}`).then((r) => r.json()).catch(() => null),
+      ]).then(([venueData, catererData]) => {
+        if (venueData?.venues?.length) setVenues(venueData.venues);
+        if (catererData?.caterers?.length) setCaterers(catererData.caterers);
+      });
+    };
+    window.addEventListener("bmv:locationUpdated", handler);
+    return () => window.removeEventListener("bmv:locationUpdated", handler);
+  }, []);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -129,9 +181,7 @@ export default function HomeTabContent({
           <section>
             <SectionHeader
               title="All Caterers"
-              subtitle={`${caterers.length} caterers available`}
-              icon={ChefHat}
-              viewAllHref="/catering"
+            subtitle={locationLabel ? `Sorted by distance from ${locationLabel}` : `${caterers.length} caterers available`}
               accentColor="blue"
             />
 
@@ -201,8 +251,8 @@ export default function HomeTabContent({
         {bestVenues.length > 0 && (
           <section className="mb-7">
             <SectionHeader
-              title="Trending Venues"
-              subtitle="Hand-picked for this week"
+              title={locationLabel ? "Nearest Venues" : "Trending Venues"}
+              subtitle={locationLabel ? `Closest to ${locationLabel}` : "Hand-picked for this week"}
               icon={Star}
               viewAllHref="/venues?sort=popular"
               accentColor="blue"
@@ -218,7 +268,7 @@ export default function HomeTabContent({
         <section className="mb-7">
           <SectionHeader
             title="All Venues"
-            subtitle={`${venues.length}+ venues in Kolkata`}
+            subtitle={locationLabel ? `Sorted by distance from ${locationLabel}` : `${venues.length}+ venues in Kolkata`}
             icon={Navigation}
             viewAllHref="/venues"
             accentColor="blue"

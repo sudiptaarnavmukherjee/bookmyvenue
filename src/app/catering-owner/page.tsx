@@ -9,6 +9,7 @@ import { api } from "@/lib/api-client";
 const AvailabilityCalendar = dynamic(() => import("@/components/calendar/AvailabilityCalendar"));
 const BlockDateModal = dynamic(() => import("@/components/calendar/BlockDateModal"));
 const EngagementDashboard = dynamic(() => import("@/components/owner/EngagementDashboard"));
+const InquiryInbox = dynamic(() => import("@/components/owner/InquiryInbox"));
 import { 
   Calendar, 
   CheckCircle2,
@@ -93,7 +94,7 @@ export default function CateringOwnerDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"bookings" | "calendar" | "menus" | "profile" | "insights">("bookings");
+  const [activeTab, setActiveTab] = useState<"bookings" | "calendar" | "menus" | "profile" | "insights" | "inquiries">("bookings");
 
   // Profile / verification state
   const [ownedCaterers, setOwnedCaterers] = useState<Caterer[]>([]);
@@ -468,6 +469,17 @@ export default function CateringOwnerDashboard() {
             <Eye className="inline h-5 w-5 mr-2" />
             Insights
           </button>
+          <button
+            onClick={() => setActiveTab("inquiries")}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+              activeTab === "inquiries"
+                ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
+                : "bg-white text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            <Mail className="inline h-5 w-5 mr-2" />
+            Inquiries
+          </button>
         </div>
 
         {/* Bookings Tab */}
@@ -737,6 +749,13 @@ export default function CateringOwnerDashboard() {
           <div className="bg-white rounded-2xl p-6 shadow-sm">
             <h2 className="text-xl font-bold text-gray-900 mb-6">Engagement Insights</h2>
             <EngagementDashboard />
+          </div>
+        )}
+
+        {/* Inquiries Tab */}
+        {activeTab === "inquiries" && (
+          <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <InquiryInbox />
           </div>
         )}
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { getAreaCoordinates } from "@/lib/ola-maps";
+import { assessCatererTrust } from "@/lib/listing-trust";
 
 // Cache headers - 30 second cache with stale-while-revalidate
 const CACHE_HEADERS = {
@@ -149,6 +150,7 @@ export async function GET(request: Request) {
       
       return {
         ...caterer,
+        taggedToOwnerId: caterer.taggedToOwnerId,
         distanceKm,
         distanceText,
       };
@@ -205,10 +207,42 @@ export async function GET(request: Request) {
         break;
     }
 
+    const enriched = radiusFiltered.map((caterer) => {
+      const imageCount = caterer.images
+        ? caterer.images.split(",").filter(Boolean).length
+        : caterer.coverImage
+        ? 1
+        : 0;
+      const trust = assessCatererTrust({
+        hasCoverImage: Boolean(caterer.coverImage),
+        imagesCount: imageCount,
+        hasDescription: Boolean(caterer.description && caterer.description.trim().length >= 40),
+        hasCity: Boolean(caterer.city),
+        hasArea: Boolean(caterer.area),
+        hasCoordinates: Boolean(caterer.latitude && caterer.longitude),
+        hasMinPlatePrice: Boolean(caterer.minPlatePrice),
+        hasTierCount: [caterer.silverPrice, caterer.goldPrice, caterer.platinumPrice].filter(Boolean).length,
+        hasCuisineData: Boolean(caterer.cuisines && caterer.cuisines.trim()),
+        hasMinGuests: Boolean(caterer.minGuests),
+        hasMenuPackages: caterer.packages && caterer.packages.length > 0,
+        hasContactDetails: Boolean(caterer.contactNumber || caterer.contactName),
+        reviewCount: caterer._count.reviews,
+        bookingCount: caterer._count.bookings,
+        viewCount: caterer.viewCount ?? 0,
+        updatedAt: caterer.updatedAt?.toISOString(),
+        isVerified: caterer.isVerified,
+      });
+      return {
+        ...caterer,
+        qualityScore: trust.qualityScore,
+        priceConfidence: trust.priceConfidence,
+      };
+    });
+
     return NextResponse.json({ 
-      caterers: radiusFiltered, 
+      caterers: enriched, 
       areas,
-      total: radiusFiltered.length 
+      total: enriched.length 
     }, { headers: CACHE_HEADERS });
   } catch (error: any) {
     console.error("Error fetching caterers:", error?.message || error);

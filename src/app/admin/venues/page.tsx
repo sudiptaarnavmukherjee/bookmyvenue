@@ -20,6 +20,7 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
+import { assessVenueTrust, getQualityLabel } from "@/lib/listing-trust";
 
 type Venue = {
   id: string;
@@ -33,6 +34,11 @@ type Venue = {
   contactNumber?: string;
   contactName?: string;
   viewCount: number;
+  description?: string;
+  images?: string;
+  coverImage?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   exactPrice?: number;
   estimatedMinPrice?: number;
   marriagePrice?: number;
@@ -49,6 +55,7 @@ type Venue = {
     email: string;
   };
   createdAt: string;
+  updatedAt: string;
 };
 
 type VenueOwner = {
@@ -64,7 +71,7 @@ export default function AdminVenuesPage() {
   const [venueOwners, setVenueOwners] = useState<VenueOwner[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterType, setFilterType] = useState<"all" | "fishbowl" | "verified">("all");
+  const [filterType, setFilterType] = useState<"all" | "fishbowl" | "verified" | "low-quality">("all");
   const [tagModalOpen, setTagModalOpen] = useState(false);
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
   const [selectedOwnerId, setSelectedOwnerId] = useState("");
@@ -186,8 +193,38 @@ export default function AdminVenuesPage() {
     if (filterType === "verified") {
       return matchesSearch && venue.bookingEnabled;
     }
+    if (filterType === "low-quality") {
+      const trust = getVenueTrust(venue);
+      return matchesSearch && trust.qualityScore < 40;
+    }
     return matchesSearch;
   });
+
+  const getVenueTrust = (venue: Venue) => {
+    const imageCount = venue.images
+      ? venue.images.split(",").filter(Boolean).length
+      : venue.coverImage
+        ? 1
+        : 0;
+
+    return assessVenueTrust({
+      hasCoverImage: Boolean(venue.coverImage),
+      imagesCount: imageCount,
+      hasDescription: Boolean(venue.description && venue.description.trim().length >= 40),
+      hasCity: Boolean(venue.city),
+      hasArea: Boolean(venue.area),
+      hasCoordinates: Boolean(venue.latitude && venue.longitude),
+      hasCapacityRange: false,
+      hasExactPrice: Boolean(venue.exactPrice),
+      hasEstimatedRange: Boolean(venue.estimatedMinPrice),
+      hasPrimePricing: false,
+      hasEventPricingCount: [venue.marriagePrice, venue.birthdayPrice, venue.otherEventPrice].filter(Boolean).length,
+      hasContactDetails: Boolean(venue.contactNumber || venue.contactName),
+      viewCount: venue.viewCount,
+      updatedAt: venue.updatedAt,
+      isVerified: venue.isVerified,
+    });
+  };
 
   if (status === "loading" || loading) {
     return (
@@ -237,19 +274,31 @@ export default function AdminVenuesPage() {
               />
             </div>
             <div className="flex gap-2">
-              {(["all", "fishbowl", "verified"] as const).map((type) => (
+              {(["all", "fishbowl", "verified", "low-quality"] as const).map((type) => (
                 <button
                   key={type}
                   onClick={() => setFilterType(type)}
                   className={`px-4 py-3 rounded-xl font-medium transition-all ${
                     filterType === type
-                      ? "bg-purple-600 text-white"
+                      ? type === "low-quality"
+                        ? "bg-red-600 text-white"
+                        : "bg-purple-600 text-white"
                       : "bg-white/60 text-gray-700 hover:bg-white"
                   }`}
                 >
                   {type === "all" && "All"}
                   {type === "fishbowl" && "🐟 Fishbowl"}
                   {type === "verified" && "✓ Verified"}
+                  {type === "low-quality" && (
+                    <span className="flex items-center gap-1.5">
+                      ⚠️ Low Quality
+                      {filterType !== "low-quality" && (
+                        <span className="ml-1 bg-red-500 text-white text-xs font-bold rounded-full px-1.5 py-0.5 leading-none">
+                          {venues.filter(v => getVenueTrust(v).qualityScore < 40).length}
+                        </span>
+                      )}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -337,6 +386,24 @@ export default function AdminVenuesPage() {
                     {!venue.marriagePrice && !venue.birthdayPrice && !venue.otherEventPrice && venue.exactPrice && (
                       <span className="text-gray-600">₹{venue.exactPrice.toLocaleString()}</span>
                     )}
+                  </div>
+
+                  <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs">
+                    <p className="font-semibold text-slate-700">
+                      {(() => {
+                        const trust = getVenueTrust(venue);
+                        return `Quality ${trust.qualityScore}/100 (${trust.completedItems}/${trust.totalItems}) - ${getQualityLabel(trust.qualityScore)}`;
+                      })()}
+                    </p>
+                    <p className="mt-1 text-slate-500">
+                      {(() => {
+                        const trust = getVenueTrust(venue);
+                        const missing = trust.checklist.filter((item) => !item.done).slice(0, 2);
+                        return missing.length > 0
+                          ? `Missing: ${missing.map((item) => item.label).join(", ")}`
+                          : "Checklist complete for this listing";
+                      })()}
+                    </p>
                   </div>
 
                   {/* Owner Info */}

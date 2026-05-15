@@ -25,6 +25,7 @@ import {
   Activity,
   MessageSquare,
   UserCog,
+  BellRing,
 } from "lucide-react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -139,6 +140,8 @@ interface Stats {
   pendingVenues: number;
   pendingCaterers: number;
   totalBookings: number;
+  pendingVerifications: number;
+  totalRevenue: number;
 }
 
 export default function AdminDashboard() {
@@ -286,9 +289,21 @@ export default function AdminDashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {stats && stats.pendingVerifications > 0 && (
+          <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-center gap-3">
+            <BellRing className="h-6 w-6 text-amber-600" />
+            <p className="text-amber-800">
+              <strong>{stats.pendingVerifications}</strong> caterers are waiting for KYC review.
+            </p>
+            <Link href="/admin/caterers" className="ml-auto px-4 py-2 rounded-xl bg-amber-600 text-white hover:bg-amber-700 transition-all">
+              Review KYC
+            </Link>
+          </div>
+        )}
+
         {/* Stats Cards */}
         {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-4 mb-8">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -352,6 +367,28 @@ export default function AdminDashboard() {
               <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
               <p className="text-2xl font-bold text-gray-900">{stats.totalBookings}</p>
               <p className="text-sm text-gray-600">Total Bookings</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              className="glass-card rounded-2xl p-4 text-center bg-amber-50"
+            >
+              <BellRing className="h-8 w-8 text-amber-600 mx-auto mb-2" />
+              <p className="text-2xl font-bold text-amber-700">{stats.pendingVerifications}</p>
+              <p className="text-sm text-amber-600">Pending KYC Reviews</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 }}
+              className="glass-card rounded-2xl p-4 text-center bg-green-50"
+            >
+              <IndianRupee className="h-8 w-8 text-green-600 mx-auto mb-2" />
+              <p className="text-2xl font-bold text-green-700">₹{stats.totalRevenue.toLocaleString("en-IN")}</p>
+              <p className="text-sm text-green-600">Total Revenue</p>
             </motion.div>
           </div>
         )}
@@ -458,6 +495,22 @@ export default function AdminDashboard() {
               </div>
               <div className="h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
                 <Eye className="h-6 w-6 text-blue-600" />
+              </div>
+            </div>
+          </Link>
+          <Link
+            href="/admin/retention"
+            className="glass-card rounded-2xl p-5 hover:shadow-lg transition-all group"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-gray-900 group-hover:text-rose-600 transition-colors">
+                  Retention Automation
+                </h3>
+                <p className="text-sm text-gray-600">Configure reminders and run campaigns</p>
+              </div>
+              <div className="h-12 w-12 rounded-xl bg-rose-100 flex items-center justify-center group-hover:bg-rose-200 transition-colors">
+                <BellRing className="h-6 w-6 text-rose-600" />
               </div>
             </div>
           </Link>

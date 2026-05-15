@@ -7,7 +7,7 @@ import prisma from "@/lib/db";
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -19,6 +19,8 @@ export async function GET() {
       pendingVenues,
       pendingCaterers,
       totalBookings,
+      pendingVerifications,
+      revenueAgg,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.venue.count({ where: { deletedAt: null } }),
@@ -26,6 +28,17 @@ export async function GET() {
       prisma.venue.count({ where: { isVerified: false, deletedAt: null } }),
       prisma.caterer.count({ where: { isVerified: false, isActive: true } }),
       prisma.booking.count(),
+      prisma.caterer.count({
+        where: {
+          isActive: true,
+          isVerified: false,
+          verificationRequestedAt: { not: null },
+        },
+      }),
+      prisma.booking.aggregate({
+        where: { status: { in: ["CONFIRMED", "COMPLETED"] } },
+        _sum: { totalAmount: true },
+      }),
     ]);
 
     return NextResponse.json({
@@ -35,6 +48,8 @@ export async function GET() {
       pendingVenues,
       pendingCaterers,
       totalBookings,
+      pendingVerifications,
+      totalRevenue: revenueAgg._sum.totalAmount ?? 0,
     });
   } catch (error) {
     console.error("Error fetching admin stats:", error);

@@ -23,8 +23,16 @@ type Caterer = {
   isPureVeg?: boolean;
   isVerified?: boolean;
   isAdminListed?: boolean;
+  taggedToOwnerId?: string | null;
   bookingEnabled?: boolean;
   viewCount?: number;
+  updatedAt?: string;
+  description?: string;
+  cuisines?: string;
+  minGuests?: number;
+  packages?: unknown[];
+  latitude?: number | null;
+  longitude?: number | null;
   images?: string;
   coverImage?: string;
   contactNumber?: string;
@@ -376,13 +384,22 @@ export default function CateringPage() {
                 totalReviews={caterer._count?.reviews || 0}
                 isPureVeg={caterer.isPureVeg || false}
                 coverImage={getCatererImage(caterer)}
+                description={caterer.description}
+                imagesCount={caterer.images ? caterer.images.split(",").filter(Boolean).length : (caterer.coverImage ? 1 : 0)}
+                hasCoordinates={Boolean(caterer.latitude && caterer.longitude)}
+                hasCuisineData={Boolean(caterer.cuisines && caterer.cuisines.trim())}
+                minGuests={caterer.minGuests}
+                hasMenuPackages={Boolean(caterer.packages && caterer.packages.length > 0)}
                 isVerified={caterer.isVerified}
                 bookingEnabled={caterer.bookingEnabled}
                 isAdminListed={caterer.isAdminListed}
+                taggedToOwnerId={caterer.taggedToOwnerId || undefined}
                 contactNumber={caterer.contactNumber}
                 contactName={caterer.contactName}
                 viewCount={caterer.viewCount}
+                updatedAt={caterer.updatedAt}
                 distanceText={caterer.distanceText || undefined}
+                bookingCount={caterer._count?.bookings || 0}
                 inWishlist={wishlistCatererIds.has(caterer.id)}
               />
             ))}

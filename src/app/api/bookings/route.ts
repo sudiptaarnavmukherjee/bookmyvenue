@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { createBookingSchema, formatZodErrors } from "@/lib/validations";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { PackageTier, BookingStatus } from "@prisma/client";
+import { sendTemplatedEmail } from "@/lib/email-templates";
 
 export async function GET(request: Request) {
   try {
@@ -300,6 +301,104 @@ export async function POST(request: Request) {
 
       return newBooking;
     });
+
+    // Send notification emails (non-blocking — failure must not reject the booking)
+    const listingName =
+      booking.venue?.name ?? booking.caterer?.name ?? "your listed venue";
+    const formattedDate = new Date(booking.eventDate).toLocaleDateString("en-IN", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    // 1. Customer confirmation email
+    sendTemplatedEmail({
+      to: customerEmail,
+      templateName: "booking_confirmation_customer",
+      subject: `Booking Confirmed – ${listingName} on ${formattedDate}`,
+      variables: {
+        customerName,
+        bookingNumber: booking.bookingNumber,
+        listingName,
+        eventDate: formattedDate,
+        guestCount: guestCount ?? 0,
+        totalAmount: booking.totalAmount ? `₹${booking.totalAmount.toLocaleString("en-IN")}` : "TBD",
+        advanceAmount: booking.advanceAmount ? `₹${booking.advanceAmount.toLocaleString("en-IN")}` : "TBD",
+        specialRequests: specialRequests || "None",
+      },
+      fallbackHtml: `
+        <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px">
+          <h2 style="color:#7c3aed">Booking Received – ${listingName}</h2>
+          <p>Hi ${customerName},</p>
+          <p>We've received your booking request. Here are the details:</p>
+          <table style="width:100%;border-collapse:collapse">
+            <tr><td style="padding:8px;font-weight:600">Booking #</td><td style="padding:8px">${booking.bookingNumber}</td></tr>
+            <tr><td style="padding:8px;font-weight:600">Venue / Caterer</td><td style="padding:8px">${listingName}</td></tr>
+            <tr><td style="padding:8px;font-weight:600">Event Date</td><td style="padding:8px">${formattedDate}</td></tr>
+            <tr><td style="padding:8px;font-weight:600">Guests</td><td style="padding:8px">${guestCount ?? "—"}</td></tr>
+            <tr><td style="padding:8px;font-weight:600">Total Amount</td><td style="padding:8px">${booking.totalAmount ? `₹${booking.totalAmount.toLocaleString("en-IN")}` : "TBD"}</td></tr>
+          </table>
+          <p style="margin-top:16px">Your booking is currently <strong>PENDING</strong> and will be confirmed by the owner shortly.</p>
+          <p style="color:#6b7280;font-size:13px">If you have questions, reply to this email or contact us at support@shubhspace.com</p>
+        </div>
+      `,
+    }).catch((e) => console.error("Customer booking email error:", e));
+
+    // 2. Owner new-booking alert
+    try {
+      let ownerEmail: string | null = null;
+      if (type === "VENUE" && booking.venue) {
+        const venueOwner = await prisma.venue.findUnique({
+          where: { id: booking.venue.id },
+          select: { owner: { select: { email: true } } },
+        });
+        ownerEmail = venueOwner?.owner?.email ?? null;
+      } else if (type === "CATERING" && booking.caterer) {
+        const catererOwner = await prisma.caterer.findUnique({
+          where: { id: booking.caterer.id },
+          select: { owner: { select: { email: true } } },
+        });
+        ownerEmail = catererOwner?.owner?.email ?? null;
+      }
+
+      if (ownerEmail) {
+        sendTemplatedEmail({
+          to: ownerEmail,
+          templateName: "booking_alert_owner",
+          subject: `New Booking – ${listingName} on ${formattedDate}`,
+          variables: {
+            bookingNumber: booking.bookingNumber,
+            listingName,
+            customerName,
+            customerEmail,
+            customerPhone: customerPhone ?? "",
+            eventDate: formattedDate,
+            guestCount: guestCount ?? 0,
+            totalAmount: booking.totalAmount ? `₹${booking.totalAmount.toLocaleString("en-IN")}` : "TBD",
+            specialRequests: specialRequests || "None",
+          },
+          fallbackHtml: `
+            <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px">
+              <h2 style="color:#7c3aed">New Booking for ${listingName}</h2>
+              <p>You have a new booking request:</p>
+              <table style="width:100%;border-collapse:collapse">
+                <tr><td style="padding:8px;font-weight:600">Booking #</td><td style="padding:8px">${booking.bookingNumber}</td></tr>
+                <tr><td style="padding:8px;font-weight:600">Customer</td><td style="padding:8px">${customerName} (${customerEmail})</td></tr>
+                <tr><td style="padding:8px;font-weight:600">Phone</td><td style="padding:8px">${customerPhone ?? "—"}</td></tr>
+                <tr><td style="padding:8px;font-weight:600">Event Date</td><td style="padding:8px">${formattedDate}</td></tr>
+                <tr><td style="padding:8px;font-weight:600">Guests</td><td style="padding:8px">${guestCount ?? "—"}</td></tr>
+                <tr><td style="padding:8px;font-weight:600">Total</td><td style="padding:8px">${booking.totalAmount ? `₹${booking.totalAmount.toLocaleString("en-IN")}` : "TBD"}</td></tr>
+                <tr><td style="padding:8px;font-weight:600">Special Requests</td><td style="padding:8px">${specialRequests || "None"}</td></tr>
+              </table>
+              <p style="margin-top:16px">Please log in to your owner dashboard to confirm or discuss this booking.</p>
+            </div>
+          `,
+        }).catch((e) => console.error("Owner booking alert email error:", e));
+      }
+    } catch (ownerEmailErr) {
+      console.error("Owner email lookup error:", ownerEmailErr);
+    }
 
     return NextResponse.json({ booking }, { status: 201 });
   } catch (error) {

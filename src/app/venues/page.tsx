@@ -22,13 +22,17 @@ type Venue = {
   estimatedMaxPrice?: number | null;
   primeDayPrice?: number | null;
   nonPrimeDayPrice?: number | null;
+  description?: string;
   priceMode?: string;
   marriagePrice?: number | null;
   birthdayPrice?: number | null;
   otherEventPrice?: number | null;
   isVerified: boolean;
   isAdminListed?: boolean;
+  taggedToOwnerId?: string | null;
   bookingEnabled?: boolean;
+  updatedAt?: string;
+  _count?: { reviews?: number; bookings?: number };
   viewCount?: number;
   images?: string;
   coverImage?: string;
@@ -61,6 +65,7 @@ export default function VenuesPage() {
   const { location, loading: locationLoading, isPermissionDenied } = useLocation();
   const [selectedArea, setSelectedArea] = useState<string>("");
   const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [eventTypeFilter, setEventTypeFilter] = useState<"" | "MARRIAGE" | "BIRTHDAY" | "OTHER">("MARRIAGE");
   const [wishlistVenueIds, setWishlistVenueIds] = useState<Set<string>>(new Set());
   const [currentLocationLabel, setCurrentLocationLabel] = useState("Kolkata");
 
@@ -142,15 +147,26 @@ export default function VenuesPage() {
           return false;
       }
       if (verifiedOnly && !venue.isVerified) return false;
+      // Event type filter — only exclude if the venue has at least one event-type price set
+      // (venues without any event pricing pass through to avoid hiding non-priced venues)
+      if (eventTypeFilter) {
+        const hasAnyEventPrice = venue.marriagePrice || venue.birthdayPrice || venue.otherEventPrice;
+        if (hasAnyEventPrice) {
+          if (eventTypeFilter === "MARRIAGE" && !venue.marriagePrice) return false;
+          if (eventTypeFilter === "BIRTHDAY" && !venue.birthdayPrice) return false;
+          if (eventTypeFilter === "OTHER" && !venue.otherEventPrice) return false;
+        }
+      }
       return true;
     });
-  }, [venues, searchQuery, verifiedOnly]);
+  }, [venues, searchQuery, verifiedOnly, eventTypeFilter]);
 
   const clearFilters = useCallback(() => {
     setSearchQuery("");
     setSortBy("area");
     setSelectedArea("");
     setVerifiedOnly(false);
+    setEventTypeFilter("MARRIAGE");
   }, []);
 
   const getVenueImage = useCallback((venue: Venue) => {
@@ -162,7 +178,7 @@ export default function VenuesPage() {
     return "https://images.unsplash.com/photo-1519167758481-83f29da8c456?w=800";
   }, []);
 
-  const activeFilterCount = (verifiedOnly ? 1 : 0) + (selectedArea ? 1 : 0);
+  const activeFilterCount = (verifiedOnly ? 1 : 0) + (selectedArea ? 1 : 0) + (eventTypeFilter ? 1 : 0);
 
   const SORT_OPTIONS = [
     { value: "area",       label: "📍 By Area" },
@@ -241,6 +257,28 @@ export default function VenuesPage() {
                 </button>
               ))}
             </div>
+
+            {/* Event type quick filter */}
+            <div className="mt-2 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              {([
+                { value: "" as const, label: "All Events" },
+                { value: "MARRIAGE" as const, label: "💍 Marriage" },
+                { value: "BIRTHDAY" as const, label: "🎂 Birthday" },
+                { value: "OTHER" as const, label: "🎪 Other" },
+              ]).map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setEventTypeFilter(opt.value)}
+                  className={`flex-shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    eventTypeFilter === opt.value
+                      ? "border-rose-500 bg-rose-500 text-white"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-rose-300"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
@@ -311,7 +349,7 @@ export default function VenuesPage() {
         )}
 
         {/* Active filter strip */}
-        {(searchQuery || verifiedOnly) && (
+        {(searchQuery || verifiedOnly || eventTypeFilter) && (
           <div className="flex items-center gap-2 mb-4 flex-wrap">
             {searchQuery && (
               <span className="flex items-center gap-1 text-xs bg-[#0b5fab]/5 text-[#0b5fab] border border-[#0b5fab]/20 px-2.5 py-1 rounded-full font-medium">
@@ -323,6 +361,12 @@ export default function VenuesPage() {
               <span className="flex items-center gap-1 text-xs bg-green-50 text-green-700 border border-green-200 px-2.5 py-1 rounded-full font-medium">
                 Verified only
                 <button onClick={() => setVerifiedOnly(false)}><X className="w-3 h-3" /></button>
+              </span>
+            )}
+            {eventTypeFilter && (
+              <span className="flex items-center gap-1 text-xs bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-full font-medium">
+                {eventTypeFilter === "MARRIAGE" ? "💍 Marriage" : eventTypeFilter === "BIRTHDAY" ? "🎂 Birthday" : "🎪 Other"}
+                <button onClick={() => setEventTypeFilter("")}><X className="w-3 h-3" /></button>
               </span>
             )}
             <button onClick={clearFilters} className="text-xs text-gray-400 hover:text-gray-600 underline">
@@ -402,12 +446,19 @@ export default function VenuesPage() {
                 minGuests={venue.minGuests || 50}
                 maxGuests={venue.maxGuests || 500}
                 coverImage={getVenueImage(venue)}
+                description={venue.description}
+                imagesCount={venue.images ? venue.images.split(",").filter(Boolean).length : (venue.coverImage ? 1 : 0)}
+                hasCoordinates={Boolean(venue.latitude && venue.longitude)}
                 isVerified={venue.isVerified}
                 bookingEnabled={venue.bookingEnabled}
                 isAdminListed={venue.isAdminListed}
+                taggedToOwnerId={venue.taggedToOwnerId || undefined}
                 contactNumber={venue.contactNumber}
                 contactName={venue.contactName}
                 viewCount={venue.viewCount}
+                updatedAt={venue.updatedAt}
+                reviewCount={venue._count?.reviews || 0}
+                bookingCount={venue._count?.bookings || 0}
                 distanceText={venue.distanceText || undefined}
                 marriagePrice={venue.marriagePrice || undefined}
                 birthdayPrice={venue.birthdayPrice || undefined}
@@ -504,6 +555,31 @@ export default function VenuesPage() {
                     <p className="text-xs text-gray-500">Show venues verified by Happily Eated</p>
                   </div>
                 </button>
+              </div>
+
+              {/* Sort options — visible in sheet on mobile */}
+              <div className="mb-6">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">Event Type</h4>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    { value: "" as const, label: "All Events" },
+                    { value: "MARRIAGE" as const, label: "💍 Marriage / Wedding" },
+                    { value: "BIRTHDAY" as const, label: "🎂 Birthday / Anniversary" },
+                    { value: "OTHER" as const, label: "🎪 Other Events" },
+                  ]).map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setEventTypeFilter(opt.value)}
+                      className={`px-3 py-2 rounded-xl text-sm font-medium border-2 transition-colors ${
+                        eventTypeFilter === opt.value
+                          ? "border-rose-500 bg-rose-500 text-white"
+                          : "bg-white text-gray-600 border-gray-200"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Sort options — visible in sheet on mobile */}

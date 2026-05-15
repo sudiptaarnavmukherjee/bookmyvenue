@@ -10,21 +10,199 @@ import {
   sendReEngagementEmail,
 } from "./email";
 
+export type RetentionSettings = {
+  enabled: boolean;
+  sendEventReminders: boolean;
+  reminderDaysAhead: number[];
+  sendPostEventFeedback: boolean;
+  feedbackDelayDays: number;
+  sendReEngagement: boolean;
+  reEngagementDays: number;
+};
+
+const RETENTION_SETTINGS_DEFAULTS: RetentionSettings = {
+  enabled: true,
+  sendEventReminders: true,
+  reminderDaysAhead: [7, 3, 1],
+  sendPostEventFeedback: true,
+  feedbackDelayDays: 2,
+  sendReEngagement: true,
+  reEngagementDays: 60,
+};
+
+const RETENTION_CONFIG_KEYS = {
+  enabled: "retention.enabled",
+  sendEventReminders: "retention.sendEventReminders",
+  reminderDaysAhead: "retention.reminderDaysAhead",
+  sendPostEventFeedback: "retention.sendPostEventFeedback",
+  feedbackDelayDays: "retention.feedbackDelayDays",
+  sendReEngagement: "retention.sendReEngagement",
+  reEngagementDays: "retention.reEngagementDays",
+} as const;
+
+function parseBoolean(value: string, fallback: boolean) {
+  if (value === "true") {
+    return true;
+  }
+
+  if (value === "false") {
+    return false;
+  }
+
+  return fallback;
+}
+
+function parseNumber(value: string, fallback: number) {
+  if (value.trim() === "") {
+    return fallback;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function parseReminderDays(value: string, fallback: number[]) {
+  try {
+    const parsed = JSON.parse(value);
+
+    if (!Array.isArray(parsed)) {
+      return fallback;
+    }
+
+    return parsed
+      .map((item) => Number(item))
+      .filter((item) => Number.isInteger(item) && item > 0)
+      .sort((left, right) => right - left);
+  } catch {
+    return fallback;
+  }
+}
+
+function startOfDay(date: Date) {
+  const copy = new Date(date);
+  copy.setHours(0, 0, 0, 0);
+  return copy;
+}
+
+function addDays(date: Date, days: number) {
+  const copy = new Date(date);
+  copy.setDate(copy.getDate() + days);
+  return copy;
+}
+
+function getJsonNumber(value: unknown, key: string) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const rawValue = (value as Record<string, unknown>)[key];
+  return typeof rawValue === "number" ? rawValue : null;
+}
+
+export async function getRetentionSettings(): Promise<RetentionSettings> {
+  const configs = await prisma.systemConfig.findMany({
+    where: {
+      category: "retention",
+      key: {
+        in: Object.values(RETENTION_CONFIG_KEYS),
+      },
+    },
+  });
+
+  const configMap = new Map(configs.map((config) => [config.key, config.value]));
+
+  return {
+    enabled: parseBoolean(
+      configMap.get(RETENTION_CONFIG_KEYS.enabled) ?? "",
+      RETENTION_SETTINGS_DEFAULTS.enabled
+    ),
+    sendEventReminders: parseBoolean(
+      configMap.get(RETENTION_CONFIG_KEYS.sendEventReminders) ?? "",
+      RETENTION_SETTINGS_DEFAULTS.sendEventReminders
+    ),
+    reminderDaysAhead: parseReminderDays(
+      configMap.get(RETENTION_CONFIG_KEYS.reminderDaysAhead) ?? "",
+      RETENTION_SETTINGS_DEFAULTS.reminderDaysAhead
+    ),
+    sendPostEventFeedback: parseBoolean(
+      configMap.get(RETENTION_CONFIG_KEYS.sendPostEventFeedback) ?? "",
+      RETENTION_SETTINGS_DEFAULTS.sendPostEventFeedback
+    ),
+    feedbackDelayDays: parseNumber(
+      configMap.get(RETENTION_CONFIG_KEYS.feedbackDelayDays) ?? "",
+      RETENTION_SETTINGS_DEFAULTS.feedbackDelayDays
+    ),
+    sendReEngagement: parseBoolean(
+      configMap.get(RETENTION_CONFIG_KEYS.sendReEngagement) ?? "",
+      RETENTION_SETTINGS_DEFAULTS.sendReEngagement
+    ),
+    reEngagementDays: parseNumber(
+      configMap.get(RETENTION_CONFIG_KEYS.reEngagementDays) ?? "",
+      RETENTION_SETTINGS_DEFAULTS.reEngagementDays
+    ),
+  };
+}
+
+export async function saveRetentionSettings(
+  updates: Partial<RetentionSettings>
+): Promise<RetentionSettings> {
+  const entries = Object.entries(updates) as Array<[keyof RetentionSettings, RetentionSettings[keyof RetentionSettings]]>;
+
+  await Promise.all(
+    entries.map(([field, value]) => {
+      const key = RETENTION_CONFIG_KEYS[field];
+      const serializedValue = Array.isArray(value) ? JSON.stringify(value) : String(value);
+      const type = Array.isArray(value)
+        ? "json"
+        : typeof value === "boolean"
+          ? "boolean"
+          : "number";
+
+      return prisma.systemConfig.upsert({
+        where: { key },
+        create: {
+          key,
+          value: serializedValue,
+          type,
+          category: "retention",
+          description: key,
+        },
+        update: {
+          value: serializedValue,
+          type,
+          category: "retention",
+        },
+      });
+    })
+  );
+
+  return getRetentionSettings();
+}
+
 // ==================== EVENT REMINDERS ====================
 
 /**
  * Find bookings that need event reminders (1, 3, or 7 days before event)
  * Send reminders that haven't been sent yet
  */
-export async function processEventReminders() {
+export async function processEventReminders(settings?: RetentionSettings) {
+  const resolvedSettings = settings ?? (await getRetentionSettings());
+
+  if (!resolvedSettings.enabled || !resolvedSettings.sendEventReminders) {
+    return {
+      sent: 0,
+      failed: 0,
+      updated: 0,
+    };
+  }
+
   const now = new Date();
 
   // Define reminder windows: send 7, 3, and 1 day(s) before event
-  const reminders = [
-    { daysAhead: 7, name: "7-day reminder" },
-    { daysAhead: 3, name: "3-day reminder" },
-    { daysAhead: 1, name: "1-day reminder" },
-  ];
+  const reminders = resolvedSettings.reminderDaysAhead.map((daysAhead) => ({
+    daysAhead,
+    name: `${daysAhead}-day reminder`,
+  }));
 
   const results = {
     sent: 0,
@@ -35,27 +213,29 @@ export async function processEventReminders() {
   for (const reminder of reminders) {
     try {
       // Calculate the date window for this reminder
-      const targetDate = new Date(now);
-      targetDate.setDate(targetDate.getDate() + reminder.daysAhead);
-      targetDate.setHours(0, 0, 0, 0);
+      const targetDate = startOfDay(addDays(now, reminder.daysAhead));
+      const nextDay = addDays(targetDate, 1);
 
-      const nextDay = new Date(targetDate);
-      nextDay.setDate(nextDay.getDate() + 1);
-
-      // Find confirmed bookings in PENDING state that haven't had reminder sent
+      // Find confirmed bookings in the target window and inspect campaign history per reminder.
       const bookingsToRemind = await prisma.booking.findMany({
         where: {
-          status: "CONFIRMED", // Only send to confirmed bookings
+          status: "CONFIRMED",
           eventDate: {
             gte: targetDate,
             lt: nextDay,
           },
-          reminderEmailSentAt: null, // Only if reminder hasn't been sent
         },
         include: {
-          user: true,
           venue: true,
           caterer: true,
+          retentionCampaigns: {
+            where: {
+              campaignType: "EVENT_REMINDER",
+            },
+            select: {
+              metadata: true,
+            },
+          },
         },
       });
 
@@ -65,6 +245,14 @@ export async function processEventReminders() {
 
       for (const booking of bookingsToRemind) {
         try {
+          const alreadySentForWindow = booking.retentionCampaigns.some((campaign) => {
+            return getJsonNumber(campaign.metadata, "daysAhead") === reminder.daysAhead;
+          });
+
+          if (alreadySentForWindow) {
+            continue;
+          }
+
           const venueName = booking.venue?.name || booking.caterer?.name || "Your Venue";
 
           const emailSent = await sendEventReminder(
@@ -127,30 +315,33 @@ export async function processEventReminders() {
  * Send 1-2 days after the event
  */
 export async function processPostEventFeedback() {
+  return processPostEventFeedbackWithSettings();
+}
+
+async function processPostEventFeedbackWithSettings(settings?: RetentionSettings) {
+  const resolvedSettings = settings ?? (await getRetentionSettings());
+
+  if (!resolvedSettings.enabled || !resolvedSettings.sendPostEventFeedback) {
+    return { sent: 0, failed: 0 };
+  }
+
   const now = new Date();
 
   try {
-    // Find bookings that were completed 1-2 days ago and haven't had feedback request sent
-    const oneDaysAgo = new Date(now);
-    oneDaysAgo.setDate(oneDaysAgo.getDate() - 1);
-    oneDaysAgo.setHours(0, 0, 0, 0);
-
-    const twoDaysAgo = new Date(now);
-    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-    twoDaysAgo.setHours(0, 0, 0, 0);
+    const targetDate = startOfDay(addDays(now, -resolvedSettings.feedbackDelayDays));
+    const nextDay = addDays(targetDate, 1);
 
     const bookingsForFeedback = await prisma.booking.findMany({
       where: {
         status: "COMPLETED",
         eventDate: {
-          gte: twoDaysAgo,
-          lte: oneDaysAgo,
+          gte: targetDate,
+          lt: nextDay,
         },
-        feedbackEmailSentAt: null, // Only if feedback request hasn't been sent
-        review: null, // Only if no review has been submitted yet (optional: change based on requirements)
+        feedbackEmailSentAt: null,
+        review: null,
       },
       include: {
-        user: true,
         venue: true,
         caterer: true,
       },
@@ -224,13 +415,24 @@ export async function processPostEventFeedback() {
  * Find inactive users and send re-engagement emails
  * Target users who haven't booked anything in 60+ days
  */
-export async function processReEngagementCampaigns(inactiveDaysThreshold: number = 60) {
+export async function processReEngagementCampaigns(
+  inactiveDaysThreshold?: number,
+  settings?: RetentionSettings
+) {
+  const resolvedSettings = settings ?? (await getRetentionSettings());
+
+  if (!resolvedSettings.enabled || !resolvedSettings.sendReEngagement) {
+    return { sent: 0, failed: 0 };
+  }
+
+  const effectiveInactiveDaysThreshold =
+    inactiveDaysThreshold ?? resolvedSettings.reEngagementDays;
   const now = new Date();
 
   try {
     // Find users who last booked 60+ days ago
     const cutoffDate = new Date(now);
-    cutoffDate.setDate(cutoffDate.getDate() - inactiveDaysThreshold);
+    cutoffDate.setDate(cutoffDate.getDate() - effectiveInactiveDaysThreshold);
 
     // Get users with bookings before cutoff date and no recent re-engagement email
     const inactiveUsers = await prisma.user.findMany({
@@ -282,7 +484,7 @@ export async function processReEngagementCampaigns(inactiveDaysThreshold: number
           user.email,
           user.name,
           user.id,
-          inactiveDaysThreshold
+          effectiveInactiveDaysThreshold
         );
 
         if (emailSent) {
@@ -295,6 +497,7 @@ export async function processReEngagementCampaigns(inactiveDaysThreshold: number
               status: "SENT",
               metadata: {
                 inactiveDays: inactiveDaysThreshold,
+                configuredInactiveDays: effectiveInactiveDaysThreshold,
                 lastBookingDate: user.bookings[0]?.createdAt,
               },
             },
@@ -327,14 +530,27 @@ export async function runRetentionAutomation() {
   console.log("[Retention] Starting retention automation run at", new Date().toISOString());
 
   try {
-    const reminderResults = await processEventReminders();
-    const feedbackResults = await processPostEventFeedback();
-    const reEngagementResults = await processReEngagementCampaigns();
+    const settings = await getRetentionSettings();
+
+    if (!settings.enabled) {
+      return {
+        eventReminders: { sent: 0, failed: 0, updated: 0 },
+        postEventFeedback: { sent: 0, failed: 0 },
+        reEngagement: { sent: 0, failed: 0 },
+        completedAt: new Date().toISOString(),
+        skipped: true,
+      };
+    }
+
+    const reminderResults = await processEventReminders(settings);
+    const feedbackResults = await processPostEventFeedbackWithSettings(settings);
+    const reEngagementResults = await processReEngagementCampaigns(undefined, settings);
 
     const summary = {
       eventReminders: reminderResults,
       postEventFeedback: feedbackResults,
       reEngagement: reEngagementResults,
+      settings,
       completedAt: new Date().toISOString(),
     };
 

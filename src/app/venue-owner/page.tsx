@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import dynamic from "next/dynamic";
 import { api } from "@/lib/api-client";
-import { Calendar, CheckCircle2, Clock, Users, Loader2, Building, MapPin, X, CalendarDays, Eye, Phone, Mail, IndianRupee, Wallet, ExternalLink } from "lucide-react";
+import { Calendar, CheckCircle2, Clock, Users, Loader2, Building, MapPin, X, CalendarDays, Eye, Phone, Mail, IndianRupee, Wallet, ExternalLink, Tag, Save, ChevronDown } from "lucide-react";
 
 const AvailabilityCalendar = dynamic(() => import("@/components/calendar/AvailabilityCalendar"));
 const BlockDateModal = dynamic(() => import("@/components/calendar/BlockDateModal"));
 const EarningsDashboard = dynamic(() => import("@/components/owner/EarningsDashboard"));
 const EngagementDashboard = dynamic(() => import("@/components/owner/EngagementDashboard"));
+const InquiryInbox = dynamic(() => import("@/components/owner/InquiryInbox"));
 
 type Venue = {
   id: string;
@@ -24,7 +25,24 @@ type Venue = {
   maxGuests: number;
   isVerified: boolean;
   coverImage?: string;
+  marriagePrice?: number | null;
+  birthdayPrice?: number | null;
+  otherEventPrice?: number | null;
+  primeDayPrice?: number | null;
+  nonPrimeDayPrice?: number | null;
+  primeDays?: string | null;
 };
+
+type PricingForm = {
+  marriagePrice: string;
+  birthdayPrice: string;
+  otherEventPrice: string;
+  primeDayPrice: string;
+  nonPrimeDayPrice: string;
+  primeDays: string;
+};
+
+const PRIME_DAY_OPTIONS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 type Booking = {
   id: string;
@@ -50,10 +68,22 @@ export default function VenueOwnerDashboard() {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"venues" | "bookings" | "calendar" | "earnings" | "insights">("venues");
+  const [activeTab, setActiveTab] = useState<"venues" | "bookings" | "calendar" | "earnings" | "insights" | "pricing" | "inquiries">("venues");
   const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
   const [showBlockModal, setShowBlockModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [pricingVenueId, setPricingVenueId] = useState<string | null>(null);
+  const [pricingForm, setPricingForm] = useState<PricingForm>({
+    marriagePrice: "",
+    birthdayPrice: "",
+    otherEventPrice: "",
+    primeDayPrice: "",
+    nonPrimeDayPrice: "",
+    primeDays: "",
+  });
+  const [pricingSaving, setPricingSaving] = useState(false);
+  const [pricingSuccess, setPricingSuccess] = useState(false);
+  const [pricingError, setPricingError] = useState<string | null>(null);
   
   // Google Form URL for venue listing requests
   const VENUE_REQUEST_FORM_URL = "https://forms.gle/yourformid"; // Replace with actual Google Form URL
@@ -84,6 +114,51 @@ export default function VenueOwnerDashboard() {
       setLoading(false);
     }
   }, []);
+
+  const loadPricing = useCallback(async (venueId: string) => {
+    try {
+      const res = await fetch(`/api/owner/venues/${venueId}/pricing`);
+      if (res.ok) {
+        const { venue } = await res.json();
+        setPricingForm({
+          marriagePrice: venue.marriagePrice != null ? String(venue.marriagePrice) : "",
+          birthdayPrice: venue.birthdayPrice != null ? String(venue.birthdayPrice) : "",
+          otherEventPrice: venue.otherEventPrice != null ? String(venue.otherEventPrice) : "",
+          primeDayPrice: venue.primeDayPrice != null ? String(venue.primeDayPrice) : "",
+          nonPrimeDayPrice: venue.nonPrimeDayPrice != null ? String(venue.nonPrimeDayPrice) : "",
+          primeDays: venue.primeDays || "",
+        });
+        setPricingVenueId(venueId);
+      }
+    } catch (err) {
+      console.error("Failed to load pricing", err);
+    }
+  }, []);
+
+  const savePricing = async () => {
+    if (!pricingVenueId) return;
+    setPricingSaving(true);
+    setPricingError(null);
+    setPricingSuccess(false);
+    try {
+      const res = await fetch(`/api/owner/venues/${pricingVenueId}/pricing`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pricingForm),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        setPricingError(err.error || "Failed to save pricing");
+      } else {
+        setPricingSuccess(true);
+        setTimeout(() => setPricingSuccess(false), 3000);
+      }
+    } catch {
+      setPricingError("Network error — please try again");
+    } finally {
+      setPricingSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/auth/signin");
@@ -168,6 +243,34 @@ export default function VenueOwnerDashboard() {
           >
             <Eye className="inline h-5 w-5 mr-2" />
             Insights
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab("pricing");
+              const defaultVenueId = selectedVenueId || (venues.length > 0 ? venues[0].id : null);
+              if (defaultVenueId && defaultVenueId !== pricingVenueId) {
+                loadPricing(defaultVenueId);
+              }
+            }}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+              activeTab === "pricing"
+                ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
+                : "bg-white text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            <Tag className="inline h-5 w-5 mr-2" />
+            Pricing
+          </button>
+          <button
+            onClick={() => setActiveTab("inquiries")}
+            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+              activeTab === "inquiries"
+                ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
+                : "bg-white text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            <Mail className="inline h-5 w-5 mr-2" />
+            Inquiries
           </button>
         </div>
 
@@ -362,6 +465,162 @@ export default function VenueOwnerDashboard() {
           <div className="bg-white rounded-2xl p-6 shadow-sm">
             <h2 className="text-xl font-bold text-gray-900 mb-6">Engagement Insights</h2>
             <EngagementDashboard />
+          </div>
+        )}
+
+        {/* Pricing Tab */}
+        {activeTab === "pricing" && (
+          <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Event-Type Pricing</h2>
+            <p className="text-gray-500 text-sm mb-6">Set per-event prices so customers see the right rate for their occasion. Leave a field blank to omit that event type.</p>
+
+            {venues.length === 0 ? (
+              <div className="text-center py-12">
+                <Tag className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500">No venues to configure</p>
+              </div>
+            ) : (
+              <>
+                {/* Venue selector */}
+                {venues.length > 1 && (
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Venue</label>
+                    <div className="relative max-w-xs">
+                      <select
+                        value={pricingVenueId || ""}
+                        onChange={(e) => loadPricing(e.target.value)}
+                        className="w-full appearance-none px-4 py-3 pr-10 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      >
+                        {venues.map((v) => (
+                          <option key={v.id} value={v.id}>{v.name} — {v.area}, {v.city}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-3 top-3.5 h-5 w-5 text-gray-400 pointer-events-none" />
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Event type prices */}
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-gray-800 flex items-center gap-2"><IndianRupee className="h-4 w-4 text-purple-600" /> Per-Event Prices</h3>
+
+                    {[
+                      { key: "marriagePrice", label: "Marriage / Wedding / Engagement" },
+                      { key: "birthdayPrice", label: "Birthday / Anniversary / Baby Shower" },
+                      { key: "otherEventPrice", label: "Other Events (Shradh, Corporate, etc.)" },
+                    ].map(({ key, label }) => (
+                      <div key={key}>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-3 text-gray-400 text-sm">₹</span>
+                          <input
+                            type="number"
+                            min={0}
+                            placeholder="Leave blank to hide"
+                            value={(pricingForm as any)[key]}
+                            onChange={(e) => setPricingForm((f) => ({ ...f, [key]: e.target.value }))}
+                            className="w-full pl-7 pr-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Prime day pricing */}
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-gray-800 flex items-center gap-2"><Calendar className="h-4 w-4 text-pink-600" /> Prime Day Pricing</h3>
+                    <p className="text-xs text-gray-500">Set premium rates for high-demand days (e.g. weekends, auspicious dates).</p>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Prime Days</label>
+                      <div className="flex flex-wrap gap-2">
+                        {PRIME_DAY_OPTIONS.map((day) => {
+                          const selected = pricingForm.primeDays.split(",").map((d) => d.trim()).includes(day);
+                          return (
+                            <button
+                              key={day}
+                              type="button"
+                              onClick={() => {
+                                const days = pricingForm.primeDays ? pricingForm.primeDays.split(",").map((d) => d.trim()).filter(Boolean) : [];
+                                const next = selected ? days.filter((d) => d !== day) : [...days, day];
+                                setPricingForm((f) => ({ ...f, primeDays: next.join(", ") }));
+                              }}
+                              className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                                selected
+                                  ? "bg-purple-600 text-white border-purple-600"
+                                  : "bg-white text-gray-700 border-gray-300 hover:border-purple-400"
+                              }`}
+                            >
+                              {day}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Prime Day Price</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-3 text-gray-400 text-sm">₹</span>
+                        <input
+                          type="number"
+                          min={0}
+                          placeholder="Leave blank to hide"
+                          value={pricingForm.primeDayPrice}
+                          onChange={(e) => setPricingForm((f) => ({ ...f, primeDayPrice: e.target.value }))}
+                          className="w-full pl-7 pr-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Non-Prime Day Price</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-3 text-gray-400 text-sm">₹</span>
+                        <input
+                          type="number"
+                          min={0}
+                          placeholder="Leave blank to hide"
+                          value={pricingForm.nonPrimeDayPrice}
+                          onChange={(e) => setPricingForm((f) => ({ ...f, nonPrimeDayPrice: e.target.value }))}
+                          className="w-full pl-7 pr-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Save button */}
+                <div className="mt-8 flex items-center gap-4">
+                  <button
+                    onClick={savePricing}
+                    disabled={pricingSaving || !pricingVenueId}
+                    className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-3 rounded-xl font-semibold hover:opacity-90 disabled:opacity-50"
+                  >
+                    {pricingSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+                    {pricingSaving ? "Saving…" : "Save Pricing"}
+                  </button>
+                  {pricingSuccess && (
+                    <span className="flex items-center gap-1 text-green-600 font-medium">
+                      <CheckCircle2 className="h-5 w-5" /> Saved!
+                    </span>
+                  )}
+                  {pricingError && <span className="text-red-600 text-sm">{pricingError}</span>}
+                </div>
+
+                <div className="mt-4 p-4 bg-blue-50 rounded-xl text-sm text-blue-700">
+                  <strong>Tip:</strong> Event-type prices appear on your venue detail page and help customers instantly see the right price for their occasion. Admin-set prices will be displayed alongside your prices.
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Inquiries Tab */}
+        {activeTab === "inquiries" && (
+          <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <InquiryInbox />
           </div>
         )}
 
