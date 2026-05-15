@@ -399,6 +399,21 @@ export default function AdminRetentionPage() {
                 )}
               </div>
             </div>
+
+            <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h2 className="text-lg font-semibold text-gray-900">Automated Schedule</h2>
+              <div className="mt-4 space-y-3 text-sm text-gray-600">
+                <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4">
+                  <p className="font-semibold text-amber-900">Vercel Cron</p>
+                  <p className="mt-1 text-amber-800">Runs daily at <strong>12:00 AM IST</strong> via <code className="bg-amber-100 px-1 rounded text-xs">/api/cron/retention</code>.</p>
+                  <p className="mt-2 text-xs text-amber-700">Set <code className="bg-amber-100 px-1 rounded">CRON_SECRET</code> in your Vercel environment variables to protect this endpoint.</p>
+                </div>
+                <div className="rounded-2xl bg-gray-50 p-4">
+                  <p className="font-medium text-gray-900">Manual trigger</p>
+                  <p className="mt-1">Use the &ldquo;Run Now&rdquo; button above to trigger all retention campaigns immediately, regardless of schedule.</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
