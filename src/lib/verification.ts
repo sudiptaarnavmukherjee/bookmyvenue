@@ -4,9 +4,10 @@ export type KycDocument = {
 };
 
 export type CatererVerificationMeta = {
-  status?: "REQUESTED" | "APPROVED";
+  status?: "REQUESTED" | "APPROVED" | "REJECTED";
   submittedAt?: string;
   approvedAt?: string;
+  rejectedAt?: string;
   ownerNote?: string;
   adminReviewNote?: string;
   kycDocuments: KycDocument[];
@@ -27,6 +28,7 @@ export function parseCatererVerificationNotes(notes?: string | null): CatererVer
       status: parsed.status,
       submittedAt: parsed.submittedAt,
       approvedAt: parsed.approvedAt,
+      rejectedAt: parsed.rejectedAt,
       ownerNote: parsed.ownerNote,
       adminReviewNote: parsed.adminReviewNote,
       kycDocuments,

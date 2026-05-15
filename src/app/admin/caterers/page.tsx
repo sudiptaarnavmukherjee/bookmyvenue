@@ -83,6 +83,7 @@ export default function AdminCaterersPage() {
   const [tagLoading, setTagLoading] = useState(false);
   const [tagMsg, setTagMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [seedLoading, setSeedLoading] = useState(false);
 
@@ -180,6 +181,29 @@ export default function AdminCaterersPage() {
       alert("Failed to approve");
     } finally {
       setApprovingId(null);
+    }
+  };
+
+  const handleRejectVerification = async (caterer: Caterer) => {
+    const reason = prompt(`Reason for rejecting "${caterer.name}" verification:\n(This will be emailed to the owner)`);
+    if (reason === null) return; // cancelled
+    setRejectingId(caterer.id);
+    try {
+      const res = await fetch(`/api/admin/caterers/${caterer.id}/reject-verification`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: reason.trim() || "Please resubmit clearer KYC documents." }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchCaterers();
+      } else {
+        alert(data.error || "Failed to reject");
+      }
+    } catch {
+      alert("Failed to reject");
+    } finally {
+      setRejectingId(null);
     }
   };
 
@@ -547,20 +571,34 @@ export default function AdminCaterersPage() {
                     {caterer.taggedToOwner || caterer.owner ? "Change Owner" : "Tag Owner"}
                   </button>
 
-                  {/* One-click Approve Verification */}
+                  {/* Approve / Reject Verification */}
                   {caterer.verificationRequestedAt && !caterer.bookingEnabled && (
-                    <button
-                      onClick={() => handleApproveVerification(caterer)}
-                      disabled={approvingId === caterer.id}
-                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500 text-white hover:bg-orange-600 transition-colors disabled:opacity-50 font-semibold"
-                    >
-                      {approvingId === caterer.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <ShieldCheck className="h-4 w-4" />
-                      )}
-                      Approve
-                    </button>
+                    <>
+                      <button
+                        onClick={() => handleApproveVerification(caterer)}
+                        disabled={approvingId === caterer.id || rejectingId === caterer.id}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500 text-white hover:bg-orange-600 transition-colors disabled:opacity-50 font-semibold"
+                      >
+                        {approvingId === caterer.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <ShieldCheck className="h-4 w-4" />
+                        )}
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleRejectVerification(caterer)}
+                        disabled={rejectingId === caterer.id || approvingId === caterer.id}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50 font-semibold"
+                      >
+                        {rejectingId === caterer.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <XCircle className="h-4 w-4" />
+                        )}
+                        Reject
+                      </button>
+                    </>
                   )}
 
                   {/* Toggle Booking */}
