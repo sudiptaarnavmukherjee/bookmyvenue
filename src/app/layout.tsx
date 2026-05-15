@@ -6,6 +6,7 @@ import { CompareProviderGate } from "@/components/providers/CompareProviderGate"
 import { generateOrganizationSchema, generateSearchActionSchema, JsonLd } from "@/lib/structured-data";
 import { LayoutShell } from "@/components/layout/LayoutShell";
 import Footer from "@/components/layout/Footer";
+import { PWAInitializer } from "@/components/pwa/PWAInitializer";
 
 const lato = Lato({
   subsets: ["latin"],
@@ -74,7 +75,12 @@ export const metadata: Metadata = {
     shortcut: "/favicon-16x16.png",
     apple: "/apple-touch-icon.png",
   },
-  manifest: "/site.webmanifest",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "BookMyVenue",
+  },
 };
 
 export const viewport: Viewport = {
@@ -95,10 +101,16 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <head>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="BookMyVenue" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="theme-color" content="#ec4899" />
         <JsonLd data={generateOrganizationSchema()} />
         <JsonLd data={generateSearchActionSchema()} />
       </head>
       <body className={`${lato.className} overflow-x-hidden antialiased`}>
+        <PWAInitializer />
         <SessionProviderGate>
           <CompareProviderGate>
             {/* Main content renders IMMEDIATELY - no blocking */}

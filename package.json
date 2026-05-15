@@ -16,7 +16,9 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "pwa:icons": "node scripts/generate-pwa-icons-simple.js",
+    "pwa:build": "npm run pwa:icons && npm run build"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

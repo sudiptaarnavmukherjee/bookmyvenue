@@ -20,6 +20,11 @@ const CompareBar = dynamic(
   { ssr: false }
 );
 
+const PWAInstallPrompt = dynamic(
+  () => import("@/components/pwa/PWAInstallPrompt").then(m => ({ default: m.PWAInstallPrompt })),
+  { ssr: false }
+);
+
 const PWAInstallBanner = dynamic(
   () => import("@/components/pwa/PWAComponents").then(m => ({ default: m.PWAInstallBanner })),
   { ssr: false }
@@ -46,6 +51,7 @@ export function LayoutShell() {
   return (
     <Suspense fallback={null}>
       <OfflineIndicator />
+      <PWAInstallPrompt />
       {!hideGlobalNav && <DesktopNav />}
       {!hideGlobalNav && showCompareBar && <CompareBar />}
       {!hideGlobalNav && <PWAInstallBanner />}

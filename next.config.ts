@@ -72,7 +72,45 @@ const nextConfig: NextConfig = {
         headers: securityHeaders,
       },
       {
-        // Cache static assets
+        // Manifest file - allow caching but check for updates
+        source: '/manifest.json',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=3600, must-revalidate',
+          },
+          {
+            key: 'Content-Type',
+            value: 'application/manifest+json',
+          },
+        ],
+      },
+      {
+        // Web app manifest alternative
+        source: '/site.webmanifest',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=3600, must-revalidate',
+          },
+          {
+            key: 'Content-Type',
+            value: 'application/manifest+json',
+          },
+        ],
+      },
+      {
+        // PWA icons
+        source: '/pwa-icons/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=604800, immutable',
+          },
+        ],
+      },
+      {
+        // Static assets
         source: '/static/:path*',
         headers: [
           {
